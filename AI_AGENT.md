@@ -152,8 +152,18 @@ AI nên sử dụng CSS variables thay vì hard-code màu ở nhiều nơi.
 
   --shadow-sm: 0 2px 8px rgba(41, 36, 61, 0.08);
   --shadow-md: 0 6px 20px rgba(41, 36, 61, 0.12);
+
+  /* Typography */
+  --font-game: 'Plus Jakarta Sans', sans-serif;
+  --font-ui: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  --font-size-base: 14px; /* Text thông thường mặc định là 14px */
 }
 ```
+
+## Quy tắc Typography:
+- **Font tiêu đề / Nút / Badge / UI Game**: `Plus Jakarta Sans` & `Inter` (hiện đại, sắc nét, hỗ trợ tiếng Việt chuẩn).
+- **Text thông thường (Body text, Label, Mô tả, Lựa chọn)**: Luôn sử dụng cỡ chữ **`14px`**.
+
 
 ---
 

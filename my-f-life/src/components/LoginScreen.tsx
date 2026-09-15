@@ -115,7 +115,7 @@ export const LoginScreen: React.FC = () => {
           <h1 style={{ fontSize: '24px', fontWeight: 900, color: 'var(--color-text-primary)', letterSpacing: '-0.5px' }}>
             Cuộc đời của Con Bố Khánh
           </h1>
-          <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '4px', fontWeight: 500 }}>
+          <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '4px', fontWeight: 600 }}>
             Mô phỏng hành trình cuộc đời đầy bất ngờ và lựa chọn
           </p>
         </div>
@@ -136,7 +136,7 @@ export const LoginScreen: React.FC = () => {
                   htmlFor="username-input"
                   style={{
                     display: 'block',
-                    fontSize: '11px',
+                    fontSize: '14px',
                     fontWeight: 700,
                     color: 'var(--color-text-secondary)',
                     textTransform: 'uppercase',
@@ -160,7 +160,7 @@ export const LoginScreen: React.FC = () => {
                   autoFocus
                 />
                 {error && (
-                  <p style={{ fontSize: '12px', color: 'var(--color-error)', fontWeight: 600, marginTop: '6px' }}>
+                  <p style={{ fontSize: '14px', color: 'var(--color-error)', fontWeight: 600, marginTop: '6px' }}>
                     {error}
                   </p>
                 )}
@@ -220,10 +220,10 @@ export const LoginScreen: React.FC = () => {
                   >
                     <Sparkles size={24} color="#D98200" />
                     <div>
-                      <h4 style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-text-primary)' }}>
+                      <h4 style={{ fontSize: '14px', fontWeight: 800, color: 'var(--color-text-primary)' }}>
                         Tài khoản mới chưa có dữ liệu
                       </h4>
-                      <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                      <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
                         Bạn sẽ khởi đầu cuộc đời mới từ <b>Màn 1: Tuổi Thơ Dữ Dội</b>.
                       </p>
                     </div>
@@ -265,10 +265,10 @@ export const LoginScreen: React.FC = () => {
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>
                         Tiến độ các màn:
                       </span>
-                      <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-primary)' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--color-primary)' }}>
                         Tổng: {existingUser.totalScore.toLocaleString()} đ
                       </span>
                     </div>
@@ -288,19 +288,19 @@ export const LoginScreen: React.FC = () => {
                               background: isInProgress ? '#FFFFFF' : isCompleted ? '#F8F7FC' : 'rgba(255, 255, 255, 0.4)',
                               border: `1px solid ${isInProgress ? 'var(--color-primary)' : 'var(--color-border)'}`,
                               borderRadius: 'var(--radius-sm)',
-                              fontSize: '12px',
+                              fontSize: '14px',
                               fontWeight: 600,
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               {isCompleted ? (
-                                <CheckCircle2 size={15} color="var(--color-success)" />
+                                <CheckCircle2 size={16} color="var(--color-success)" />
                               ) : isInProgress ? (
-                                <Flame size={15} color="var(--color-primary)" />
+                                <Flame size={16} color="var(--color-primary)" />
                               ) : (
-                                <Lock size={15} color="var(--color-text-disabled)" />
+                                <Lock size={16} color="var(--color-text-disabled)" />
                               )}
-                              <span style={{ color: isInProgress ? 'var(--color-primary)' : 'inherit', fontWeight: isInProgress ? 700 : 500 }}>
+                              <span style={{ color: isInProgress ? 'var(--color-primary)' : 'inherit', fontWeight: isInProgress ? 700 : 600 }}>
                                 {stg.name}
                               </span>
                             </div>
@@ -308,7 +308,7 @@ export const LoginScreen: React.FC = () => {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                               <span
                                 style={{
-                                  fontSize: '11px',
+                                  fontSize: '13px',
                                   background: '#FFFFFF',
                                   padding: '2px 6px',
                                   borderRadius: '4px',
@@ -380,7 +380,7 @@ export const LoginScreen: React.FC = () => {
               justifyContent: 'center',
               gap: '8px',
               color: 'var(--color-text-secondary)',
-              fontSize: '12px',
+              fontSize: '14px',
               fontWeight: 600,
             }}
           >

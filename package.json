@@ -1,0 +1,10 @@
+{
+  "name": "my-shit-life",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "npm --prefix my-f-life run dev",
+    "start": "npm --prefix my-f-life run dev",
+    "build": "npm --prefix my-f-life run build"
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "users": {
+    "duynk": {
+      "username": "duynk",
+      "createdAt": "2026-09-15T10:00:00.000Z",
+      "lastPlayedAt": "2026-09-15T17:30:00.000Z",
+      "currentStageId": "stage_2",
+      "totalScore": 1250,
+      "stages": [
+        {
+          "id": "stage_1",
+          "name": "Màn 1: Tuổi Thơ Dữ Dội",
+          "currentStep": 5,
+          "totalSteps": 5,
+          "score": 500,
+          "status": "completed"
+        },
+        {
+          "id": "stage_2",
+          "name": "Màn 2: Cấp 3 Bùng Cháy",
+          "currentStep": 3,
+          "totalSteps": 6,
+          "score": 750,
+          "status": "in_progress"
+        },
+        {
+          "id": "stage_3",
+          "name": "Màn 3: Đại Học Bươn Chải",
+          "currentStep": 0,
+          "totalSteps": 8,
+          "score": 0,
+          "status": "locked"
+        },
+        {
+          "id": "stage_4",
+          "name": "Màn 4: Đi Làm Kiếm Cơm",
+          "currentStep": 0,
+          "totalSteps": 10,
+          "score": 0,
+          "status": "locked"
+        }
+      ]
+    }
+  },
+  "defaultStages": [
+    {
+      "id": "stage_1",
+      "name": "Màn 1: Tuổi Thơ Dữ Dội",
+      "currentStep": 1,
+      "totalSteps": 5,
+      "score": 0,
+      "status": "in_progress"
+    },
+    {
+      "id": "stage_2",
+      "name": "Màn 2: Cấp 3 Bùng Cháy",
+      "currentStep": 0,
+      "totalSteps": 6,
+      "score": 0,
+      "status": "locked"
+    },
+    {
+      "id": "stage_3",
+      "name": "Màn 3: Đại Học Bươn Chải",
+      "currentStep": 0,
+      "totalSteps": 8,
+      "score": 0,
+      "status": "locked"
+    },
+    {
+      "id": "stage_4",
+      "name": "Màn 4: Đi Làm Kiếm Cơm",
+      "currentStep": 0,
+      "totalSteps": 10,
+      "score": 0,
+      "status": "locked"
+    }
+  ]
+}

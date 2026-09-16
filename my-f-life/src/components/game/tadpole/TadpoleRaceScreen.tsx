@@ -269,29 +269,31 @@ export const TadpoleRaceScreen: React.FC<TadpoleRaceScreenProps> = ({
               <span>Đến Đích: {distancePercent}%</span>
             </div>
 
-            {/* Quick Pass Race / Victory (Ctrl + K) */}
-            <button
-              type="button"
-              onClick={handleInstantVictory}
-              style={{
-                background: 'rgba(234, 179, 8, 0.25)',
-                backdropFilter: 'blur(8px)',
-                border: '1.5px solid rgba(250, 204, 21, 0.7)',
-                borderRadius: 'var(--radius-sm)',
-                padding: isMobile ? '5px 8px' : '7px 12px',
-                cursor: 'pointer',
-                color: '#FACC15',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                fontSize: isMobile ? '10px' : '12px',
-                fontWeight: 800,
-              }}
-              title="Thắng ngay lập tức (Phím tắt: Ctrl + K)"
-            >
-              <Zap size={isMobile ? 12 : 14} color="#FACC15" />
-              <span>Pass {isMobile ? '' : '(Ctrl+K)'}</span>
-            </button>
+            {/* Quick Pass Race / Victory (Ctrl + K) - Chỉ hiển thị trên Desktop */}
+            {!isMobile && (
+              <button
+                type="button"
+                onClick={handleInstantVictory}
+                style={{
+                  background: 'rgba(234, 179, 8, 0.25)',
+                  backdropFilter: 'blur(8px)',
+                  border: '1.5px solid rgba(250, 204, 21, 0.7)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '7px 12px',
+                  cursor: 'pointer',
+                  color: '#FACC15',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                }}
+                title="Thắng ngay lập tức (Phím tắt: Ctrl + K)"
+              >
+                <Zap size={14} color="#FACC15" />
+                <span>Pass (Ctrl+K)</span>
+              </button>
+            )}
 
             {/* Pause / Resume */}
             <button
@@ -471,27 +473,29 @@ export const TadpoleRaceScreen: React.FC<TadpoleRaceScreenProps> = ({
               </button>
 
               <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                <button
-                  type="button"
-                  onClick={handleInstantVictory}
-                  className="btn-outline"
-                  style={{
-                    flex: 1,
-                    padding: isMobile ? '10px' : '12px',
-                    fontSize: isMobile ? '12px' : '13px',
-                    color: '#FACC15',
-                    borderColor: 'rgba(250, 204, 21, 0.5)',
-                    fontWeight: 800,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '5px',
-                  }}
-                  title="Thắng ngay lập tức (Ctrl + K)"
-                >
-                  <Zap size={14} color="#FACC15" />
-                  <span>Pass (Ctrl+K)</span>
-                </button>
+                {!isMobile && (
+                  <button
+                    type="button"
+                    onClick={handleInstantVictory}
+                    className="btn-outline"
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      fontSize: '13px',
+                      color: '#FACC15',
+                      borderColor: 'rgba(250, 204, 21, 0.5)',
+                      fontWeight: 800,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '5px',
+                    }}
+                    title="Thắng ngay lập tức (Ctrl + K)"
+                  >
+                    <Zap size={14} color="#FACC15" />
+                    <span>Pass (Ctrl+K)</span>
+                  </button>
+                )}
 
                 {onBackToDashboard && (
                   <button

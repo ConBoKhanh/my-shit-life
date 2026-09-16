@@ -74,6 +74,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
   // Audio refs & Typewriter timer ref
   const bgmAudioRef = useRef<HTMLAudioElement | null>(null);
   const sfxAudioRef = useRef<HTMLAudioElement | null>(null);
+  const typewriterAudioCtxRef = useRef<AudioContext | null>(null);
   const currentBgmUrlRef = useRef<string>('');
   const typewriterTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevStepIdRef = useRef<string>(stepConfig.id);
@@ -290,6 +291,42 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
     return resolveText(currentDialogue.text, currentDialogue);
   }, [currentDialogue, resolveText]);
 
+  // Sound effect for typewriter dialogue (chatter tick / gõ từng ký tự)
+  const playTypewriterBlip = useCallback(() => {
+    if (isMuted || typeof window === 'undefined') return;
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      if (!typewriterAudioCtxRef.current) {
+        typewriterAudioCtxRef.current = new AudioCtx();
+      }
+      const ctx = typewriterAudioCtxRef.current;
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      // Âm thanh gõ text game visual novel nhẹ nhàng, vui tai (480-560Hz)
+      const freq = 480 + Math.random() * 80;
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.72, ctx.currentTime + 0.022);
+
+      gain.gain.setValueAtTime(0.04, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.022);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.025);
+    } catch {
+      // Safe fallback
+    }
+  }, [isMuted]);
+
   // Typewriter effect
   useEffect(() => {
     if (!currentDialogue || showChoices || activeModalAction) return;
@@ -313,8 +350,14 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
 
     typewriterTimerRef.current = setInterval(() => {
       if (charIndex < fullText.length) {
+        const nextChar = fullText[charIndex];
         setDisplayedText(fullText.slice(0, charIndex + 1));
         charIndex++;
+
+        // Phát hiệu ứng âm thanh chữ đang chạy (cứ mỗi 2 ký tự hoặc ký tự không phải khoảng trắng)
+        if (nextChar && nextChar.trim() !== '' && charIndex % 2 === 0) {
+          playTypewriterBlip();
+        }
       } else {
         setIsTyping(false);
         if (typewriterTimerRef.current) {
@@ -322,7 +365,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
           typewriterTimerRef.current = null;
         }
       }
-    }, 22);
+    }, 24);
 
     return () => {
       if (typewriterTimerRef.current) {
@@ -330,7 +373,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
         typewriterTimerRef.current = null;
       }
     };
-  }, [currentDialogueIndex, resolvedFullText, showChoices, activeModalAction, activeDialogueList]);
+  }, [currentDialogueIndex, resolvedFullText, showChoices, activeModalAction, activeDialogueList, playTypewriterBlip]);
 
   // Advance dialogue callback
   const handleNextDialogue = useCallback(() => {

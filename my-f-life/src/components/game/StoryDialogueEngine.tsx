@@ -547,9 +547,13 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
       onClick={handleGlobalScreenClick}
       style={{
         position: 'fixed',
-        inset: 0,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
         width: '100vw',
-        height: '100vh',
+        height: '100dvh',
+        maxHeight: '100dvh',
         minHeight: '100dvh',
         zIndex: 100,
         backgroundColor: '#150B28',
@@ -770,24 +774,25 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
         </div>
       </div>
 
-      {/* 3. CHARACTERS STAGE: GROUNDED AT BOTTOM: 0 */}
+      {/* 3. CHARACTERS STAGE */}
       <div
         style={{
           position: 'absolute',
-          bottom: 0,
+          bottom: isMobile ? '124px' : 0,
           left: 0,
           right: 0,
-          height: '100%',
+          height: isMobile ? 'auto' : '100%',
+          maxHeight: isMobile ? '48dvh' : '100%',
           display: 'flex',
           justifyContent: isMobile ? 'center' : 'space-between',
           alignItems: 'flex-end',
-          padding: isMobile ? '0 16px' : '0 48px',
+          padding: isMobile ? '0 12px' : '0 48px',
           pointerEvents: 'none',
           zIndex: 10,
         }}
       >
         {isMobile ? (
-          /* MOBILE MODE: ONLY RENDER 1 ACTIVE CHARACTER GROUNDED TO BOTTOM */
+          /* MOBILE MODE: ONLY RENDER 1 ACTIVE CHARACTER GROUNDED ABOVE DIALOGUE BOX */
           currentSpeaker && currentSpeaker.sprite ? (
             <motion.div
               key={`mobile-${currentSpeaker.id}`}
@@ -807,8 +812,8 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                 src={resolveAssetUrl(currentSpeaker.sprite)}
                 alt={currentSpeaker.name}
                 style={{
-                  maxHeight: '68vh',
-                  maxWidth: '88vw',
+                  maxHeight: '42dvh',
+                  maxWidth: '76vw',
                   objectFit: 'contain',
                   display: 'block',
                   verticalAlign: 'bottom',
@@ -818,7 +823,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
             </motion.div>
           ) : null
         ) : (
-          /* DESKTOP / TABLET MODE: GROUNDED AT BOTTOM: 0 WITH SPOTLIGHT & DARKENING (25% BIGGER) */
+          /* DESKTOP / TABLET MODE: GROUNDED AT BOTTOM: 0 WITH SPOTLIGHT & DARKENING */
           <>
             {/* LEFT CHARACTERS */}
             <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-end', alignSelf: 'flex-end' }}>
@@ -917,7 +922,9 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
         style={{
           position: 'relative',
           zIndex: 30,
-          padding: isMobile ? '12px 14px 18px 14px' : '16px 40px 24px 40px',
+          padding: isMobile
+            ? '4px 10px calc(env(safe-area-inset-bottom, 8px) + 8px) 10px'
+            : '16px 40px 24px 40px',
           width: '100%',
           maxWidth: '1080px',
           margin: '0 auto',
@@ -930,14 +937,18 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
             animate={{ opacity: 1, y: 0 }}
             style={{
               position: 'relative',
-              backgroundColor: 'rgba(24, 14, 42, 0.92)',
+              backgroundColor: 'rgba(24, 14, 42, 0.94)',
               backdropFilter: 'blur(20px)',
               border: '1.5px solid rgba(255, 255, 255, 0.22)',
               borderRadius: isMobile ? 'var(--radius-md)' : 'var(--radius-lg)',
-              padding: isMobile ? '18px 16px 14px 16px' : '22px 28px 18px 28px',
+              padding: isMobile ? '14px 12px 8px 12px' : '22px 28px 18px 28px',
               cursor: 'pointer',
               boxShadow: '0 16px 40px rgba(0, 0, 0, 0.6)',
-              minHeight: isMobile ? '110px' : '130px',
+              minHeight: isMobile ? '86px' : '130px',
+              maxHeight: isMobile ? '34dvh' : 'none',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
             }}
           >
             {/* SPEAKER NAME PLATE */}
@@ -945,20 +956,20 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
               <div
                 style={{
                   position: 'absolute',
-                  top: isMobile ? '-14px' : '-16px',
-                  left: isMobile ? '16px' : currentSpeaker.side === 'left' ? '28px' : 'auto',
+                  top: isMobile ? '-12px' : '-16px',
+                  left: isMobile ? '12px' : currentSpeaker.side === 'left' ? '28px' : 'auto',
                   right: isMobile ? 'auto' : currentSpeaker.side === 'right' ? '28px' : 'auto',
                   backgroundColor: currentSpeaker.color || 'var(--color-primary)',
                   color: '#FFFFFF',
-                  padding: isMobile ? '4px 14px' : '6px 20px',
+                  padding: isMobile ? '3px 10px' : '6px 20px',
                   borderRadius: 'var(--radius-md)',
-                  fontSize: isMobile ? '13px' : '14px',
+                  fontSize: isMobile ? '12px' : '14px',
                   fontWeight: 800,
                   letterSpacing: '0.3px',
                   boxShadow: '0 4px 14px rgba(0, 0, 0, 0.35)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
+                  gap: '5px',
                 }}
               >
                 <span>{currentSpeaker.name}</span>
@@ -968,12 +979,16 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
             {/* DIALOGUE TEXT CONTENT */}
             <p
               style={{
-                fontSize: isMobile ? '14px' : '15px',
-                lineHeight: 1.6,
+                fontSize: isMobile ? '13px' : '15px',
+                lineHeight: 1.5,
                 color: '#FFFFFF',
                 fontWeight: 600,
-                marginTop: '4px',
-                minHeight: isMobile ? '40px' : '48px',
+                marginTop: isMobile ? '2px' : '4px',
+                marginBottom: '4px',
+                minHeight: isMobile ? '32px' : '48px',
+                maxHeight: isMobile ? '16dvh' : 'none',
+                overflowY: 'auto',
+                WebkitOverflowScrolling: 'touch',
               }}
             >
               {displayedText}
@@ -986,8 +1001,8 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginTop: '10px',
-                paddingTop: '8px',
+                marginTop: isMobile ? '4px' : '10px',
+                paddingTop: isMobile ? '4px' : '8px',
                 borderTop: '1px solid rgba(255, 255, 255, 0.1)',
               }}
             >
@@ -1003,8 +1018,8 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                     color: '#FFFFFF',
                     border: 'none',
                     borderRadius: 'var(--radius-sm)',
-                    padding: '4px 10px',
-                    fontSize: '11px',
+                    padding: isMobile ? '3px 7px' : '4px 10px',
+                    fontSize: isMobile ? '10px' : '11px',
                     fontWeight: 700,
                     cursor: 'pointer',
                     display: 'flex',
@@ -1012,7 +1027,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                     gap: '4px',
                   }}
                 >
-                  <Play size={11} />
+                  <Play size={10} />
                   <span>{isAutoPlay ? 'Tự động: BẬT' : 'Tự động'}</span>
                 </button>
 
@@ -1029,8 +1044,8 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                     color: '#FFFFFF',
                     border: 'none',
                     borderRadius: 'var(--radius-sm)',
-                    padding: '4px 10px',
-                    fontSize: '11px',
+                    padding: isMobile ? '3px 7px' : '4px 10px',
+                    fontSize: isMobile ? '10px' : '11px',
                     fontWeight: 700,
                     cursor: 'pointer',
                     display: 'flex',
@@ -1038,7 +1053,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                     gap: '4px',
                   }}
                 >
-                  <FastForward size={11} />
+                  <FastForward size={10} />
                   <span>Tua nhanh</span>
                 </button>
               </div>
@@ -1052,12 +1067,12 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                   alignItems: 'center',
                   gap: '4px',
                   color: 'var(--color-secondary)',
-                  fontSize: isMobile ? '11px' : '12px',
+                  fontSize: isMobile ? '10.5px' : '12px',
                   fontWeight: 700,
                 }}
               >
-                <span>{isLastDialogue ? (pendingChoiceTransition ? 'Tiếp tục câu chuyện' : 'Đưa ra quyết định') : 'Chạm/Nhấn phím để tiếp tục'}</span>
-                <ChevronDown size={14} />
+                <span>{isLastDialogue ? (pendingChoiceTransition ? 'Tiếp tục' : 'Quyết định') : 'Chạm để tiếp tục'}</span>
+                <ChevronDown size={13} />
               </motion.div>
             </div>
           </motion.div>
@@ -1072,20 +1087,21 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
               backdropFilter: 'blur(20px)',
               border: '1.5px solid rgba(255, 255, 255, 0.25)',
               borderRadius: isMobile ? 'var(--radius-md)' : 'var(--radius-lg)',
-              padding: isMobile ? '16px 14px' : '22px 28px',
+              padding: isMobile ? '12px 10px' : '22px 28px',
               boxShadow: '0 16px 40px rgba(0, 0, 0, 0.6)',
-              maxHeight: '45vh',
+              maxHeight: isMobile ? '48dvh' : '45vh',
               overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-              <Sparkles size={18} color="var(--color-secondary)" />
-              <h3 style={{ fontSize: isMobile ? '14px' : '16px', fontWeight: 800, color: '#FFFFFF' }}>
-                {stepConfig.isEnding ? 'Hoàn Thành Màn Chơi!' : 'Lựa Chọn Của Bạn (Quyết Định Tương Lai):'}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: isMobile ? '8px' : '12px' }}>
+              <Sparkles size={16} color="var(--color-secondary)" />
+              <h3 style={{ fontSize: isMobile ? '13px' : '16px', fontWeight: 800, color: '#FFFFFF' }}>
+                {stepConfig.isEnding ? 'Hoàn Thành Màn Chơi!' : 'Lựa Chọn Của Bạn:'}
               </h3>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '6px' : '8px' }}>
               {stepConfig.choices?.map((choice) => (
                 <motion.button
                   key={choice.id}
@@ -1100,15 +1116,16 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                     backgroundColor: 'rgba(255, 255, 255, 0.1)',
                     border: '1px solid rgba(255, 255, 255, 0.2)',
                     borderRadius: 'var(--radius-md)',
-                    padding: isMobile ? '12px 14px' : '14px 18px',
+                    padding: isMobile ? '10px 12px' : '14px 18px',
                     color: '#FFFFFF',
-                    fontSize: isMobile ? '13px' : '14px',
+                    fontSize: isMobile ? '12.5px' : '14px',
                     fontWeight: 700,
+                    textAlign: 'left',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    textAlign: 'left',
-                    gap: '12px',
+                    gap: '10px',
+                    transition: 'all 0.18s ease',
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = 'rgba(108, 92, 231, 0.35)';

@@ -66,7 +66,7 @@ export const LoginScreen: React.FC = () => {
   const handleStartNewUser = () => {
     if (!checkedUsername) return;
     startNewLife(checkedUsername);
-    toast.success(`Khởi tạo thành công! Bắt đầu Màn 1`);
+    toast.success(`Khởi tạo thành công! Bắt đầu Cuộc Đua Chuyển Sinh`);
   };
 
   // Xử lý Reset cuộc đời mới cho User cũ (Sau khi Confirm Dialog)
@@ -74,7 +74,7 @@ export const LoginScreen: React.FC = () => {
     if (checkedUsername) {
       setIsConfirmResetOpen(false);
       startNewLife(checkedUsername);
-      toast.success(`Đã làm lại cuộc đời cho "${checkedUsername}" từ Màn 1`);
+      toast.success(`Đã làm lại cuộc đời cho "${checkedUsername}" từ Cuộc Đua Chuyển Sinh`);
     }
   };
 
@@ -113,7 +113,7 @@ export const LoginScreen: React.FC = () => {
             <Gamepad2 size={38} />
           </motion.div>
           <h1 style={{ fontSize: '24px', fontWeight: 900, color: 'var(--color-text-primary)', letterSpacing: '-0.5px' }}>
-            Cuộc đời của Con Bố Khánh
+            Cuộc đời của tôi
           </h1>
           <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '4px', fontWeight: 600 }}>
             Mô phỏng hành trình cuộc đời đầy bất ngờ và lựa chọn

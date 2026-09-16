@@ -1,0 +1,263 @@
+{
+  "stage_1": {
+    "stageId": "stage_1",
+    "stageName": "Màn 1: Ngày Chào Đời",
+    "initialStepId": "step_1_birth",
+    "steps": {
+      "step_1_birth": {
+        "id": "step_1_birth",
+        "stepNumber": 1,
+        "title": "Ngày Chào Đời",
+        "dayLabel": "Ngày 1: Chào Đời",
+        "locationName": "Khoa Sản Bệnh Viện Phụ Sản",
+        "screenType": "dialogue_scene",
+        "bgm": "",
+        "background": {
+          "url": "asset:bg_hospital",
+          "ambientEffect": "sunlight"
+        },
+        "characters": {
+          "1": {
+            "id": 1,
+            "name": "Nhân Vật Chính (Bé Sơ Sinh)",
+            "sprite": "",
+            "side": "left",
+            "role": "player",
+            "color": "var(--color-primary)"
+          },
+          "2": {
+            "id": 2,
+            "name": "Cô Y Tá",
+            "sprite": "asset:yta",
+            "side": "right",
+            "role": "npc",
+            "color": "#10B981"
+          },
+          "3": {
+            "id": 3,
+            "name": "Bố (Bố Khánh)",
+            "sprite": "asset:bo",
+            "side": "right",
+            "role": "npc",
+            "color": "#3B82F6"
+          },
+          "4": {
+            "id": 4,
+            "name": "Mẹ (Mẹ Hà)",
+            "sprite": "asset:me",
+            "side": "left",
+            "role": "npc",
+            "color": "#EC4899"
+          }
+        },
+        "randomPools": {
+          "random_dad_name": {
+            "male": ["Bùi Messi", "Ronaldo Nguyễn", "Nêy ma Bùi", "Sơn Tùng M-Bùi", "Độ Mixi" , "Xi lùn" , "Bảy Tạ" , "Triệu Vân", "Tống Thanh Bình","Sang Sick" , "Seven eleven"],
+            "female": ["Trần Hà Linh", "Đức Bo", "Bella Bùi", "Ngọc Trinh", "Phương Hằng", "Liễu Như Yên","Thẩm Nguyệt Giao","Neon Phạm","Thị Sida","Bùi Mỹ Tâm"]
+          }
+        },
+        "dialogues": [
+          {
+            "id": "1.1.1.0",
+            "speakerId": 2,
+            "text": "Trước khi chào đón thiên thần nhỏ ra đời, xin gia đình hãy xác nhận thông tin của bé nhé!",
+            "expression": "happy",
+            "triggerAction": {
+              "type": "profile_init",
+              "title": "Hồ Sơ Tân Sinh",
+              "description": "Chọn giới tính và ngày tháng năm sinh cho nhân vật của bạn."
+            }
+          },
+          {
+            "id": "1.1.1.1",
+            "speakerId": 2,
+            "text": "Oa oa oa... Chúc mừng anh chị nhé! Là một bé {gender_label} vô cùng kháu khỉnh và khỏe mạnh!",
+            "expression": "happy"
+          },
+          {
+            "id": "1.1.1.2",
+            "speakerId": 2,
+            "text": "Bé nặng 3.5kg, tiếng khóc vang dội cả phòng sinh luôn ạ! Anh chị đã tính đặt tên cho cháu là gì chưa?",
+            "expression": "neutral"
+          },
+          {
+            "id": "1.1.1.3",
+            "speakerId": 3,
+            "text": "Haha tuyệt vời quá! Hay đặt tên con là {names} đi bà nó! Nghe oách xà lách đỉnh nóc kịch trần chưa!",
+            "expression": "proud",
+            "varMap": {
+              "names": {
+                "fromPool": "random_dad_name",
+                "groupBy": "gender"
+              }
+            }
+          },
+          {
+            "id": "1.1.1.4",
+            "speakerId": 4,
+            "text": "Ông Chã ơi, mấy cái tên đó như bìu ý! Ai đời lại đi đặt tên con gái/con trai cả đời như thế bao giờ!",
+            "expression": "angry"
+          },
+          {
+            "id": "1.1.1.5",
+            "speakerId": 4,
+            "text": "Để em tự đặt tên cho con mình cho chuẩn chỉ đàng hoàng nhé! Hay là mình đặt tên con là...",
+            "expression": "thinking",
+            "triggerAction": {
+              "type": "name_picker",
+              "title": "Khai Sinh Đặt Tên",
+              "description": "Nhập tên chính thức cho bé để gia đình đăng ký giấy khai sinh:",
+              "saveField": "characterName",
+              "placeholder": "Ví dụ: Duy Bảnh Tỏ, Khánh Linh, Minh Anh..."
+            }
+          },
+          {
+            "id": "1.1.1.6",
+            "speakerId": 3,
+            "text": "Ồ, tên '{characterName}' nghe vừa sang vừa ý nghĩa đấy! Đúng là mẹ cháu có gu, bố duyệt luôn!",
+            "expression": "happy"
+          },
+          {
+            "id": "1.1.1.7",
+            "speakerId": 2,
+            "text": "Chào mừng bé {characterName} (sinh ngày {birthdate}) đã chính thức đến với thế giới rực rỡ này nhé!",
+            "expression": "happy"
+          }
+        ],
+        "choices": [
+          {
+            "id": "1.1.2",
+            "text": "Cất tiếng khóc thật to vang dội cả phòng sinh để chứng tỏ uy quyền",
+            "icon": "Volume2",
+            "scoreReward": 150,
+            "statEffects": {
+              "energy": 20,
+              "happiness": 10
+            },
+            "reactionDialogues": [
+              {
+                "id": "1.1.2.1",
+                "speakerId": 2,
+                "text": "Ối dồi ôi! Bé {characterName} khóc to vang cả tầng sản, phổi khỏe thế này sau này làm ca sĩ hoặc lãnh đạo tài ba đây!",
+                "expression": "happy"
+              },
+              {
+                "id": "1.1.2.2",
+                "speakerId": 3,
+                "text": "Haha đúng là con của bố, cất tiếng khóc thôi mà cả viện phải ngước nhìn!",
+                "expression": "proud"
+              }
+            ],
+            "nextStepId": "stage_completed"
+          },
+          {
+            "id": "1.1.3",
+            "text": "Mút tay rồi ngủ ngon lành trong vòng tay ấm áp của mẹ",
+            "icon": "Heart",
+            "scoreReward": 100,
+            "statEffects": {
+              "love": 30,
+              "happiness": 20
+            },
+            "reactionDialogues": [
+              {
+                "id": "1.1.3.1",
+                "speakerId": 2,
+                "text": "Bé {characterName} ngoan quá đi mất! Vừa chào đời đã biết tự ru mình ngủ, không quấy khóc mẹ tí nào!",
+                "expression": "happy"
+              },
+              {
+                "id": "1.1.3.2",
+                "speakerId": 4,
+                "text": "Bé cưng của mẹ ngủ ngon nhé, mẹ thương con nhất trên đời!",
+                "expression": "happy"
+              }
+            ],
+            "nextStepId": "stage_completed"
+          },
+          {
+            "id": "1.1.4",
+            "text": "Chớp mắt nhìn chằm chằm cô y tá đầy tò mò và bí hiểm",
+            "icon": "Sparkles",
+            "scoreReward": 200,
+            "statEffects": {
+              "happiness": 30,
+              "energy": 20
+            },
+            "reactionDialogues": [
+              {
+                "id": "1.1.4.1",
+                "speakerId": 2,
+                "text": "Ô kìa! Bé {characterName} vừa mở mắt đã nhìn cô y tá đăm chiêu thế này, sau này thông minh sắc sảo lắm đây nhé!",
+                "expression": "surprised"
+              },
+              {
+                "id": "1.1.4.2",
+                "speakerId": 3,
+                "text": "Ánh mắt biết nói đấy! Bố nhìn là thấy tướng làm giám đốc tương lai rồi!",
+                "expression": "happy"
+              }
+            ],
+            "nextStepId": "stage_completed"
+          },
+          {
+            "id": "1.1.5",
+            "text": "Ỉa một bãi thật to giải tỏa tâm lý ngay trên tay cô y tá",
+            "icon": "Flame",
+            "scoreReward": 0,
+            "statEffects": {},
+            "reactionDialogues": [
+              {
+                "id": "1.1.5.1",
+                "speakerId": 2,
+                "text": "Ối giời ơi cứu tôi! Vừa lọt lòng bé {characterName} đã xả ngay một bãi vàng óng ả ấm nóng lên áo blouse của cô rồi! Nhưng mà trộm vía đường ruột tiêu hóa tốt thế này là tốt lắm nha!",
+                "expression": "surprised"
+              },
+              {
+                "id": "1.1.5.2",
+                "speakerId": 3,
+                "text": "Haha vừa chào đời đã tặng cô y tá 'lộc vàng đầu đời' rồi con ơi! Bố xin lỗi cô y tá nhé, cháu nó hào sảng quá!",
+                "expression": "proud"
+              },
+              {
+                "id": "1.1.5.3",
+                "speakerId": 4,
+                "text": "Ôi cái đứa nghịch ngợm này, làm mẹ vừa sinh xong đau bụng mà cũng phải phì cười!",
+                "expression": "happy"
+              }
+            ],
+            "nextStepId": "stage_completed"
+          },
+          {
+            "id": "1.1.6",
+            "text": "Vung tay tạo dáng ăn mừng 'SIUUUUUUUUUUUUUUUUUU!' kiểu Cristiano Ronaldo",
+            "icon": "Trophy",
+            "scoreReward": 0,
+            "statEffects": {},
+            "reactionDialogues": [
+              {
+                "id": "1.1.6.1",
+                "speakerId": 2,
+                "text": "Ối ối! Bé vừa mở mắt đã dang 2 tay xoay người hô 'SIUUU' như Ronaldo ghi bàn chung kết C1 vậy! Mới sơ sinh mà aura GOAT ngút ngàn thế này thì chịu rồi!",
+                "expression": "surprised"
+              },
+              {
+                "id": "1.1.6.2",
+                "speakerId": 3,
+                "text": "SIUUUUUUUUU! Đúng là con của bố, thần thái ngôi sao ngấm từ trong bụng mẹ rồi! 7 Quả Bóng Vàng tương lai đây chứ đâu!",
+                "expression": "proud"
+              },
+              {
+                "id": "1.1.6.3",
+                "speakerId": 4,
+                "text": "Trời đất ơi, bố con nhà này tính biến phòng sinh thành sân vận động Bernabeu luôn đấy à!",
+                "expression": "happy"
+              }
+            ],
+            "nextStepId": "stage_completed"
+          }
+        ]
+      }
+    }
+  }
+}

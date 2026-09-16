@@ -273,3 +273,60 @@ h1, h2, h3, h4, h5, h6 {
 ::-webkit-scrollbar-thumb:hover {
   background: #AAA6B5;
 }
+
+/* React Datepicker Custom Styling for Game Theme */
+.react-datepicker-wrapper {
+  width: 100%;
+}
+
+.react-datepicker {
+  font-family: var(--font-ui) !important;
+  border: 1.5px solid var(--color-border) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-md) !important;
+  background-color: #FFFFFF !important;
+  overflow: hidden;
+  font-size: 13px !important;
+}
+
+.react-datepicker__header {
+  background-color: #FFFFFF !important;
+  border-bottom: 1px solid var(--color-border) !important;
+  padding-top: 10px !important;
+}
+
+.react-datepicker__day-name {
+  color: var(--color-text-secondary) !important;
+  font-weight: 800 !important;
+  width: 32px !important;
+  line-height: 32px !important;
+  margin: 2px !important;
+}
+
+.react-datepicker__day {
+  color: var(--color-text-primary) !important;
+  font-weight: 600 !important;
+  width: 32px !important;
+  line-height: 32px !important;
+  margin: 2px !important;
+  border-radius: var(--radius-sm) !important;
+  transition: all 0.15s ease !important;
+}
+
+.react-datepicker__day:hover {
+  background-color: var(--color-background-secondary) !important;
+  color: var(--color-primary) !important;
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  background-color: var(--color-primary) !important;
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+.react-datepicker__day--today {
+  font-weight: 800 !important;
+  color: var(--color-primary) !important;
+}
+

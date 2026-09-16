@@ -4,24 +4,53 @@
       "username": "duynk",
       "createdAt": "2026-09-15T10:00:00.000Z",
       "lastPlayedAt": "2026-09-15T17:30:00.000Z",
-      "currentStageId": "stage_2",
-      "totalScore": 1250,
+      "currentStageId": "stage_0",
+      "currentStepId": "step_race",
+      "currentDialogueIndex": 0,
+      "totalScore": 0,
+      "profile": {
+        "gender": "male",
+        "birthdate": "2000-09-16",
+        "characterName": ""
+      },
+      "selectedChoiceIds": [],
+      "actionLogs": [
+        {
+          "id": "log_init_duynk",
+          "actionType": "STAGE_STARTED",
+          "stageId": "stage_0",
+          "stageName": "Cuộc Đua Chuyển Sinh",
+          "stepId": "step_race",
+          "timestamp": "2026-09-15T10:00:00.000Z",
+          "metadata": {
+            "note": "Bắt đầu cuộc đua chuyển sinh tranh slot làm người"
+          }
+        }
+      ],
       "stages": [
         {
+          "id": "stage_0",
+          "name": "Cuộc Đua Chuyển Sinh",
+          "currentStep": 1,
+          "totalSteps": 1,
+          "score": 0,
+          "status": "in_progress"
+        },
+        {
           "id": "stage_1",
-          "name": "Màn 1: Tuổi Thơ Dữ Dội",
-          "currentStep": 5,
-          "totalSteps": 5,
-          "score": 500,
-          "status": "completed"
+          "name": "Màn 1: Ngày Chào Đời",
+          "currentStep": 0,
+          "totalSteps": 1,
+          "score": 0,
+          "status": "locked"
         },
         {
           "id": "stage_2",
           "name": "Màn 2: Cấp 3 Bùng Cháy",
-          "currentStep": 3,
+          "currentStep": 0,
           "totalSteps": 6,
-          "score": 750,
-          "status": "in_progress"
+          "score": 0,
+          "status": "locked"
         },
         {
           "id": "stage_3",
@@ -44,12 +73,20 @@
   },
   "defaultStages": [
     {
-      "id": "stage_1",
-      "name": "Màn 1: Tuổi Thơ Dữ Dội",
+      "id": "stage_0",
+      "name": "Cuộc Đua Chuyển Sinh",
       "currentStep": 1,
-      "totalSteps": 5,
+      "totalSteps": 1,
       "score": 0,
       "status": "in_progress"
+    },
+    {
+      "id": "stage_1",
+      "name": "Màn 1: Ngày Chào Đời",
+      "currentStep": 0,
+      "totalSteps": 1,
+      "score": 0,
+      "status": "locked"
     },
     {
       "id": "stage_2",

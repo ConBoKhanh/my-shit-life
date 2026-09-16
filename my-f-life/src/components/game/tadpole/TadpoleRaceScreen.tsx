@@ -419,6 +419,17 @@ export const TadpoleRaceScreen: React.FC<TadpoleRaceScreenProps> = ({
                 <Play size={18} />
                 <span>Bắt Đầu Bơi Giành Slot Làm Người!</span>
               </button>
+
+              {onBackToDashboard && (
+                <button
+                  type="button"
+                  onClick={onBackToDashboard}
+                  className="btn-outline"
+                  style={{ width: '100%', marginTop: '10px', padding: isMobile ? '10px' : '12px', fontSize: isMobile ? '13px' : '14px' }}
+                >
+                  <span>Về Bảng Tổng Quan</span>
+                </button>
+              )}
             </motion.div>
           </motion.div>
         )}

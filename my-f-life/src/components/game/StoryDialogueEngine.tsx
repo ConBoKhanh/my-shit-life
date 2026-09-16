@@ -49,7 +49,6 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
   onDialogueIndexChange,
   onUpdateProfile,
   onStepChoice,
-  onStageCompleted,
   onBackToDashboard,
 }) => {
   // Dialogue state (can switch between step dialogues and choice reaction dialogues)
@@ -76,7 +75,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
   const bgmAudioRef = useRef<HTMLAudioElement | null>(null);
   const sfxAudioRef = useRef<HTMLAudioElement | null>(null);
   const currentBgmUrlRef = useRef<string>('');
-  const typewriterTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const typewriterTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevStepIdRef = useRef<string>(stepConfig.id);
 
   // Responsive state

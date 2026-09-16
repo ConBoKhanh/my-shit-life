@@ -1,7 +1,6 @@
 import { TadpoleEntity } from '../entities/Tadpole';
 import type { InputState } from '../input/InputState';
 import { GAME_CONFIG } from '../GameConfig';
-import { TrackPath } from '../TrackPath';
 
 export class MovementSystem {
   public updatePlayer(player: TadpoleEntity, input: InputState, dt: number) {

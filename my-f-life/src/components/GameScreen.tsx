@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   User,
   Clock,
@@ -10,8 +10,6 @@ import {
   Play,
   Award,
   BookOpen,
-  LayoutDashboard,
-  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { StageData, UserProfile } from '../types/game';
@@ -41,7 +39,7 @@ export const GameScreen: React.FC = () => {
   const activeStepConfig = stageStoryConfig?.steps[currentStepId] || stageStoryConfig?.steps[stageStoryConfig?.initialStepId || 'step_1_birth'];
 
   // Xử lý khi chiến thắng Cuộc Đua Chuyển Sinh (Tadpole Race)
-  const handleTadpoleVictory = (winner: WinnerInfo) => {
+  const handleTadpoleVictory = (_winner: WinnerInfo) => {
     const bonusScore = 200;
 
     // Ghi log hoàn thành Cuộc Đua Chuyển Sinh
@@ -122,7 +120,7 @@ export const GameScreen: React.FC = () => {
       return;
     }
 
-    if (stageStoryConfig?.steps[choice.nextStepId]) {
+    if (choice.nextStepId && stageStoryConfig?.steps?.[choice.nextStepId]) {
       const nextStepConfig = stageStoryConfig.steps[choice.nextStepId];
 
       // Cập nhật tiến độ step trong stage

@@ -19,7 +19,6 @@ export class BotAISystem {
 
     // Vector toward lookahead target
     const toTargetDx = targetX - bot.x;
-    const toTargetDy = targetY - bot.y;
 
     // 2. Track Curvature Tangent at current position
     const tangent = TrackPath.getTangent(bot.y);
@@ -36,7 +35,7 @@ export class BotAISystem {
     dirX += wobble;
 
     // 5. Active Boundary Repulsion (Keeps BOTs safely inside the track on tight corners)
-    const { leftX, rightX, width: currentWidth } = TrackPath.getBoundaries(bot.y);
+    const { leftX, rightX } = TrackPath.getBoundaries(bot.y);
     const wallMargin = 75;
     const distToLeft = bot.x - bot.radius - leftX;
     const distToRight = rightX - (bot.x + bot.radius);

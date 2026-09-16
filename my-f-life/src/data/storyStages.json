@@ -52,8 +52,31 @@
         },
         "randomPools": {
           "random_dad_name": {
-            "male": ["Bùi Messi", "Ronaldo Nguyễn", "Nêy ma Bùi", "Sơn Tùng M-Bùi", "Độ Mixi" , "Xi lùn" , "Bảy Tạ" , "Triệu Vân", "Tống Thanh Bình","Sang Sick" , "Seven eleven"],
-            "female": ["Trần Hà Linh", "Đức Bo", "Bella Bùi", "Ngọc Trinh", "Phương Hằng", "Liễu Như Yên","Thẩm Nguyệt Giao","Neon Phạm","Thị Sida","Bùi Mỹ Tâm"]
+            "male": [
+              "Bùi Messi",
+              "Ronaldo Nguyễn",
+              "Nêy ma Bùi",
+              "Sơn Tùng M-Bùi",
+              "Độ Mixi",
+              "Xi lùn",
+              "Bảy Tạ",
+              "Triệu Vân",
+              "Tống Thanh Bình",
+              "Sang Sick",
+              "Seven eleven"
+            ],
+            "female": [
+              "Trần Hà Linh",
+              "Đức Bo",
+              "Bella Bùi",
+              "Ngọc Trinh",
+              "Phương Hằng",
+              "Liễu Như Yên",
+              "Thẩm Nguyệt Giao",
+              "Neon Phạm",
+              "Thị Sida",
+              "Bùi Mỹ Tâm"
+            ]
           }
         },
         "dialogues": [
@@ -129,7 +152,7 @@
             "id": "1.1.2",
             "text": "Cất tiếng khóc thật to vang dội cả phòng sinh để chứng tỏ uy quyền",
             "icon": "Volume2",
-            "scoreReward": 150,
+            "scoreReward": 200,
             "statEffects": {
               "energy": 20,
               "happiness": 10
@@ -154,7 +177,7 @@
             "id": "1.1.3",
             "text": "Mút tay rồi ngủ ngon lành trong vòng tay ấm áp của mẹ",
             "icon": "Heart",
-            "scoreReward": 100,
+            "scoreReward": 200,
             "statEffects": {
               "love": 30,
               "happiness": 20
@@ -204,8 +227,11 @@
             "id": "1.1.5",
             "text": "Ỉa một bãi thật to giải tỏa tâm lý ngay trên tay cô y tá",
             "icon": "Flame",
-            "scoreReward": 0,
-            "statEffects": {},
+            "scoreReward": 200,
+            "statEffects": {
+              "happiness": 25,
+              "energy": 15
+            },
             "reactionDialogues": [
               {
                 "id": "1.1.5.1",
@@ -232,12 +258,17 @@
             "id": "1.1.6",
             "text": "'SIUUUUUUUUUUUUUUUUUU!'",
             "icon": "Trophy",
-            "scoreReward": 0,
-            "statEffects": {},
+            "sfx": "asset:sfx_siuu",
+            "scoreReward": 200,
+            "statEffects": {
+              "happiness": 50,
+              "energy": 50
+            },
             "reactionDialogues": [
               {
                 "id": "1.1.6.1",
                 "speakerId": 2,
+                "sfx": "asset:sfx_siuu",
                 "text": "Ối ối! Bé vừa mở mắt đã dang 2 tay xoay người hô 'SIUUU' như Ronaldo ghi bàn chung kết World Cup 2026 vậy! Mới sơ sinh mà aura GOAT ngút ngàn thế này thì chịu rồi!",
                 "expression": "surprised"
               },
@@ -252,6 +283,315 @@
                 "speakerId": 4,
                 "text": "Trời đất ơi, bố con nhà này tính biến phòng sinh thành sân vận động Bernabeu luôn đấy à!",
                 "expression": "happy"
+              }
+            ],
+            "nextStepId": "stage_completed"
+          }
+        ]
+      }
+    }
+  },
+  "stage_2": {
+    "stageId": "stage_2",
+    "stageName": "Màn 2: Lời Nói Đầu Tiên Của Bé",
+    "initialStepId": "step_2_first_words",
+    "steps": {
+      "step_2_first_words": {
+        "id": "step_2_first_words",
+        "stepNumber": 1,
+        "title": "Lời Nói Đầu Tiên Của Bé",
+        "dayLabel": "Giai đoạn: Tập Nói (1 Tuổi)",
+        "locationName": "Phòng Khách Gia Đình",
+        "screenType": "dialogue_scene",
+        "bgm": "",
+        "background": {
+          "url": "asset:bg_livingroom",
+          "ambientEffect": "sunlight"
+        },
+        "characters": {
+          "1": {
+            "id": 1,
+            "name": "Bé ({characterName})",
+            "sprite": "asset:baby_1",
+            "side": "center",
+            "role": "player",
+            "color": "var(--color-primary)"
+          },
+          "3": {
+            "id": 3,
+            "name": "Bố (Huấn Hoa Hòe)",
+            "sprite": "asset:bo",
+            "side": "right",
+            "role": "npc",
+            "color": "#3B82F6"
+          },
+          "4": {
+            "id": 4,
+            "name": "Mẹ (Trần Lình Ha)",
+            "sprite": "asset:me",
+            "side": "left",
+            "role": "npc",
+            "color": "#EC4899"
+          }
+        },
+        "dialogues": [
+          {
+            "id": "2.1.0",
+            "speakerId": 1,
+            "text": "Thấm thoát đã qua những tháng ngày ẵm ngửa, hôm nay bé tròn 1 tuổi và bắt đầu bập bẹ những âm thanh đầu đời...",
+            "triggerAction": {
+              "type": "baby_avatar_select",
+              "title": "Chọn Diện Mạo Bé Yêu",
+              "description": "Lựa chọn hình dáng em bé dễ thương nhất của bạn!"
+            }
+          },
+          {
+            "id": "2.1.1",
+            "speakerId": 4,
+            "text": "Ông nó ơi! Mau ra đây! Con mình chuẩn bị cất tiếng nói đầu tiên rồi kìa!",
+            "expression": "happy"
+          },
+          {
+            "id": "2.1.2",
+            "speakerId": 3,
+            "text": "Nào con cưng của bố! Gọi Ba đi con, ba thưởng ngay siêu xe đồ chơi xịn đét!",
+            "expression": "proud"
+          },
+          {
+            "id": "2.1.3",
+            "speakerId": 4,
+            "text": "Gọi Mẹ đi con yêu! Mẹ cho bú sữa bình thơm ngon cả ngày!",
+            "expression": "happy"
+          },
+          {
+            "id": "2.1.4",
+            "speakerId": 3,
+            "text": "BA! Mau gọi Ba!",
+            "expression": "proud"
+          },
+          {
+            "id": "2.1.5",
+            "speakerId": 4,
+            "text": "MẸ! Phải gọi Mẹ trước!",
+            "expression": "angry"
+          },
+          {
+            "id": "2.1.6",
+            "speakerId": 1,
+            "text": "Cả hai phụ huynh đang gào thét tranh giành nảy lửa... Bạn muốn cất tiếng nói đầu đời gì?",
+            "expression": "thinking"
+          }
+        ],
+        "choices": [
+          {
+            "id": "2.1.1",
+            "text": "Ma... Mama! 🍼❤️",
+            "icon": "Heart",
+            "sfx": "asset:sfx_baby_mama",
+            "scoreReward": 350,
+            "statEffects": {
+              "happiness": 50,
+              "love": 50
+            },
+            "reactionDialogues": [
+              {
+                "id": "2.1.1.1",
+                "speakerId": 1,
+                "sfx": "asset:sfx_baby_mama",
+                "text": "Ma... Mama! 🍼",
+                "expression": "happy"
+              },
+              {
+                "id": "2.1.1.2",
+                "speakerId": 4,
+                "text": "Dạaaa! Mẹ yêu đâyyy! Cưng xỉu luôn con tôi! Thấy chưa ông Huấn, mẹ là số một!",
+                "expression": "happy"
+              },
+              {
+                "id": "2.1.1.3",
+                "speakerId": 3,
+                "text": "Hừ, con với chả cái, nuôi tốn bao nhiêu tã bỉm sữa ngoại mà nó lại theo phe mụ vợ...",
+                "expression": "surprised"
+              },
+              {
+                "id": "2.1.1.4",
+                "speakerId": 1,
+                "text": "Mẹ đưa sữa đây mau, đói bụng rồi.",
+                "expression": "thinking"
+              },
+              {
+                "id": "2.1.1.5",
+                "speakerId": 4,
+                "text": "Haha trời ơi mới 1 tuổi mà đã biết ra lệnh rồi, để mẹ đi pha sữa ngay!",
+                "expression": "happy"
+              }
+            ],
+            "nextStepId": "stage_completed"
+          },
+          {
+            "id": "2.1.2",
+            "text": "Pa... Papa! 💙✨",
+            "icon": "Sparkles",
+            "sfx": "asset:sfx_baby_papa",
+            "scoreReward": 350,
+            "statEffects": {
+              "happiness": 50,
+              "energy": 50
+            },
+            "reactionDialogues": [
+              {
+                "id": "2.1.2.1",
+                "speakerId": 1,
+                "sfx": "asset:sfx_baby_papa",
+                "text": "Pa... Papa! ✨",
+                "expression": "happy"
+              },
+              {
+                "id": "2.1.2.2",
+                "speakerId": 3,
+                "text": "Húuuu! Đấy thấy chưa mụ vợ! Con trai cưng gọi Ba đầu tiên! Đúng là gen nhà tôi!",
+                "expression": "proud"
+              },
+              {
+                "id": "2.1.2.3",
+                "speakerId": 4,
+                "text": "Xì, chắc nó bập bẹ nhầm thôi, bao nhiêu công tôi vắt sữa nuôi nó...",
+                "expression": "neutral"
+              },
+              {
+                "id": "2.1.2.4",
+                "speakerId": 1,
+                "text": "Ba mua siêu xe đồ chơi cho con đi.",
+                "expression": "thinking"
+              },
+              {
+                "id": "2.1.2.5",
+                "speakerId": 3,
+                "text": "Haha uy tín luôn con trai! Chiều nay bố dẫn đi tậu ngay dàn siêu xe xịn đét!",
+                "expression": "proud"
+              }
+            ],
+            "nextStepId": "stage_completed"
+          },
+          {
+            "id": "2.1.3",
+            "text": "Chửi thề cực gắt! 🤬💀",
+            "icon": "Flame",
+            "sfx": "asset:sfx_chui",
+            "scoreReward": 400,
+            "statEffects": {
+              "happiness": 60,
+              "energy": 50
+            },
+            "reactionDialogues": [
+              {
+                "id": "2.1.3.1",
+                "speakerId": 1,
+                "sfx": "asset:sfx_chui",
+                "text": "...Địt mẹ mày! 🤬",
+                "expression": "surprised"
+              },
+              {
+                "id": "2.1.3.2",
+                "speakerId": 3,
+                "text": "💀💀💀 Vãi lìn... Mới 1 tuổi mà phát âm tròn vành rõ chữ đéo trượt phát lào!",
+                "expression": "surprised"
+              },
+              {
+                "id": "2.1.3.3",
+                "speakerId": 4,
+                "text": "TRỜI ĐẤT ƠI! Ai dạy con tôi câu chửi thề bậy bạ này hả ông Huấn?!",
+                "expression": "angry"
+              },
+              {
+                "id": "2.1.3.4",
+                "speakerId": 3,
+                "text": "Ơ đm chắc nó học lỏm từ mấy thằng hàng xóm... Nhưng công nhận khí chất giang hồ phết!",
+                "expression": "proud"
+              },
+              {
+                "id": "2.1.3.5",
+                "speakerId": 4,
+                "text": "Giang hồ cái đầu buồi ông! Tôi táng vỡ mồm cả hai bố con bây giờ!",
+                "expression": "angry"
+              }
+            ],
+            "nextStepId": "stage_completed"
+          },
+          {
+            "id": "2.1.4",
+            "text": "SIUUUUUUUUUUU! ⚡🐐",
+            "icon": "Trophy",
+            "sfx": "asset:sfx_siuu",
+            "scoreReward": 350,
+            "statEffects": {
+              "happiness": 60,
+              "energy": 60
+            },
+            "reactionDialogues": [
+              {
+                "id": "2.1.4.1",
+                "speakerId": 1,
+                "sfx": "asset:sfx_siuu",
+                "text": "SIUUUUUUUUUUUUUUUUUU! 🐐",
+                "expression": "proud"
+              },
+              {
+                "id": "2.1.4.2",
+                "speakerId": 3,
+                "text": "SIUUUUUUUU! Ối giời ơi GOAT Cristiano Ronaldo tái sinh nhập vào con tôi rồi!",
+                "expression": "proud"
+              },
+              {
+                "id": "2.1.4.3",
+                "speakerId": 4,
+                "text": "Trời đất ơi, bố con nhà này tính biến phòng khách thành sân Bernabeu đấy à?!",
+                "expression": "happy"
+              },
+              {
+                "id": "2.1.4.4",
+                "speakerId": 3,
+                "text": "Sau này nhất định thành siêu sao bóng đá triệu đô! Chiều nay bố mua quả bóng cho tập sút luôn!",
+                "expression": "proud"
+              }
+            ],
+            "nextStepId": "stage_completed"
+          },
+          {
+            "id": "2.1.5",
+            "text": "Qué mirás, bobo? (Nhìn clg!) 🐐👑",
+            "icon": "Zap",
+            "sfx": "asset:sfx_messi_wowo",
+            "scoreReward": 350,
+            "statEffects": {
+              "happiness": 60,
+              "energy": 60
+            },
+            "reactionDialogues": [
+              {
+                "id": "2.1.5.1",
+                "speakerId": 1,
+                "sfx": "asset:sfx_messi_wowo",
+                "text": "Qué mirás, bobo? Qué mirás, bobo?! Anda pa' allá, bobo! 👑",
+                "expression": "surprised"
+              },
+              {
+                "id": "2.1.5.2",
+                "speakerId": 3,
+                "text": "Hả vcl... Khí chất Nhà Vô Địch World Cup Lionel Messi gắt vãi chưởng!",
+                "expression": "surprised"
+              },
+              {
+                "id": "2.1.5.3",
+                "speakerId": 4,
+                "text": "Haha con vừa lườm bố nó xéo xắt rồi bảo 'Nhìn cái gì, cút ra chỗ khác' kìa!",
+                "expression": "happy"
+              },
+              {
+                "id": "2.1.5.4",
+                "speakerId": 3,
+                "text": "Mới 1 tuổi đã biết đuổi bố cút đi chỗ khác chơi, nhà này đảo chính cmnr...",
+                "expression": "proud"
               }
             ],
             "nextStepId": "stage_completed"

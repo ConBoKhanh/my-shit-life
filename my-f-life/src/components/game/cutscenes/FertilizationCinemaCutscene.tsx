@@ -12,6 +12,8 @@ import hinhthanhphoi2Img from '../../../assets/hinhthanhphoi2.png';
 import baby1Img from '../../../assets/baby1.png';
 import flashGrenadeImg from '../../../assets/flash.png';
 import fertilizationAudio from '../../../assets/Fertilization.mp3';
+import flashbangSfxAudio from '../../../assets/Flashbang + Gah dayum - QuickSounds.com.mp3';
+import { backgroundMusicManager } from '../../../services/backgroundMusicManager';
 
 interface FertilizationCinemaCutsceneProps {
   onExplode: () => void;
@@ -120,6 +122,11 @@ export const FertilizationCinemaCutscene: React.FC<FertilizationCinemaCutscenePr
     } catch {}
   };
 
+  // Đảm bảo dừng hẳn playlist nhạc nền chung khi xem rạp phim thụ tinh
+  useEffect(() => {
+    backgroundMusicManager.pauseBackgroundMusic();
+  }, []);
+
   // Khởi chạy âm thanh Fertilization.mp3 tốc độ x2.0 khi cutscene bắt đầu
   useEffect(() => {
     const audio = new Audio(fertilizationAudio);
@@ -173,6 +180,16 @@ export const FertilizationCinemaCutscene: React.FC<FertilizationCinemaCutscenePr
         setPhase('exploded');
         playFlashbangRinging();
 
+        if (!isAudioMuted) {
+          try {
+            const flashSfx = new Audio(flashbangSfxAudio);
+            flashSfx.volume = 0.95;
+            flashSfx.play().catch(() => {});
+          } catch {
+            // Safe fallback
+          }
+        }
+
         if (audioRef.current) {
           audioRef.current.pause();
         }
@@ -183,7 +200,7 @@ export const FertilizationCinemaCutscene: React.FC<FertilizationCinemaCutscenePr
 
       return () => clearTimeout(timer);
     }
-  }, [phase, onExplode]);
+  }, [phase, isAudioMuted, onExplode]);
 
   const currentImage = SLIDE_IMAGES[currentSlideIndex];
 
@@ -244,15 +261,15 @@ export const FertilizationCinemaCutscene: React.FC<FertilizationCinemaCutscenePr
         />
 
         {/* 2. MÀN HÌNH CHIẾU PHIM TRONG RẠP (CINEMA SCREEN PROJECTION) */}
-        {/* Trên điện thoại: width 98% chừa 1% lề trái/phải khoảng trắng */}
+        {/* Khớp hoàn hảo với khung chiếu của ảnh nền rạp phim: top 9.5%, height 33%, width min(75vw, 735px) */}
         <div
           style={{
             position: 'absolute',
-            top: isMobile ? '3.5%' : '4.5%',
+            top: '9.5%',
             left: '50%',
             transform: 'translateX(-50%)',
-            width: isMobile ? '98%' : 'min(68vw, 690px)',
-            height: isMobile ? 'min(42dvh, 320px)' : 'min(38dvh, 360px)',
+            width: 'min(75vw, 735px)',
+            height: '33%',
             zIndex: 5,
             display: 'flex',
             alignItems: 'center',

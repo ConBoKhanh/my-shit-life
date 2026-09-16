@@ -22,12 +22,17 @@ import {
   Flame,
   Zap,
   Trophy,
+  Music,
+  SkipForward,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { StoryStepConfig, DialogueLine, StoryChoice, StoryActionConfig } from '../../types/story';
 import type { UserProfile, UserActionLog } from '../../types/game';
-import { resolveAssetUrl } from '../../utils/assets';
+import { resolveAssetUrl, getRandomHospitalBackground } from '../../utils/assets';
 import { GameDatePicker } from '../common/GameDatePicker';
+import { BabyAvatarPicker } from '../common/BabyAvatarPicker';
+import { StageTitleSplash } from '../common/StageTitleSplash';
+import { backgroundMusicManager } from '../../services/backgroundMusicManager';
 
 interface StoryDialogueEngineProps {
   stepConfig: StoryStepConfig;
@@ -72,10 +77,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
   const [pendingChoiceTransition, setPendingChoiceTransition] = useState<StoryChoice | null>(null);
 
   // Audio refs & Typewriter timer ref
-  const bgmAudioRef = useRef<HTMLAudioElement | null>(null);
-  const sfxAudioRef = useRef<HTMLAudioElement | null>(null);
   const typewriterAudioCtxRef = useRef<AudioContext | null>(null);
-  const currentBgmUrlRef = useRef<string>('');
   const typewriterTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevStepIdRef = useRef<string>(stepConfig.id);
 
@@ -91,13 +93,37 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
   }, []);
 
   // Form states for modals
-  const [selectedGender, setSelectedGender] = useState<'male' | 'female'>(userProfile.gender || 'male');
+  const [selectedGender, setSelectedGender] = useState<'male' | 'female'>('male');
   const [birthdateInput, setBirthdateInput] = useState(userProfile.birthdate || '2000-09-16');
   const [characterNameInput, setCharacterNameInput] = useState(userProfile.characterName || '');
+  const [selectedBabyAvatar, setSelectedBabyAvatar] = useState<string>(userProfile.babyAvatar || '');
+
+  useEffect(() => {
+    if (userProfile.babyAvatar) {
+      setSelectedBabyAvatar(userProfile.babyAvatar);
+    }
+  }, [userProfile.babyAvatar]);
 
   const currentDialogue: DialogueLine | undefined = activeDialogueList[currentDialogueIndex];
   const isLastDialogue = currentDialogueIndex >= activeDialogueList.length - 1;
   const showChoices = currentDialogueIndex >= activeDialogueList.length && !pendingChoiceTransition;
+  const [showTitleSplash, setShowTitleSplash] = useState<boolean>(true);
+
+  // Dynamic randomized background support
+  const [customBgUrl, setCustomBgUrl] = useState<string>(() => {
+    if (stepConfig.background?.url === 'asset:bg_hospital') {
+      return getRandomHospitalBackground();
+    }
+    return resolveAssetUrl(stepConfig.background?.url || '');
+  });
+
+  useEffect(() => {
+    if (stepConfig.background?.url === 'asset:bg_hospital') {
+      setCustomBgUrl(getRandomHospitalBackground());
+    } else {
+      setCustomBgUrl(resolveAssetUrl(stepConfig.background?.url || ''));
+    }
+  }, [stepConfig.id]);
 
   // Track already handled trigger actions to avoid re-triggering across sessions
   const handledTriggersRef = useRef<Set<string>>(
@@ -112,6 +138,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
   useEffect(() => {
     if (prevStepIdRef.current !== stepConfig.id) {
       prevStepIdRef.current = stepConfig.id;
+      setShowTitleSplash(true);
       if (typewriterTimerRef.current) {
         clearInterval(typewriterTimerRef.current);
         typewriterTimerRef.current = null;
@@ -131,99 +158,118 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
     }
   }, [stepConfig.id, stepConfig.dialogues, initialDialogueIndex, onDialogueIndexChange]);
 
-  // BGM Priority Logic
-  const activeBgmUrl = useMemo(() => {
-    if (currentDialogue?.bgm) {
-      return resolveAssetUrl(currentDialogue.bgm);
-    }
-    return stepConfig.bgm ? resolveAssetUrl(stepConfig.bgm) : '';
-  }, [currentDialogue?.bgm, stepConfig.bgm]);
-
-  // Manage BGM Audio playback
-  useEffect(() => {
-    if (!activeBgmUrl) {
-      if (bgmAudioRef.current) {
-        bgmAudioRef.current.pause();
-        bgmAudioRef.current = null;
-        currentBgmUrlRef.current = '';
-      }
-      return;
-    }
-
-    if (currentBgmUrlRef.current !== activeBgmUrl) {
-      if (bgmAudioRef.current) {
-        bgmAudioRef.current.pause();
-      }
-
-      try {
-        const audio = new Audio(activeBgmUrl);
-        audio.loop = true;
-        audio.volume = isMuted ? 0 : 0.6;
-        audio.play().catch(() => {});
-        bgmAudioRef.current = audio;
-        currentBgmUrlRef.current = activeBgmUrl;
-      } catch {
-        // Safe fallback
-      }
-    }
-  }, [activeBgmUrl, isMuted]);
+  // Quản lý theo dõi bài hát nền hiện tại
+  const [currentTrackInfo, setCurrentTrackInfo] = useState(() => backgroundMusicManager.getCurrentTrack());
 
   useEffect(() => {
-    if (bgmAudioRef.current) {
-      bgmAudioRef.current.volume = isMuted ? 0 : 0.6;
+    return backgroundMusicManager.subscribe(() => {
+      setCurrentTrackInfo(backgroundMusicManager.getCurrentTrack());
+      setIsMuted(backgroundMusicManager.isMuted);
+    });
+  }, []);
+
+  // 1. Quản lý phát nhạc nền liên tục cho game
+  useEffect(() => {
+    backgroundMusicManager.startBackgroundMusic();
+  }, []);
+
+  // 2. Cập nhật Mute khi người dùng bấm nút
+  useEffect(() => {
+    if (backgroundMusicManager.isMuted !== isMuted) {
+      backgroundMusicManager.setMuted(isMuted);
     }
   }, [isMuted]);
 
+  // 3. Tự động tạm dừng nhạc nền khi hội thoại có âm thanh riêng (SFX/BGM riêng) và phát tiếp khi hết
+  useEffect(() => {
+    if (!currentDialogue) return;
+
+    const sfxUrl = currentDialogue.sfx ? resolveAssetUrl(currentDialogue.sfx) : '';
+    const dialogueBgmUrl = currentDialogue.bgm ? resolveAssetUrl(currentDialogue.bgm) : '';
+    const stepBgmUrl = stepConfig.bgm ? resolveAssetUrl(stepConfig.bgm) : '';
+
+    const customAudio = sfxUrl || dialogueBgmUrl || stepBgmUrl;
+
+    if (customAudio) {
+      backgroundMusicManager.playDialogueAudio(customAudio, 0.85);
+    } else {
+      backgroundMusicManager.resumeFromCustomAudio();
+    }
+  }, [currentDialogue?.id, currentDialogue?.sfx, currentDialogue?.bgm, stepConfig.bgm]);
+
+  // Dọn dẹp typewriter timer
   useEffect(() => {
     return () => {
       if (typewriterTimerRef.current) {
         clearInterval(typewriterTimerRef.current);
         typewriterTimerRef.current = null;
       }
-      if (bgmAudioRef.current) {
-        bgmAudioRef.current.pause();
-        bgmAudioRef.current = null;
-      }
-      if (sfxAudioRef.current) {
-        sfxAudioRef.current.pause();
-        sfxAudioRef.current = null;
-      }
     };
   }, []);
 
-  // SFX playback
-  useEffect(() => {
-    if (currentDialogue?.sfx && !isMuted) {
-      try {
-        const sfxUrl = resolveAssetUrl(currentDialogue.sfx);
-        const sfx = new Audio(sfxUrl);
-        sfx.volume = 0.8;
-        sfx.play().catch(() => {});
-        sfxAudioRef.current = sfx;
-      } catch {
-        // Safe fallback
+  // Fully resolved characters map with names and dynamic avatar
+  const resolvedCharacters = useMemo(() => {
+    const chars = { ...stepConfig.characters };
+    const charName = userProfile.characterName || characterNameInput || 'Bé Con';
+    const dadName = userProfile.dadName || 'Huấn Hoa Hòe';
+    const momName = userProfile.momName || 'Trần Hà Linh';
+
+    const result: Record<string | number, (typeof stepConfig.characters)[string]> = {};
+
+    Object.entries(chars).forEach(([key, rawChar]) => {
+      const char = { ...rawChar };
+
+      // Resolve character display name
+      let name = char.name || '';
+      name = name.replace(/\{characterName\}/g, charName);
+      name = name.replace(/\{character_name\}/g, charName);
+      name = name.replace(/\{name\}/g, charName);
+      name = name.replace(/\{dad_name\}/g, dadName);
+      name = name.replace(/\{dadName\}/g, dadName);
+      name = name.replace(/\{mom_name\}/g, momName);
+      name = name.replace(/\{momName\}/g, momName);
+      char.name = name;
+
+      // Assign baby avatar sprite for player / baby in Stage 2+ or when selected
+      if (char.role === 'player' || char.id === 1 || String(char.id) === '1') {
+        if (stepConfig.id === 'step_2_first_words') {
+          char.sprite = selectedBabyAvatar || userProfile.babyAvatar || 'asset:baby_1';
+        } else if (userProfile.babyAvatar && stepConfig.id !== 'step_1_birth') {
+          char.sprite = userProfile.babyAvatar;
+        } else {
+          char.sprite = rawChar.sprite || '';
+        }
       }
-    }
-  }, [currentDialogue?.id, currentDialogue?.sfx, isMuted]);
+
+      result[key] = char;
+    });
+
+    return result;
+  }, [
+    stepConfig.characters,
+    stepConfig.id,
+    selectedBabyAvatar,
+    userProfile.babyAvatar,
+    userProfile.characterName,
+    characterNameInput,
+    userProfile.dadName,
+    userProfile.momName,
+  ]);
 
   // Current speaker resolution
   const currentSpeaker = useMemo(() => {
     if (!currentDialogue) {
-      const firstNpc = Object.values(stepConfig.characters).find((c) => c.role === 'npc');
-      return firstNpc || Object.values(stepConfig.characters)[0];
+      const firstNpc = Object.values(resolvedCharacters).find((c) => c.role === 'npc');
+      return firstNpc || Object.values(resolvedCharacters)[0];
     }
-    const char = stepConfig.characters[currentDialogue.speakerId];
+    const char = resolvedCharacters[currentDialogue.speakerId];
     if (!char) return null;
 
-    let resolvedName = char.name;
-    const charName = userProfile.characterName || characterNameInput || 'Bé Con';
-    resolvedName = resolvedName.replace(/\{characterName\}/g, charName);
     return {
       ...char,
-      name: resolvedName,
       side: currentDialogue.side || char.side,
     };
-  }, [currentDialogue, stepConfig.characters, userProfile.characterName, characterNameInput]);
+  }, [currentDialogue, resolvedCharacters]);
 
   // Universal text & template variable resolver (Gender, character name, birthdate, pool names)
   const resolveText = useCallback(
@@ -235,6 +281,8 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
       const genderLabel = gender === 'female' ? 'gái' : 'trai';
       const charName = userProfile.characterName || characterNameInput || 'Bé Con';
       const birth = userProfile.birthdate || birthdateInput || 'Hôm nay';
+      const dadName = userProfile.dadName || 'Huấn Hoa Hòe';
+      const momName = userProfile.momName || 'Trần Hà Linh';
 
       text = text.replace(/\{gender\}/g, gender);
       text = text.replace(/\{gender_label\}/g, genderLabel);
@@ -242,6 +290,10 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
       text = text.replace(/\{characterName\}/g, charName);
       text = text.replace(/\{character_name\}/g, charName);
       text = text.replace(/\{name\}/g, charName);
+      text = text.replace(/\{dad_name\}/g, dadName);
+      text = text.replace(/\{dadName\}/g, dadName);
+      text = text.replace(/\{mom_name\}/g, momName);
+      text = text.replace(/\{momName\}/g, momName);
       text = text.replace(/\{birthdate\}/g, birth);
 
       if (d?.varMap) {
@@ -302,7 +354,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
       }
       const ctx = typewriterAudioCtxRef.current;
       if (ctx.state === 'suspended') {
-        ctx.resume().catch(() => {});
+        ctx.resume().catch(() => { });
       }
 
       const osc = ctx.createOscillator();
@@ -342,6 +394,13 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
       typewriterTimerRef.current = null;
     }
 
+    // Nếu đang bật Tự Động (AutoPlay): Show hết text ngay lập tức, không chạy từng chữ
+    if (isAutoPlay) {
+      setDisplayedText(resolvedFullText);
+      setIsTyping(false);
+      return;
+    }
+
     setIsTyping(true);
     setDisplayedText('');
 
@@ -373,7 +432,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
         typewriterTimerRef.current = null;
       }
     };
-  }, [currentDialogueIndex, resolvedFullText, showChoices, activeModalAction, activeDialogueList, playTypewriterBlip]);
+  }, [currentDialogueIndex, resolvedFullText, showChoices, activeModalAction, activeDialogueList, isAutoPlay, playTypewriterBlip]);
 
   // Advance dialogue callback
   const handleNextDialogue = useCallback(() => {
@@ -483,19 +542,30 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
     handleNextDialogue();
   };
 
-  // Auto-play timer
+  // Auto-play timer: Tự động chuyển câu thoại tiếp theo sau mỗi 5 giây
   useEffect(() => {
     if (!isAutoPlay || isTyping || showChoices || activeModalAction) return;
 
     const autoTimer = setTimeout(() => {
       handleNextDialogue();
-    }, 2600);
+    }, 5000);
 
     return () => clearTimeout(autoTimer);
   }, [isAutoPlay, isTyping, showChoices, activeModalAction, currentDialogueIndex, activeDialogueList, handleNextDialogue]);
 
   // User selects an option
   const handleSelectChoice = (choice: StoryChoice) => {
+    // Phát âm thanh hiệu ứng riêng nếu có (Ví dụ: SIUUUU Cristiano Ronaldo)
+    const choiceSfx = choice.sfx
+      ? resolveAssetUrl(choice.sfx)
+      : choice.text.toLowerCase().includes('siu')
+        ? resolveAssetUrl('asset:sfx_siuu')
+        : '';
+
+    if (choiceSfx) {
+      backgroundMusicManager.playDialogueAudio(choiceSfx, 0.95);
+    }
+
     const scoreGain = typeof choice.scoreReward === 'number' ? choice.scoreReward : 100;
     if (scoreGain > 0) {
       setFloatingScore(scoreGain);
@@ -555,6 +625,21 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
     onDialogueIndexChange?.(nextIdx);
   };
 
+  // Submit baby avatar selection (Swiper)
+  const handleSelectBabyAvatar = (avatarId: string) => {
+    const nextIdx = currentDialogueIndex < activeDialogueList.length - 1 ? currentDialogueIndex + 1 : currentDialogueIndex;
+    onUpdateProfile(
+      {
+        babyAvatar: avatarId,
+      },
+      nextIdx
+    );
+    toast.success('Đã chọn diện mạo bé yêu thành công!');
+    setActiveModalAction(null);
+    setCurrentDialogueIndex(nextIdx);
+    onDialogueIndexChange?.(nextIdx);
+  };
+
   // Quick suggestions based on gender
   const nameSuggestions = useMemo(() => {
     const gender = userProfile.gender || selectedGender || 'male';
@@ -586,7 +671,13 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
       case 'Trophy':
         return <Trophy size={16} color="#FBBF24" />;
       default:
-        return <Sparkles size={16} color="var(--color-secondary)" />;
+        return iconName ? (
+          <span style={{ fontSize: '15px', flexShrink: 0, display: 'inline-flex', alignItems: 'center' }}>
+            {iconName}
+          </span>
+        ) : (
+          <Sparkles size={16} color="var(--color-secondary)" />
+        );
     }
   };
 
@@ -651,7 +742,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
         style={{
           position: 'absolute',
           inset: 0,
-          backgroundImage: `url(${resolveAssetUrl(stepConfig.background.url)})`,
+          backgroundImage: `url(${customBgUrl})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           filter: 'brightness(0.92)',
@@ -725,8 +816,61 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
           )}
         </div>
 
-        {/* Right: Day Tag, Audio Mute & Action buttons */}
+        {/* Right: Music Track Info, Audio Mute, Day Tag & Action buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {/* Background Music Widget */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              backgroundColor: 'rgba(30, 18, 51, 0.85)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: 'var(--radius-sm)',
+              padding: isMobile ? '4px 6px' : '5px 8px',
+              color: '#FFFFFF',
+              fontSize: '11px',
+            }}
+          >
+            <Music size={13} color="var(--color-primary)" />
+            {!isMobile && (
+              <span
+                style={{
+                  maxWidth: '110px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  fontWeight: 600,
+                  fontSize: '11px',
+                  color: 'rgba(255, 255, 255, 0.9)',
+                }}
+                title={`Đang phát: ${currentTrackInfo.title} - ${currentTrackInfo.artist}`}
+              >
+                {currentTrackInfo.title}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                backgroundMusicManager.playNextTrack();
+                toast.info(`Chuyển bài: ${backgroundMusicManager.getCurrentTrack().title}`);
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                padding: '2px',
+                cursor: 'pointer',
+                color: '#CBD5E1',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+              title="Đổi bài nhạc nền tiếp theo"
+            >
+              <SkipForward size={13} />
+            </button>
+          </div>
+
           {/* Audio BGM Mute / Unmute Button */}
           <button
             type="button"
@@ -826,7 +970,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
       <div
         style={{
           position: 'absolute',
-          bottom: isMobile ? '124px' : 0,
+          bottom: isMobile ? '160px' : 0,
           left: 0,
           right: 0,
           height: isMobile ? 'auto' : '100%',
@@ -909,16 +1053,17 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
           <>
             {/* LEFT CHARACTERS */}
             <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-end', alignSelf: 'flex-end' }}>
-              {Object.values(stepConfig.characters)
+              {Object.values(resolvedCharacters)
                 .filter((c) => c.side === 'left' && c.sprite)
                 .map((char) => {
                   const isSpeaking = currentSpeaker?.id === char.id;
+                  const isBaby = char.role === 'player' || char.id === 1 || String(char.id) === '1';
                   return (
                     <motion.div
                       key={char.id}
                       animate={{
-                        scale: isSpeaking ? 1.04 : 0.95,
-                        y: isSpeaking ? 0 : 8,
+                        scale: isSpeaking ? (isBaby ? 1.08 : 1.04) : (isBaby ? 0.96 : 0.95),
+                        y: isSpeaking ? (isBaby ? [0, -10, 0] : 0) : 8,
                       }}
                       transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                       style={{
@@ -927,7 +1072,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                         alignItems: 'flex-end',
                         alignSelf: 'flex-end',
                         opacity: 1,
-                        zIndex: isSpeaking ? 8 : 4,
+                        zIndex: isSpeaking ? 8 : (isBaby ? 7 : 4),
                         filter: isSpeaking
                           ? 'brightness(1.05) contrast(1.02)'
                           : 'brightness(0.45) contrast(0.9) grayscale(15%)',
@@ -944,7 +1089,9 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                             transform: 'translateX(-50%)',
                             width: '100%',
                             height: '75%',
-                            background: 'radial-gradient(ellipse at center, rgba(139, 92, 246, 0.3) 0%, rgba(139, 92, 246, 0) 72%)',
+                            background: isBaby
+                              ? 'radial-gradient(ellipse at center, rgba(245, 158, 11, 0.35) 0%, rgba(245, 158, 11, 0) 72%)'
+                              : 'radial-gradient(ellipse at center, rgba(139, 92, 246, 0.3) 0%, rgba(139, 92, 246, 0) 72%)',
                             borderRadius: '50%',
                             filter: 'blur(24px)',
                             pointerEvents: 'none',
@@ -972,14 +1119,94 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                         src={resolveAssetUrl(char.sprite)}
                         alt={char.name}
                         style={{
-                          maxHeight: '92vh',
-                          maxWidth: '425px',
+                          maxHeight: isBaby ? '48vh' : '92vh',
+                          maxWidth: isBaby ? '260px' : '425px',
                           objectFit: 'contain',
                           display: 'block',
                           verticalAlign: 'bottom',
                           marginBottom: 0,
-                          maskImage: 'linear-gradient(to bottom, black 88%, transparent 100%)',
-                          WebkitMaskImage: 'linear-gradient(to bottom, black 88%, transparent 100%)',
+                          maskImage: isBaby ? 'none' : 'linear-gradient(to bottom, black 88%, transparent 100%)',
+                          WebkitMaskImage: isBaby ? 'none' : 'linear-gradient(to bottom, black 88%, transparent 100%)',
+                        }}
+                      />
+                    </motion.div>
+                  );
+                })}
+            </div>
+
+            {/* CENTER CHARACTERS (e.g. Baby / Player in Stage 2) */}
+            <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-end', alignSelf: 'flex-end', marginBottom: '170px' }}>
+              {Object.values(resolvedCharacters)
+                .filter((c) => c.side === 'center' && c.sprite)
+                .map((char) => {
+                  const isSpeaking = currentSpeaker?.id === char.id;
+                  const isBaby = char.role === 'player' || char.id === 1 || String(char.id) === '1';
+                  return (
+                    <motion.div
+                      key={char.id}
+                      animate={{
+                        scale: isSpeaking ? 1.1 : 0.97,
+                        y: isSpeaking ? [0, -12, 0] : 0,
+                      }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                      style={{
+                        position: 'relative',
+                        display: 'flex',
+                        alignItems: 'flex-end',
+                        alignSelf: 'flex-end',
+                        opacity: 1,
+                        zIndex: isSpeaking ? 10 : 6,
+                        filter: isSpeaking
+                          ? 'brightness(1.08) contrast(1.04) drop-shadow(0 0 16px rgba(255, 184, 77, 0.45))'
+                          : 'brightness(0.92) contrast(1)',
+                        transition: 'filter 0.3s ease',
+                      }}
+                    >
+                      {/* Ambient backlight glow when speaking */}
+                      {isSpeaking && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            bottom: '15%',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            width: '110%',
+                            height: '80%',
+                            background: 'radial-gradient(ellipse at center, rgba(255, 184, 77, 0.4) 0%, rgba(255, 184, 77, 0) 70%)',
+                            borderRadius: '50%',
+                            filter: 'blur(20px)',
+                            pointerEvents: 'none',
+                            zIndex: -1,
+                          }}
+                        />
+                      )}
+                      {/* Ground contact shadow */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: '-4px',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          width: '70%',
+                          height: '18px',
+                          background: 'radial-gradient(ellipse at center, rgba(0, 0, 0, 0.45) 0%, transparent 75%)',
+                          borderRadius: '50%',
+                          filter: 'blur(4px)',
+                          pointerEvents: 'none',
+                          zIndex: -1,
+                        }}
+                      />
+                      <img
+                        src={resolveAssetUrl(char.sprite)}
+                        alt={char.name}
+                        style={{
+                          maxHeight: isBaby ? '50vh' : '88vh',
+                          maxWidth: isBaby ? '280px' : '400px',
+                          objectFit: 'contain',
+                          display: 'block',
+                          verticalAlign: 'bottom',
+                          marginBottom: 0,
+                          filter: isSpeaking ? 'drop-shadow(0 8px 20px rgba(0,0,0,0.3))' : 'drop-shadow(0 4px 10px rgba(0,0,0,0.2))',
                         }}
                       />
                     </motion.div>
@@ -989,16 +1216,17 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
 
             {/* RIGHT CHARACTERS */}
             <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-end', alignSelf: 'flex-end' }}>
-              {Object.values(stepConfig.characters)
+              {Object.values(resolvedCharacters)
                 .filter((c) => c.side === 'right' && c.sprite)
                 .map((char) => {
                   const isSpeaking = currentSpeaker?.id === char.id;
+                  const isBaby = char.role === 'player' || char.id === 1 || String(char.id) === '1';
                   return (
                     <motion.div
                       key={char.id}
                       animate={{
-                        scale: isSpeaking ? 1.04 : 0.95,
-                        y: isSpeaking ? 0 : 8,
+                        scale: isSpeaking ? (isBaby ? 1.08 : 1.04) : (isBaby ? 0.96 : 0.95),
+                        y: isSpeaking ? (isBaby ? [0, -10, 0] : 0) : 8,
                       }}
                       transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                       style={{
@@ -1007,7 +1235,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                         alignItems: 'flex-end',
                         alignSelf: 'flex-end',
                         opacity: 1,
-                        zIndex: isSpeaking ? 8 : 4,
+                        zIndex: isSpeaking ? 8 : (isBaby ? 7 : 4),
                         filter: isSpeaking
                           ? 'brightness(1.05) contrast(1.02)'
                           : 'brightness(0.45) contrast(0.9) grayscale(15%)',
@@ -1024,7 +1252,9 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                             transform: 'translateX(-50%)',
                             width: '100%',
                             height: '75%',
-                            background: 'radial-gradient(ellipse at center, rgba(59, 130, 246, 0.3) 0%, rgba(59, 130, 246, 0) 72%)',
+                            background: isBaby
+                              ? 'radial-gradient(ellipse at center, rgba(245, 158, 11, 0.35) 0%, rgba(245, 158, 11, 0) 72%)'
+                              : 'radial-gradient(ellipse at center, rgba(59, 130, 246, 0.3) 0%, rgba(59, 130, 246, 0) 72%)',
                             borderRadius: '50%',
                             filter: 'blur(24px)',
                             pointerEvents: 'none',
@@ -1052,14 +1282,14 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                         src={resolveAssetUrl(char.sprite)}
                         alt={char.name}
                         style={{
-                          maxHeight: '92vh',
-                          maxWidth: '425px',
+                          maxHeight: isBaby ? '48vh' : '92vh',
+                          maxWidth: isBaby ? '260px' : '425px',
                           objectFit: 'contain',
                           display: 'block',
                           verticalAlign: 'bottom',
                           marginBottom: 0,
-                          maskImage: 'linear-gradient(to bottom, black 88%, transparent 100%)',
-                          WebkitMaskImage: 'linear-gradient(to bottom, black 88%, transparent 100%)',
+                          maskImage: isBaby ? 'none' : 'linear-gradient(to bottom, black 88%, transparent 100%)',
+                          WebkitMaskImage: isBaby ? 'none' : 'linear-gradient(to bottom, black 88%, transparent 100%)',
                         }}
                       />
                     </motion.div>
@@ -1069,7 +1299,6 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
           </>
         )}
       </div>
-
       {/* 4. DIALOGUE BOX OR BRANCHING CHOICES */}
       <div
         data-no-advance={showChoices ? 'true' : undefined}
@@ -1165,7 +1394,16 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setIsAutoPlay(!isAutoPlay);
+                    const nextAuto = !isAutoPlay;
+                    setIsAutoPlay(nextAuto);
+                    if (nextAuto) {
+                      if (typewriterTimerRef.current) {
+                        clearInterval(typewriterTimerRef.current);
+                        typewriterTimerRef.current = null;
+                      }
+                      setDisplayedText(resolvedFullText);
+                      setIsTyping(false);
+                    }
                   }}
                   style={{
                     background: isAutoPlay ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.12)',
@@ -1231,7 +1469,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
             </div>
           </motion.div>
         ) : (
-          /* BRANCHING CHOICES MENU (CLEAN - NO PREVIEW SCORE) */
+          /* BRANCHING CHOICES MENU (AUTO GRID: 2-3 COLUMNS TO PREVENT SCROLLING) */
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -1241,61 +1479,94 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
               backdropFilter: 'blur(20px)',
               border: '1.5px solid rgba(255, 255, 255, 0.25)',
               borderRadius: isMobile ? 'var(--radius-md)' : 'var(--radius-lg)',
-              padding: isMobile ? '12px 10px' : '22px 28px',
+              padding: isMobile ? '12px 10px' : '16px 22px',
               boxShadow: '0 16px 40px rgba(0, 0, 0, 0.6)',
-              maxHeight: isMobile ? '48dvh' : '45vh',
+              maxHeight: isMobile ? '55dvh' : '50vh',
               overflowY: 'auto',
               WebkitOverflowScrolling: 'touch',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: isMobile ? '8px' : '12px' }}>
-              <Sparkles size={16} color="var(--color-secondary)" />
-              <h3 style={{ fontSize: isMobile ? '13px' : '16px', fontWeight: 800, color: '#FFFFFF' }}>
-                {stepConfig.isEnding ? 'Hoàn Thành Màn Chơi!' : 'Lựa Chọn Của Bạn:'}
-              </h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isMobile ? '8px' : '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Sparkles size={16} color="var(--color-secondary)" />
+                <h3 style={{ fontSize: isMobile ? '13px' : '15px', fontWeight: 800, color: '#FFFFFF' }}>
+                  {stepConfig.isEnding ? 'Hoàn Thành Màn Chơi!' : 'Lựa Chọn Của Bạn:'}
+                </h3>
+              </div>
+              <span style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.6)', fontWeight: 600 }}>
+                {(stepConfig.choices?.length || 0)} phương án
+              </span>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '6px' : '8px' }}>
-              {stepConfig.choices?.map((choice) => (
-                <motion.button
-                  key={choice.id}
-                  whileHover={{ scale: 1.012, x: 4 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleSelectChoice(choice);
-                  }}
-                  style={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: isMobile ? '10px 12px' : '14px 18px',
-                    color: '#FFFFFF',
-                    fontSize: isMobile ? '12.5px' : '14px',
-                    fontWeight: 700,
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    transition: 'all 0.18s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'rgba(108, 92, 231, 0.35)';
-                    e.currentTarget.style.borderColor = 'var(--color-primary)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px' }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile
+                  ? (stepConfig.choices?.length || 0) <= 2
+                    ? '1fr'
+                    : 'repeat(2, 1fr)'
+                  : (stepConfig.choices?.length || 0) === 1
+                    ? '1fr'
+                    : (stepConfig.choices?.length || 0) === 2
+                      ? 'repeat(2, 1fr)'
+                      : (stepConfig.choices?.length || 0) === 3
+                        ? 'repeat(3, 1fr)'
+                        : (stepConfig.choices?.length || 0) === 4
+                          ? 'repeat(2, 1fr)'
+                          : 'repeat(3, 1fr)',
+                gap: isMobile ? '6px' : '8px',
+              }}
+            >
+              {stepConfig.choices?.map((choice) => {
+                const totalChoices = stepConfig.choices?.length || 0;
+                return (
+                  <motion.button
+                    key={choice.id}
+                    whileHover={{ scale: 1.015, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelectChoice(choice);
+                    }}
+                    style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.09)',
+                      border: '1px solid rgba(255, 255, 255, 0.18)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: isMobile
+                        ? totalChoices >= 3
+                          ? '8px 10px'
+                          : '10px 12px'
+                        : totalChoices >= 4
+                          ? '10px 14px'
+                          : '13px 16px',
+                      color: '#FFFFFF',
+                      fontSize: isMobile ? (totalChoices >= 3 ? '11.5px' : '12.5px') : (totalChoices >= 4 ? '13px' : '14px'),
+                      fontWeight: 700,
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: isMobile ? '6px' : '8px',
+                      transition: 'all 0.18s ease',
+                      minHeight: isMobile ? (totalChoices >= 3 ? '44px' : '48px') : '50px',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(108, 92, 231, 0.35)';
+                      e.currentTarget.style.borderColor = 'var(--color-primary)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.09)';
+                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.18)';
+                    }}
+                  >
                     {renderChoiceIcon(choice.icon)}
-                  </div>
-                  <span style={{ flex: 1 }}>{resolveText(choice.text)}</span>
-                </motion.button>
-              ))}
+                    <span style={{ flex: 1, lineHeight: 1.35, wordBreak: 'break-word' }}>
+                      {resolveText(choice.text)}
+                    </span>
+                  </motion.button>
+                );
+              })}
             </div>
           </motion.div>
         )}
@@ -1384,27 +1655,43 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
 
                     <button
                       type="button"
+                      disabled
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedGender('female');
+                        toast.info('Hiện tại chỉ mới có cốt truyện nhân vật Nam. Cốt truyện Nữ đang được cập nhật!');
                       }}
                       style={{
                         padding: '12px',
                         borderRadius: 'var(--radius-md)',
-                        border: `2px solid ${selectedGender === 'female' ? 'var(--color-accent)' : 'var(--color-border)'}`,
-                        backgroundColor: selectedGender === 'female' ? '#FFF0F3' : '#FFFFFF',
-                        cursor: 'pointer',
+                        border: '2px dashed var(--color-border)',
+                        backgroundColor: '#F8FAFC',
+                        cursor: 'not-allowed',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
-                        gap: '6px',
+                        gap: '4px',
                         fontWeight: 700,
                         fontSize: '14px',
-                        color: selectedGender === 'female' ? 'var(--color-accent)' : 'var(--color-text-primary)',
+                        color: 'var(--color-text-disabled)',
+                        opacity: 0.65,
+                        position: 'relative',
                       }}
+                      title="Hiện tại chỉ có cốt truyện nhân vật Nam"
                     >
-                      <Heart size={22} color="var(--color-accent)" />
+                      <Heart size={20} color="var(--color-text-disabled)" />
                       <span>Bé Gái (Nữ)</span>
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                          color: '#EF4444',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          fontWeight: 800,
+                        }}
+                      >
+                        Chưa có cốt truyện
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -1544,6 +1831,50 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
         )}
       </AnimatePresence>
 
+      {/* 6.5. POPUP MODAL: BABY AVATAR PICKER (SWIPER) */}
+      <AnimatePresence>
+        {activeModalAction?.type === 'baby_avatar_select' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(15, 8, 28, 0.88)',
+              backdropFilter: 'blur(12px)',
+              zIndex: 150,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="game-card"
+              style={{
+                width: '100%',
+                maxWidth: isMobile ? '95vw' : '720px',
+                padding: isMobile ? '16px 14px' : '28px 24px',
+                maxHeight: '94vh',
+                overflowY: 'auto',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <BabyAvatarPicker
+                currentAvatar={selectedBabyAvatar || userProfile.babyAvatar || 'asset:baby_1'}
+                characterName={userProfile.characterName || characterNameInput || 'Bé Cưng'}
+                onSelectAvatar={handleSelectBabyAvatar}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* 7. HISTORY MODAL */}
       <AnimatePresence>
         {showHistoryModal && (
@@ -1551,7 +1882,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={() => setShowHistoryModal(false)}
             style={{
               position: 'fixed',
               inset: 0,
@@ -1595,12 +1926,12 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                       border: 'none',
                       backgroundColor: historyTab === 'dialogues' ? 'var(--color-primary)' : 'var(--color-background-secondary)',
                       color: historyTab === 'dialogues' ? '#FFFFFF' : 'var(--color-text-secondary)',
-                      fontSize: '13px',
                       fontWeight: 700,
+                      fontSize: '12px',
                       cursor: 'pointer',
                     }}
                   >
-                    Lời Thoại ({activeDialogueList.slice(0, currentDialogueIndex + 1).length})
+                    Hội Thoại
                   </button>
 
                   <button
@@ -1612,91 +1943,78 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                       border: 'none',
                       backgroundColor: historyTab === 'actions' ? 'var(--color-primary)' : 'var(--color-background-secondary)',
                       color: historyTab === 'actions' ? '#FFFFFF' : 'var(--color-text-secondary)',
-                      fontSize: '13px',
                       fontWeight: 700,
+                      fontSize: '12px',
                       cursor: 'pointer',
                     }}
                   >
-                    Quyết Định & Trace ({actionLogs.length})
+                    Trace Quyết Định ({actionLogs.length})
                   </button>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => setShowHistoryModal(false)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)' }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--color-text-secondary)',
+                  }}
                 >
                   <X size={18} />
                 </button>
               </div>
 
               {historyTab === 'dialogues' ? (
-                <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '4px' }}>
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '4px' }}>
                   {activeDialogueList.slice(0, currentDialogueIndex + 1).map((d) => {
-                    const speaker = stepConfig.characters[d.speakerId];
-                    const charName = userProfile.characterName || characterNameInput || 'Bé Con';
-                    const resolvedSpeakerName = (speaker?.name || 'Nhân vật').replace(/\{characterName\}/g, charName);
+                    const char = stepConfig.characters[d.speakerId];
+                    const isPlayer = char?.role === 'player';
+                    const speakerName = char ? resolveText(char.name) : 'Người nói';
+                    const fullText = resolveText(d.text, d);
+
                     return (
                       <div
                         key={d.id}
                         style={{
-                          padding: '10px 14px',
+                          padding: '8px 12px',
                           borderRadius: 'var(--radius-sm)',
-                          backgroundColor: 'var(--color-background-secondary)',
+                          backgroundColor: isPlayer ? 'var(--color-background-secondary)' : '#F8FAFC',
+                          borderLeft: `3px solid ${isPlayer ? 'var(--color-primary)' : 'var(--color-secondary)'}`,
                         }}
                       >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div style={{ fontSize: '12px', fontWeight: 800, color: speaker?.color || 'var(--color-primary)' }}>
-                            {resolvedSpeakerName}
-                          </div>
-                          <span style={{ fontSize: '10px', color: 'var(--color-text-disabled)', fontFamily: 'monospace' }}>
-                            ID: {d.id}
-                          </span>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: isPlayer ? 'var(--color-primary)' : 'var(--color-secondary)', marginBottom: '2px' }}>
+                          {speakerName}
                         </div>
-                        <div style={{ fontSize: '13px', marginTop: '2px', color: 'var(--color-text-primary)' }}>
-                          {resolveText(d.text, d)}
+                        <div style={{ fontSize: '13px', color: 'var(--color-text-primary)' }}>
+                          {fullText}
                         </div>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '4px' }}>
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '4px' }}>
                   {actionLogs.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--color-text-secondary)', fontSize: '13px' }}>
-                      Chưa có quyết định nào được lưu lại trong phiên này.
+                    <div style={{ textAlign: 'center', color: 'var(--color-text-disabled)', fontSize: '13px', marginTop: '20px' }}>
+                      Chưa có lịch sử thao tác nào.
                     </div>
                   ) : (
                     actionLogs.map((log) => {
-                      let displayLogText = '';
-                      if (log.actionType === 'CHOICE_SELECTED') {
-                        displayLogText = resolveText(log.choiceText || 'Đã chọn quyết định');
-                      } else if (log.actionType === 'PROFILE_INITIALIZED') {
-                        const g = log.metadata?.gender || userProfile.gender || selectedGender;
-                        const b = log.metadata?.birthdate || userProfile.birthdate || birthdateInput;
-                        displayLogText = `Khởi tạo hồ sơ: Giới tính Bé ${g === 'female' ? 'Gái' : 'Trai'}${b ? ` (Sinh ngày ${b})` : ''}`;
-                      } else if (log.actionType === 'CHARACTER_NAMED') {
-                        const name = log.metadata?.characterName || userProfile.characterName || characterNameInput;
-                        displayLogText = `Khai sinh đặt tên bé: "${name || 'Bé Con'}"`;
-                      } else if (log.actionType === 'STAGE_STARTED') {
-                        displayLogText = `Bắt đầu màn: ${log.stageName || log.stageId}`;
-                      } else if (log.actionType === 'STAGE_COMPLETED') {
-                        displayLogText = `Hoàn thành xuất sắc: ${log.stageName || log.stageId}`;
-                      } else {
-                        displayLogText = resolveText(log.choiceText || log.stageName || log.actionType);
-                      }
+                      const displayLogText = log.details || (log.choiceId ? `Đã chọn: ${log.choiceId}` : log.actionType);
 
                       return (
                         <div
                           key={log.id}
                           style={{
-                            padding: '10px 14px',
+                            padding: '10px 12px',
                             borderRadius: 'var(--radius-sm)',
-                            backgroundColor: 'var(--color-background-secondary)',
-                            borderLeft: log.actionType === 'CHOICE_SELECTED' ? '3px solid var(--color-secondary)' : log.actionType === 'STAGE_COMPLETED' ? '3px solid var(--color-success)' : '3px solid var(--color-primary)',
+                            backgroundColor: 'var(--color-surface)',
+                            border: '1px solid var(--color-border)',
                           }}
                         >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <span
                                 style={{
@@ -1708,7 +2026,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                                   color: log.actionType === 'CHOICE_SELECTED' ? '#D98200' : 'var(--color-primary)',
                                 }}
                               >
-                                {log.actionType === 'CHOICE_SELECTED' ? 'LỰA CHỌN' : log.actionType === 'STAGE_COMPLETED' ? 'HOÀN THÀNH MÀN' : log.actionType === 'STAGE_SELECTED' ? 'CHỌN MÀN' : 'HỒ SƠ'}
+                                {log.actionType === 'CHOICE_SELECTED' ? 'LỰA CHỌN' : log.actionType === 'STAGE_COMPLETED' ? 'HOÀN THÀNH MÀN' : log.actionType === 'STAGE_SELECTED' ? 'CHỌN MÀN' : log.actionType === 'STAGE_RESTARTED' ? 'CHƠI LẠI' : 'HỒ SƠ'}
                               </span>
 
                               {log.choiceId && (
@@ -1740,6 +2058,19 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
               )}
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* FULLSCREEN STAGE TITLE SPLASH (SHOWS FOR ~2.2 SECONDS) */}
+      <AnimatePresence>
+        {showTitleSplash && (
+          <StageTitleSplash
+            stageNumber={stepConfig.id === 'step_2_first_words' ? 2 : (stepConfig.stepNumber || 1)}
+            stageName={stepConfig.title || 'Màn Chơi Mới'}
+            subtitle={stepConfig.dayLabel || 'Hành trình cuộc đời tiếp diễn...'}
+            onComplete={() => setShowTitleSplash(false)}
+            durationMs={2200}
+          />
         )}
       </AnimatePresence>
     </div>

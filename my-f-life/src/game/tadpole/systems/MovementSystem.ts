@@ -13,6 +13,16 @@ export class MovementSystem {
       return;
     }
 
+    // If player is stunned from hitting spikes, immobilize completely for 1.0s
+    if (player.isStunned) {
+      player.vx *= 0.8;
+      player.vy *= 0.8;
+      player.x += player.vx * dt;
+      player.y += player.vy * dt;
+      player.update(dt);
+      return;
+    }
+
     // If user is NOT providing any input, tadpole quickly decelerates to a complete stop!
     if (input.magnitude < 0.08) {
       const friction = Math.min(1, dt * 12);
@@ -54,6 +64,16 @@ export class MovementSystem {
     if (bot.isFinished) {
       bot.vx *= 0.92;
       bot.vy *= 0.92;
+      bot.x += bot.vx * dt;
+      bot.y += bot.vy * dt;
+      bot.update(dt);
+      return;
+    }
+
+    // If bot is stunned from spike collision, immobilize for stun duration
+    if (bot.isStunned) {
+      bot.vx *= 0.8;
+      bot.vy *= 0.8;
       bot.x += bot.vx * dt;
       bot.y += bot.vy * dt;
       bot.update(dt);

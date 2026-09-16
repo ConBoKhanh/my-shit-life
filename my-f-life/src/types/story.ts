@@ -1,4 +1,4 @@
-export type CharacterSide = 'left' | 'right';
+export type CharacterSide = 'left' | 'right' | 'center';
 
 export interface CharacterConfig {
   id: number | string;
@@ -20,7 +20,7 @@ export type VariableMappingType = {
 export type VariableMap = Record<string, VariableMappingType | string>;
 
 export interface StoryActionConfig {
-  type: 'profile_init' | 'name_picker' | 'choice_modal' | 'custom_modal';
+  type: 'profile_init' | 'name_picker' | 'choice_modal' | 'custom_modal' | 'baby_avatar_select';
   title: string;
   description?: string;
   saveField?: string;
@@ -44,6 +44,7 @@ export interface StoryChoice {
   id: string; // e.g. "1.1.2", "1.1.3", "1.1.4"
   text: string;
   icon?: string;
+  sfx?: string; // Âm thanh hiệu ứng riêng khi chọn option
   scoreReward?: number;
   statEffects?: {
     happiness?: number;

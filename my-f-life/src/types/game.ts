@@ -11,12 +11,14 @@ export interface UserProfile {
   characterName?: string;
   gender?: 'male' | 'female';
   birthdate?: string;
+  babyAvatar?: string;
   [key: string]: any;
 }
 
 export type UserActionType =
   | 'STAGE_SELECTED'
   | 'STAGE_STARTED'
+  | 'STAGE_RESTARTED'
   | 'STAGE_COMPLETED'
   | 'CHOICE_SELECTED'
   | 'PROFILE_INITIALIZED'
@@ -30,6 +32,7 @@ export interface UserActionLog {
   stepId?: string;
   choiceId?: string; // Mã định danh lựa chọn (e.g. "1.1.2", "1.1.3", "1.1.4")
   choiceText?: string;
+  details?: string;
   scoreReward?: number;
   metadata?: Record<string, any>;
   timestamp: string;

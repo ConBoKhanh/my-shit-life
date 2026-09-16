@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   User,
@@ -10,7 +10,12 @@ import {
   Play,
   Award,
   BookOpen,
-  Film,
+  Music,
+  SkipForward,
+  Volume2,
+  VolumeX,
+  AlertTriangle,
+  RotateCcw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { StageData, UserProfile, UserActionLog } from '../types/game';
@@ -21,18 +26,68 @@ import { TadpoleRaceScreen } from './game/tadpole/TadpoleRaceScreen';
 import { FertilizationCinemaCutscene } from './game/cutscenes/FertilizationCinemaCutscene';
 import type { WinnerInfo } from '../game/tadpole/GameEngine';
 import storyStagesData from '../data/storyStages.json';
+import { backgroundMusicManager } from '../services/backgroundMusicManager';
 
 export const GameScreen: React.FC = () => {
   const currentUser = useGameStore((state) => state.currentUser);
   const currentSession = useGameStore((state) => state.currentSession);
+  const currentRoute = useGameStore((state) => state.currentRoute);
+  const navigate = useGameStore((state) => state.navigate);
   const updateUserProgress = useGameStore((state) => state.updateUserProgress);
   const updateUserProfile = useGameStore((state) => state.updateUserProfile);
   const updateDialogueProgress = useGameStore((state) => state.updateDialogueProgress);
   const logUserAction = useGameStore((state) => state.logUserAction);
   const logout = useGameStore((state) => state.logout);
 
-  const [activeView, setActiveView] = useState<'story' | 'dashboard' | 'fertilization_cutscene'>('story');
+  const [activeView, setActiveView] = useState<'story' | 'dashboard' | 'fertilization_cutscene'>(() => {
+    return currentRoute === '/menu' ? 'dashboard' : 'story';
+  });
   const [isFlashFading, setIsFlashFading] = useState(false);
+  const [isMuted, setIsMuted] = useState(backgroundMusicManager.isMuted);
+  const [currentTrackInfo, setCurrentTrackInfo] = useState(() => backgroundMusicManager.getCurrentTrack());
+  const [confirmReplayStage, setConfirmReplayStage] = useState<StageData | null>(null);
+
+  // Lắng nghe cập nhật bài hát & mute từ Background Music Manager
+  useEffect(() => {
+    return backgroundMusicManager.subscribe(() => {
+      setCurrentTrackInfo(backgroundMusicManager.getCurrentTrack());
+      setIsMuted(backgroundMusicManager.isMuted);
+    });
+  }, []);
+
+  // Đảm bảo nhạc nền luôn phát ở Menu
+  useEffect(() => {
+    if (activeView === 'dashboard') {
+      backgroundMusicManager.startBackgroundMusic();
+    }
+  }, [activeView]);
+
+  // Tạm dừng hoàn toàn nhạc nền khi ở Màn Đua (stage_0) hoặc Rạp Chiếu Phim (fertilization_cutscene)
+  useEffect(() => {
+    if (activeView === 'fertilization_cutscene' || (activeView === 'story' && currentUser?.currentStageId === 'stage_0')) {
+      backgroundMusicManager.pauseBackgroundMusic();
+    }
+  }, [activeView, currentUser?.currentStageId]);
+
+  // Đồng bộ route khi activeView thay đổi hoặc khi người dùng back/forward
+  useEffect(() => {
+    if (currentRoute === '/menu' && activeView !== 'dashboard') {
+      setActiveView('dashboard');
+    } else if (currentRoute === '/game' && activeView === 'dashboard') {
+      setActiveView('story');
+    }
+  }, [currentRoute]);
+
+  const goToMenu = () => {
+    setActiveView('dashboard');
+    navigate('/menu');
+    backgroundMusicManager.playRandomTrack();
+  };
+
+  const goToGame = () => {
+    setActiveView('story');
+    navigate('/game');
+  };
 
   if (!currentUser) return null;
 
@@ -127,6 +182,9 @@ export const GameScreen: React.FC = () => {
     }
     if (log.actionType === 'STAGE_STARTED') {
       return `Bắt đầu màn: ${log.stageName || log.stageId}`;
+    }
+    if (log.actionType === 'STAGE_RESTARTED') {
+      return `Chơi lại từ đầu màn: ${log.stageName || log.stageId} (Đã làm mới điểm)`;
     }
     if (log.actionType === 'STAGE_COMPLETED') {
       return `Hoàn thành xuất sắc: ${log.stageName || log.stageId}`;
@@ -233,13 +291,17 @@ export const GameScreen: React.FC = () => {
 
     const currentIndex = updatedStages.findIndex((s) => s.id === currentStage.id);
     let nextStageId = currentUser.currentStageId;
+    let nextStepId = 'step_1_birth';
 
     if (currentIndex + 1 < updatedStages.length) {
-      if (updatedStages[currentIndex + 1].status === 'locked') {
-        updatedStages[currentIndex + 1].status = 'in_progress';
-        updatedStages[currentIndex + 1].currentStep = 1;
+      const nextStage = updatedStages[currentIndex + 1];
+      if (nextStage.status === 'locked') {
+        nextStage.status = 'in_progress';
+        nextStage.currentStep = 1;
       }
-      nextStageId = updatedStages[currentIndex + 1].id;
+      nextStageId = nextStage.id;
+      const nextStageConfig = (storyStagesData as any)[nextStageId];
+      nextStepId = nextStageConfig?.initialStepId || (nextStageId === 'stage_2' ? 'step_2_first_words' : 'step_1_birth');
     }
 
     const newTotalScore = updatedStages.reduce((sum, s) => sum + s.score, 0);
@@ -247,7 +309,7 @@ export const GameScreen: React.FC = () => {
     const updatedUser = {
       ...currentUser,
       currentStageId: nextStageId,
-      currentStepId: 'step_1_birth',
+      currentStepId: nextStepId,
       currentDialogueIndex: 0,
       totalScore: newTotalScore,
       stages: updatedStages,
@@ -255,8 +317,122 @@ export const GameScreen: React.FC = () => {
     };
 
     updateUserProgress(updatedUser);
-    toast.success(`🎉 Chúc mừng! Bạn đã hoàn thành xuất sắc "${currentStage.name}"!`);
-    setActiveView('dashboard');
+
+    // Tự động chuyển ngay sang màn tiếp theo mà không cần phải thoát ra menu
+    if (currentIndex + 1 < updatedStages.length) {
+      toast.success(`🎉 Hoàn thành "${currentStage.name}"! Tự động chuyển sang màn tiếp theo...`);
+      goToGame();
+    } else {
+      toast.success(`🎉 Chúc mừng! Bạn đã hoàn thành xuất sắc tất cả các màn chơi!`);
+      goToMenu();
+    }
+  };
+
+  // Chơi tiếp hoặc vào màn đang chơi
+  const handlePlayStage = (stage: StageData) => {
+    logUserAction({
+      actionType: 'STAGE_SELECTED',
+      stageId: stage.id,
+      stageName: stage.name,
+      metadata: {
+        status: stage.status,
+        currentStep: stage.currentStep,
+      },
+    });
+    updateUserProgress({
+      ...currentUser,
+      currentStageId: stage.id,
+      currentStepId: stage.id === 'stage_0' ? 'step_race' : (currentUser.currentStepId || 'step_1_birth'),
+    });
+    goToGame();
+  };
+
+  // Xác nhận chơi lại màn chơi: Xóa toàn bộ điểm màn đó VÀ các màn tiếp theo, reset tiến trình và khóa lại
+  const handleConfirmReplay = (stage: StageData) => {
+    const stageConfig = (storyStagesData as any)[stage.id];
+    const initialStepId = stage.id === 'stage_0' ? 'step_race' : (stageConfig?.initialStepId || 'step_1_birth');
+
+    const replayingIndex = currentUser.stages.findIndex((s) => s.id === stage.id);
+    const subsequentStages = currentUser.stages.filter((_, idx) => idx > replayingIndex);
+
+    // 1. Reset điểm và bước của màn chơi này VÀ tất cả các màn tiếp theo
+    const updatedStages = currentUser.stages.map((s, idx) => {
+      if (idx === replayingIndex) {
+        return {
+          ...s,
+          currentStep: stage.id === 'stage_0' ? 0 : 1,
+          score: 0,
+          status: 'in_progress' as const,
+        };
+      }
+      if (idx > replayingIndex) {
+        return {
+          ...s,
+          currentStep: 0,
+          score: 0,
+          status: 'locked' as const,
+        };
+      }
+      return s; // Giữ nguyên các màn trước đó (ví dụ stage_0 khi chơi lại stage_1)
+    });
+
+    const newTotalScore = updatedStages.reduce((sum, s) => sum + s.score, 0);
+
+    // 2. Xóa các lựa chọn thuộc màn này và tất cả các màn tiếp theo
+    const affectedStageIds = currentUser.stages.slice(replayingIndex).map((s) => s.id);
+    const affectedPrefixes = affectedStageIds.map((id) => id.replace('stage_', ''));
+
+    const updatedChoiceIds = (currentUser.selectedChoiceIds || []).filter((cId) => {
+      return (
+        !affectedStageIds.some((sId) => cId.startsWith(sId)) &&
+        !affectedPrefixes.some((pfx) => cId.startsWith(`${pfx}.`))
+      );
+    });
+
+    // 3. Reset profile nếu cần (chơi lại Màn 1 hoặc Màn 0)
+    let updatedProfile = { ...currentUser.profile };
+    if (stage.id === 'stage_1' || stage.id === 'stage_0') {
+      updatedProfile = {
+        ...updatedProfile,
+        characterName: '',
+        babyAvatar: '',
+      };
+    } else if (stage.id === 'stage_2') {
+      updatedProfile = {
+        ...updatedProfile,
+        babyAvatar: '',
+      };
+    }
+
+    // 4. Ghi log trace chơi lại
+    logUserAction({
+      actionType: 'STAGE_RESTARTED',
+      stageId: stage.id,
+      stageName: stage.name,
+      scoreReward: 0,
+      metadata: {
+        previousScore: stage.score,
+        clearedSubsequentStages: subsequentStages.map((s) => s.name).join(', '),
+        note: `Chơi lại màn "${stage.name}", đã xóa ${stage.score}đ của màn này và khóa lại ${subsequentStages.length} màn tiếp theo`,
+      },
+    });
+
+    // 5. Lưu progress và chuyển vào game
+    updateUserProgress({
+      ...currentUser,
+      currentStageId: stage.id,
+      currentStepId: initialStepId,
+      currentDialogueIndex: 0,
+      totalScore: newTotalScore,
+      stages: updatedStages,
+      selectedChoiceIds: updatedChoiceIds,
+      profile: updatedProfile,
+      lastPlayedAt: new Date().toISOString(),
+    });
+
+    setConfirmReplayStage(null);
+    toast.info(`Đã làm mới "${stage.name}" và toàn bộ tiến trình phía sau!`);
+    goToGame();
   };
 
   const handleUpdateProfile = (profileUpdate: Partial<UserProfile>, nextDialogueIndex?: number) => {
@@ -302,7 +478,7 @@ export const GameScreen: React.FC = () => {
     return (
       <TadpoleRaceScreen
         onVictory={handleTadpoleVictory}
-        onBackToDashboard={() => setActiveView('dashboard')}
+        onBackToDashboard={goToMenu}
       />
     );
   }
@@ -313,7 +489,7 @@ export const GameScreen: React.FC = () => {
       <FertilizationCinemaCutscene
         onExplode={() => {
           setIsFlashFading(true);
-          setActiveView('story');
+          goToGame();
         }}
       />
     );
@@ -324,6 +500,7 @@ export const GameScreen: React.FC = () => {
     return (
       <>
         <StoryDialogueEngine
+          key={`${currentUser.currentStageId}_${activeStepConfig.id}`}
           stepConfig={activeStepConfig}
           userProfile={currentUser.profile}
           initialDialogueIndex={currentUser.currentDialogueIndex || 0}
@@ -332,7 +509,7 @@ export const GameScreen: React.FC = () => {
           onUpdateProfile={handleUpdateProfile}
           onStepChoice={handleStoryChoice}
           onStageCompleted={handleCompleteCurrentStage}
-          onBackToDashboard={() => setActiveView('dashboard')}
+          onBackToDashboard={goToMenu}
         />
 
         {/* Hiệu ứng Flashbang trắng xóa lâu gấp 3 lần hé lộ Màn 1 */}
@@ -435,8 +612,97 @@ export const GameScreen: React.FC = () => {
             </div>
           </div>
 
-          {/* Navigation Mode & Score */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Navigation Mode, Music Player & Score */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {/* Music Player Widget */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                backgroundColor: 'var(--color-background-secondary)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-md)',
+                padding: '4px 8px',
+                fontSize: '11px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <Music size={14} color="var(--color-primary)" />
+                <span
+                  style={{
+                    maxWidth: '120px',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    fontWeight: 600,
+                    fontSize: '11px',
+                    color: 'var(--color-text-primary)',
+                  }}
+                  title={`Đang phát: ${currentTrackInfo.title} - ${currentTrackInfo.artist}`}
+                >
+                  {currentTrackInfo.title}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    backgroundMusicManager.playNextTrack();
+                    toast.info(`Chuyển bài: ${backgroundMusicManager.getCurrentTrack().title}`);
+                  }}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.08)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '4px',
+                    padding: '4px 6px',
+                    cursor: 'pointer',
+                    color: 'var(--color-text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.15s ease',
+                  }}
+                  title="Đổi bài nhạc nền tiếp theo"
+                >
+                  <SkipForward size={13} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const newMuted = !isMuted;
+                    backgroundMusicManager.setMuted(newMuted);
+                    setIsMuted(newMuted);
+                    if (newMuted) {
+                      toast.info('Đã tắt tiếng nhạc nền');
+                    } else {
+                      toast.success('Đã bật tiếng nhạc nền');
+                    }
+                  }}
+                  style={{
+                    background: isMuted ? 'rgba(239, 68, 68, 0.15)' : 'rgba(108, 92, 231, 0.15)',
+                    border: isMuted ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(108, 92, 231, 0.4)',
+                    borderRadius: '4px',
+                    padding: '4px 6px',
+                    cursor: 'pointer',
+                    color: isMuted ? 'var(--color-danger)' : 'var(--color-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 700,
+                    transition: 'all 0.15s ease',
+                  }}
+                  title={isMuted ? 'Bật âm thanh (Đang tắt tiếng)' : 'Tắt âm thanh (Đang bật)'}
+                >
+                  {isMuted ? <VolumeX size={13} /> : <Volume2 size={13} />}
+                </button>
+              </div>
+            </div>
+
             <div className="badge badge-warning" style={{ fontSize: '13px', padding: '7px 14px' }}>
               <Award size={15} />
               <span>{currentUser.totalScore.toLocaleString()} Điểm</span>
@@ -444,18 +710,7 @@ export const GameScreen: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => setActiveView('fertilization_cutscene')}
-              className="btn-outline"
-              style={{ padding: '8px 12px', fontSize: '12px', color: '#A855F7', borderColor: 'rgba(168, 85, 247, 0.4)' }}
-              title="Xem lại thước phim rạp Chuyển Sinh & Thụ Tinh"
-            >
-              <Film size={14} />
-              <span>Phim Rạp</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveView('story')}
+              onClick={goToGame}
               className="btn-primary"
               style={{ padding: '8px 14px', fontSize: '12px' }}
             >
@@ -500,27 +755,6 @@ export const GameScreen: React.FC = () => {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    cursor: !isLocked ? 'pointer' : 'default',
-                  }}
-                  onClick={() => {
-                    if (!isLocked) {
-                      logUserAction({
-                        actionType: 'STAGE_SELECTED',
-                        stageId: stage.id,
-                        stageName: stage.name,
-                        metadata: {
-                          status: stage.status,
-                          currentStep: stage.currentStep,
-                        },
-                      });
-                      updateUserProgress({
-                        ...currentUser,
-                        currentStageId: stage.id,
-                        currentStepId: stage.id === 'stage_0' ? 'step_race' : 'step_1_birth',
-                        currentDialogueIndex: 0,
-                      });
-                      setActiveView('story');
-                    }
                   }}
                 >
                   <div>
@@ -561,10 +795,25 @@ export const GameScreen: React.FC = () => {
                     {!isLocked && (
                       <button
                         type="button"
-                        className={isCurrent ? 'btn-primary' : 'btn-outline'}
-                        style={{ padding: '6px 12px', fontSize: '12px' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isDone) {
+                            setConfirmReplayStage(stage);
+                          } else {
+                            handlePlayStage(stage);
+                          }
+                        }}
+                        className={isCurrent ? 'btn-primary' : isDone ? 'btn-secondary' : 'btn-outline'}
+                        style={{
+                          padding: '7px 14px',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                        }}
                       >
-                        <Play size={12} />
+                        {isDone ? <RotateCcw size={13} /> : <Play size={13} />}
                         <span>{isDone ? 'Chơi Lại' : 'Chơi Ngay'}</span>
                       </button>
                     )}
@@ -602,7 +851,7 @@ export const GameScreen: React.FC = () => {
                   padding: '10px 14px',
                   borderRadius: 'var(--radius-sm)',
                   backgroundColor: 'var(--color-background-secondary)',
-                  borderLeft: log.actionType === 'CHOICE_SELECTED' ? '3px solid var(--color-secondary)' : log.actionType === 'STAGE_COMPLETED' ? '3px solid var(--color-success)' : '3px solid var(--color-primary)',
+                  borderLeft: log.actionType === 'CHOICE_SELECTED' ? '3px solid var(--color-secondary)' : log.actionType === 'STAGE_COMPLETED' ? '3px solid var(--color-success)' : log.actionType === 'STAGE_RESTARTED' ? '3px solid var(--color-danger)' : '3px solid var(--color-primary)',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
@@ -617,11 +866,11 @@ export const GameScreen: React.FC = () => {
                         fontWeight: 800,
                         padding: '2px 6px',
                         borderRadius: 'var(--radius-sm)',
-                        backgroundColor: log.actionType === 'CHOICE_SELECTED' ? 'rgba(255, 184, 77, 0.2)' : 'rgba(108, 92, 231, 0.15)',
-                        color: log.actionType === 'CHOICE_SELECTED' ? '#D98200' : 'var(--color-primary)',
+                        backgroundColor: log.actionType === 'CHOICE_SELECTED' ? 'rgba(255, 184, 77, 0.2)' : log.actionType === 'STAGE_RESTARTED' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(108, 92, 231, 0.15)',
+                        color: log.actionType === 'CHOICE_SELECTED' ? '#D98200' : log.actionType === 'STAGE_RESTARTED' ? 'var(--color-danger)' : 'var(--color-primary)',
                       }}
                     >
-                      {log.actionType === 'CHOICE_SELECTED' ? 'LỰA CHỌN' : log.actionType === 'STAGE_COMPLETED' ? 'HOÀN THÀNH MÀN' : log.actionType === 'STAGE_SELECTED' ? 'CHỌN MÀN' : 'HỒ SƠ'}
+                      {log.actionType === 'CHOICE_SELECTED' ? 'LỰA CHỌN' : log.actionType === 'STAGE_COMPLETED' ? 'HOÀN THÀNH MÀN' : log.actionType === 'STAGE_RESTARTED' ? 'CHƠI LẠI' : log.actionType === 'STAGE_SELECTED' ? 'CHỌN MÀN' : 'HỒ SƠ'}
                     </span>
 
                     {log.choiceId && (
@@ -655,6 +904,232 @@ export const GameScreen: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* 4. MODAL CẢNH BÁO CHƠI LẠI MÀN CHƠI */}
+      <AnimatePresence>
+        {confirmReplayStage && (() => {
+          const replayingIndex = currentUser.stages.findIndex((s) => s.id === confirmReplayStage.id);
+          const subsequentStages = replayingIndex >= 0 ? currentUser.stages.filter((_, idx) => idx > replayingIndex) : [];
+          const totalDeductedScore = replayingIndex >= 0 
+            ? currentUser.stages.slice(replayingIndex).reduce((sum, s) => sum + s.score, 0)
+            : confirmReplayStage.score;
+
+          return (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                backgroundColor: 'rgba(15, 8, 28, 0.75)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                zIndex: 99999,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '16px',
+              }}
+              onClick={() => setConfirmReplayStage(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.92, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.92, opacity: 0, y: 20 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  maxWidth: '520px',
+                  width: '100%',
+                  borderRadius: '24px',
+                  padding: '28px',
+                  background: 'linear-gradient(145deg, #FFFFFF 0%, #FFF5F5 100%)',
+                  border: '2px solid rgba(239, 68, 68, 0.35)',
+                  boxShadow: '0 25px 60px -15px rgba(239, 68, 68, 0.35), 0 0 0 1px rgba(239, 68, 68, 0.1)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                }}
+              >
+                {/* Header Icon + Titles */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '20px' }}>
+                  <div
+                    style={{
+                      width: '52px',
+                      height: '52px',
+                      borderRadius: '16px',
+                      backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                      border: '1.5px solid rgba(239, 68, 68, 0.25)',
+                      color: '#EF4444',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                      boxShadow: '0 8px 16px rgba(239, 68, 68, 0.15)',
+                    }}
+                  >
+                    <AlertTriangle size={28} />
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 800,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.6px',
+                          backgroundColor: '#FEE2E2',
+                          color: '#DC2626',
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                        }}
+                      >
+                        Cảnh Báo Quan Trọng
+                      </span>
+                    </div>
+                    <h3 style={{ fontSize: '19px', fontWeight: 800, color: '#1F2937', margin: 0, lineHeight: '1.3' }}>
+                      Chơi Lại "{confirmReplayStage.name}"?
+                    </h3>
+                    <p style={{ fontSize: '13px', color: '#6B7280', margin: '4px 0 0 0' }}>
+                      Hành động này sẽ làm mới toàn bộ tiến trình từ màn chơi này trở đi.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Warning Details Content */}
+                <div
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                    borderRadius: '16px',
+                    padding: '16px',
+                    marginBottom: '22px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                    boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.02)',
+                  }}
+                >
+                  {/* Item 1: Stage being reset */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                    <div style={{ color: '#EF4444', marginTop: '2px', flexShrink: 0 }}>
+                      <RotateCcw size={16} />
+                    </div>
+                    <div style={{ fontSize: '13px', lineHeight: '1.5', color: '#374151' }}>
+                      <b>Làm mới màn hiện tại:</b> Tiến trình của <b>{confirmReplayStage.name}</b> sẽ quay về ban đầu, điểm số ({confirmReplayStage.score}đ) sẽ được làm mới về <b>0đ</b>.
+                    </div>
+                  </div>
+
+                  {/* Item 2: Subsequent stages locked */}
+                  {subsequentStages.length > 0 ? (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                      <div style={{ color: '#DC2626', marginTop: '2px', flexShrink: 0 }}>
+                        <Lock size={16} />
+                      </div>
+                      <div style={{ fontSize: '13px', lineHeight: '1.5', color: '#374151' }}>
+                        <b>Khóa lại {subsequentStages.length} màn tiếp theo:</b>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', margin: '6px 0' }}>
+                          {subsequentStages.map((s) => (
+                            <span
+                              key={s.id}
+                              style={{
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                backgroundColor: '#F3F4F6',
+                                color: '#4B5563',
+                                border: '1px solid #E5E7EB',
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                              }}
+                            >
+                              🔒 {s.name} ({s.score}đ)
+                            </span>
+                          ))}
+                        </div>
+                        <span style={{ fontSize: '12px', color: '#6B7280' }}>
+                          Toàn bộ điểm và lựa chọn của các màn sau sẽ bị xóa để bạn trải nghiệm lại cốt truyện liền mạch.
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                      <div style={{ color: '#F59E0B', marginTop: '2px', flexShrink: 0 }}>
+                        <Flame size={16} />
+                      </div>
+                      <div style={{ fontSize: '13px', lineHeight: '1.5', color: '#374151' }}>
+                        <b>Khám phá nhánh rẽ mới:</b> Bạn có thể chọn các câu thoại khác để xem phản ứng mới lạ từ các nhân vật!
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Item 3: Summary score deduction */}
+                  {totalDeductedScore > 0 && (
+                    <div
+                      style={{
+                        paddingTop: '10px',
+                        borderTop: '1px dashed #E5E7EB',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontSize: '13px',
+                      }}
+                    >
+                      <span style={{ color: '#6B7280', fontWeight: 600 }}>Tổng điểm sẽ bị khấu trừ:</span>
+                      <span style={{ color: '#DC2626', fontWeight: 800, fontSize: '14px' }}>
+                        -{totalDeductedScore} điểm
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Buttons */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmReplayStage(null)}
+                    style={{
+                      padding: '11px 22px',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      backgroundColor: '#F3F4F6',
+                      color: '#4B5563',
+                      border: '1px solid #E5E7EB',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    Hủy Bỏ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleConfirmReplay(confirmReplayStage)}
+                    style={{
+                      backgroundColor: '#EF4444',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      borderRadius: '12px',
+                      padding: '11px 24px',
+                      fontSize: '13px',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      boxShadow: '0 6px 20px rgba(239, 68, 68, 0.4)',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <RotateCcw size={16} color="#FFFFFF" />
+                    <span>Xác Nhận Chơi Lại</span>
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
+      </AnimatePresence>
     </motion.div>
   );
 };

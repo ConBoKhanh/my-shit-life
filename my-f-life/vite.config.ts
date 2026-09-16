@@ -155,9 +155,16 @@ export default defineConfig((): UserConfig => {
   return {
     plugins: [react(), jsonDatabasePlugin()],
     server: {
+      host: true,
+      port: 8888,
+      strictPort: false,
       watch: {
         ignored: ['**/src/data/initialData.json'],
       },
+    },
+    preview: {
+      host: true,
+      port: 8888,
     },
     build: {
       sourcemap: false,

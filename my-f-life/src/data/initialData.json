@@ -19,9 +19,9 @@
     },
     {
       "id": "stage_2",
-      "name": "Màn 2: Cấp 3 Bùng Cháy",
+      "name": "Màn 2: Lời Nói Đầu Tiên Của Bé",
       "currentStep": 0,
-      "totalSteps": 6,
+      "totalSteps": 1,
       "score": 0,
       "status": "locked"
     },

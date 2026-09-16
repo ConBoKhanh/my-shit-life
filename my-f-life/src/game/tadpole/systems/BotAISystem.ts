@@ -1,4 +1,5 @@
 import { TadpoleEntity } from '../entities/Tadpole';
+import { SpikeObstacle } from '../entities/SpikeObstacle';
 import { TrackPath } from '../TrackPath';
 
 export class BotAISystem {
@@ -6,7 +7,8 @@ export class BotAISystem {
     bot: TadpoleEntity,
     allTadpoles: TadpoleEntity[],
     _trackWidth?: number,
-    finishY: number = -TrackPath.TOTAL_LENGTH
+    finishY: number = -TrackPath.TOTAL_LENGTH,
+    spikes: SpikeObstacle[] = []
   ): { x: number; y: number } {
     // 1. Lookahead Target on Track (Anticipating curves ahead like an F1 driver)
     const lookaheadDistance = 110;
@@ -48,7 +50,22 @@ export class BotAISystem {
       dirX -= push * push * 2.4;
     }
 
-    // 6. Intelligent Overtaking (Avoid drafting directly into obstacles)
+    // 6. Spike Obstacle Avoidance (Avoid getting stunned if detected ahead)
+    const spikeVisionAhead = 120;
+    for (const spike of spikes) {
+      const dy = spike.y - bot.y;
+      if (dy < 0 && dy > -spikeVisionAhead) {
+        const dx = spike.x - bot.x;
+        if (Math.abs(dx) < spike.radius + bot.radius + 35) {
+          // Steer away from the spike side
+          const steerAway = dx >= 0 ? -1.8 : 1.8;
+          const urgency = 1 - Math.abs(dy) / spikeVisionAhead;
+          dirX += steerAway * urgency;
+        }
+      }
+    }
+
+    // 7. Intelligent Overtaking (Avoid drafting directly into competitors)
     const visionRange = 85;
     for (const other of allTadpoles) {
       if (other.id === bot.id) continue;

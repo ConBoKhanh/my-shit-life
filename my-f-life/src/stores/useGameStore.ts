@@ -24,6 +24,7 @@ interface GameStoreState {
   currentUser: UserData | null;
   currentSession: AuthSession | null;
   currentRoute: string;
+  isAuthLoading: boolean;
 
   // Actions
   navigate: (route: string) => void;
@@ -43,7 +44,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   usersDb: {},
   currentUser: null,
   currentSession: null,
-  currentRoute: window.location.pathname === '/game' ? '/game' : '/login',
+  currentRoute: (typeof window !== 'undefined' && (window.location.pathname === '/game' || window.location.pathname === '/menu')) ? window.location.pathname : '/login',
+  isAuthLoading: true,
 
   navigate: (route: string) => {
     window.history.pushState({}, '', route);
@@ -51,68 +53,77 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   },
 
   initAuthAndData: async () => {
-    // 1. Tải toàn bộ danh sách users từ Supabase (nguồn dữ liệu chuẩn duy nhất)
-    let loadedDb: UsersDatabase = {};
-
     try {
-      const serverData = await gameApi.getAllUsers();
-      if (serverData && serverData.users) {
-        loadedDb = serverData.users;
-      }
-    } catch (err) {
-      console.warn('Không thể tải dữ liệu từ Supabase, thử fallback local cache:', err);
-      // Fallback cache local nếu mất mạng
+      // 1. Tải toàn bộ danh sách users từ Supabase (nguồn dữ liệu chuẩn duy nhất)
+      let loadedDb: UsersDatabase = {};
+
       try {
-        const rawData = localStorage.getItem(STORAGE_KEY);
-        if (rawData) {
-          loadedDb = JSON.parse(rawData) || {};
+        const serverData = await gameApi.getAllUsers();
+        if (serverData && serverData.users) {
+          loadedDb = serverData.users;
         }
-      } catch {}
-    }
+      } catch (err) {
+        console.warn('Không thể tải dữ liệu từ Supabase, thử fallback local cache:', err);
+        // Fallback cache local nếu mất mạng
+        try {
+          const rawData = localStorage.getItem(STORAGE_KEY);
+          if (rawData) {
+            loadedDb = JSON.parse(rawData) || {};
+          }
+        } catch {}
+      }
 
-    // Đảm bảo tất cả users đều có stage_0 Cuộc Đua Chuyển Sinh
-    Object.values(loadedDb).forEach((u) => {
-      if (u.stages && !u.stages.some((s) => s.id === 'stage_0')) {
-        u.stages.unshift({
-          id: 'stage_0',
-          name: 'Cuộc Đua Chuyển Sinh',
-          currentStep: 1,
-          totalSteps: 1,
-          score: 0,
-          status: 'in_progress',
-        });
-        if (!u.currentStageId || u.currentStageId === 'stage_1') {
-          u.currentStageId = 'stage_0';
-          u.currentStepId = 'step_race';
+      // Đồng bộ danh sách stages chuẩn từ initialData.defaultStages cho tất cả users
+      const defaultStagesList: StageData[] = (initialData.defaultStages as StageData[]) || [];
+      Object.values(loadedDb).forEach((u) => {
+        if (!u.stages || u.stages.length === 0) {
+          u.stages = JSON.parse(JSON.stringify(defaultStagesList));
+        } else {
+          defaultStagesList.forEach((defStage) => {
+            const existing = u.stages.find((s) => s.id === defStage.id);
+            if (existing) {
+              existing.name = defStage.name;
+              existing.totalSteps = defStage.totalSteps;
+            } else {
+              u.stages.push({ ...defStage });
+            }
+          });
+          // Sắp xếp thứ tự các màn chơi
+          u.stages.sort((a, b) => {
+            const idxA = defaultStagesList.findIndex((s) => s.id === a.id);
+            const idxB = defaultStagesList.findIndex((s) => s.id === b.id);
+            return (idxA >= 0 ? idxA : 99) - (idxB >= 0 ? idxB : 99);
+          });
         }
-      } else if (u.stages) {
-        const s0 = u.stages.find((s) => s.id === 'stage_0');
-        if (s0) s0.name = 'Cuộc Đua Chuyển Sinh';
-      }
-    });
+      });
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedDb));
-    set({ usersDb: loadedDb });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedDb));
+      set({ usersDb: loadedDb });
 
-    // 2. Kiểm tra Session Token 24h
-    const session = authUtil.getSession();
-    if (session) {
-      let user: UserData | null | undefined = loadedDb[session.username];
-      if (!user) {
-        user = await gameApi.getUserByUsername(session.username);
+      // 2. Kiểm tra Session Token 24h
+      const session = authUtil.getSession();
+      if (session) {
+        let user: UserData | null | undefined = loadedDb[session.username];
+        if (!user) {
+          user = await gameApi.getUserByUsername(session.username);
+        }
+
+        if (user) {
+          set({ currentUser: user, currentSession: session });
+          const targetRoute = window.location.pathname === '/menu' ? '/menu' : '/game';
+          get().navigate(targetRoute);
+          return;
+        }
       }
 
-      if (user) {
-        set({ currentUser: user, currentSession: session });
-        get().navigate('/game');
-        return;
-      }
+      // Nếu không có token hợp lệ
+      authUtil.clearSession();
+      set({ currentUser: null, currentSession: null });
+      get().navigate('/login');
+    } finally {
+      // Đánh dấu đã hoàn thành quá trình kiểm tra xác thực
+      set({ isAuthLoading: false });
     }
-
-    // Nếu không có token hợp lệ
-    authUtil.clearSession();
-    set({ currentUser: null, currentSession: null });
-    get().navigate('/login');
   },
 
   checkUserByUsername: async (username: string) => {

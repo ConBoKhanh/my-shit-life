@@ -1,5 +1,6 @@
 import { GAME_CONFIG, getRandomEliteBotProfile, ELITE_BOT_PROFILES, type EliteBotProfile } from './GameConfig';
 import { TadpoleEntity } from './entities/Tadpole';
+import { SpikeObstacle } from './entities/SpikeObstacle';
 import { KeyboardController } from './input/KeyboardController';
 import type { InputState } from './input/InputState';
 import { MovementSystem } from './systems/MovementSystem';
@@ -27,6 +28,7 @@ export interface GameEngineCallbacks {
   onRankChange: (rank: number, total: number, distancePercent: number) => void;
   onFinish: (winner: WinnerInfo) => void;
   onPlayerHitBoundary?: () => void;
+  onPlayerHitSpike?: () => void;
 }
 
 export class GameEngine {
@@ -43,6 +45,7 @@ export class GameEngine {
   public player!: TadpoleEntity;
   public bots: TadpoleEntity[] = [];
   public allTadpoles: TadpoleEntity[] = [];
+  public spikes: SpikeObstacle[] = [];
 
   // Systems
   private keyboardController = new KeyboardController();
@@ -171,6 +174,39 @@ export class GameEngine {
     }
 
     this.allTadpoles = [this.player, ...this.bots];
+
+    // 3. Generate Spike Hazards along the Track
+    this.spikes = [];
+    const spikeCount = GAME_CONFIG.SPIKE_COUNT || 22;
+    const spawnStart = -500;
+    const spawnEnd = this.finishY + 500; // Leave 500px clear before finish egg
+    const totalDist = Math.abs(spawnEnd - spawnStart);
+    const stepDist = totalDist / (spikeCount + 1);
+
+    for (let i = 1; i <= spikeCount; i++) {
+      const y = spawnStart - i * stepDist + (Math.random() - 0.5) * 35;
+      const { centerX, width } = TrackPath.getBoundaries(y);
+
+      // Alternate lanes: left, center, right, chicane apex
+      const pattern = i % 4;
+      let laneOffsetFactor = 0;
+      if (pattern === 0) laneOffsetFactor = -0.26; // Left lane
+      else if (pattern === 1) laneOffsetFactor = 0.26; // Right lane
+      else if (pattern === 2) laneOffsetFactor = 0; // Center lane
+      else if (pattern === 3) laneOffsetFactor = (i % 2 === 0 ? -0.15 : 0.15); // Mid-lane
+
+      const x = centerX + laneOffsetFactor * (width * 0.8);
+
+      this.spikes.push(
+        new SpikeObstacle({
+          id: `spike_${i}`,
+          x,
+          y,
+          radius: GAME_CONFIG.SPIKE_RADIUS || 24,
+        })
+      );
+    }
+
     this.cameraX = 0;
     this.cameraY = -120;
 
@@ -207,8 +243,12 @@ export class GameEngine {
     }, 1000);
   }
 
+  public getStatus(): GameStateStatus {
+    return this.status;
+  }
+
   public pause() {
-    if (this.status !== 'running') return;
+    if (this.status !== 'running' && this.status !== 'countdown') return;
     this.status = 'paused';
     this.callbacks.onStatusChange('paused');
     if (this.animationFrameId) {
@@ -249,33 +289,43 @@ export class GameEngine {
   private update(dt: number) {
     if (this.status !== 'running' && this.status !== 'finished') return;
 
-    // 1. Get input
+    // 1. Update Spike Hazards Animation
+    for (const spike of this.spikes) {
+      spike.update(dt);
+    }
+
+    // 2. Get input
     const input = this.customInput && this.customInput.magnitude > 0.05
       ? this.customInput
       : this.keyboardController.getInput();
 
-    // 2. Update Player
+    // 3. Update Player & Check Collisions
     this.movementSystem.updatePlayer(this.player, input, dt);
     this.collisionSystem.checkBoundaries(this.player, this.trackWidth, () => {
       this.callbacks.onPlayerHitBoundary?.();
     });
+    this.collisionSystem.checkSpikeCollisions(this.player, this.spikes, () => {
+      this.callbacks.onPlayerHitSpike?.();
+    });
 
-    // 3. Update BOTs
+    // 4. Update BOTs & Check Collisions
     for (const bot of this.bots) {
       const botDir = this.botAISystem.calculateBotDirection(
         bot,
         this.allTadpoles,
         this.trackWidth,
-        this.finishY
+        this.finishY,
+        this.spikes
       );
       this.movementSystem.updateBot(bot, botDir, dt);
       this.collisionSystem.checkBoundaries(bot, this.trackWidth);
+      this.collisionSystem.checkSpikeCollisions(bot, this.spikes);
     }
 
-    // 4. Soft separation between tadpoles
+    // 5. Soft separation between tadpoles
     this.collisionSystem.checkTadpoleSeparation(this.allTadpoles);
 
-    // 5. Update Background Particles
+    // 6. Update Background Particles
     for (const p of this.bgParticles) {
       p.y -= p.speed * dt;
       if (p.y < this.finishY - 200) {
@@ -284,7 +334,7 @@ export class GameEngine {
       }
     }
 
-    // 6. Camera Follow Player & Track Curvature Smoothly
+    // 7. Camera Follow Player & Track Curvature Smoothly
     const isMobile = this.cssWidth < 768;
     const currentTrackCenterX = TrackPath.getCenterX(this.player.y);
     const lookaheadTrackCenterX = TrackPath.getCenterX(this.player.y - (isMobile ? 220 : 150));
@@ -295,10 +345,10 @@ export class GameEngine {
     this.cameraX += (targetCamX - this.cameraX) * Math.min(1, dt * 8.5);
     this.cameraY += (targetCamY - this.cameraY) * Math.min(1, dt * 8.5);
 
-    // 7. Calculate Rank & Distance
+    // 8. Calculate Rank & Distance
     this.updateRank();
 
-    // 8. Check Finish Line
+    // 9. Check Finish Line
     if (this.status === 'running') {
       const result: FinishResult | null = this.finishSystem.checkFinishLine(this.allTadpoles, this.finishY);
       if (result) {
@@ -363,13 +413,13 @@ export class GameEngine {
     ctx.scale(dpr, dpr);
 
     // 2. Responsive Viewport Scaling
-    // On mobile / narrow screens, zoom out so the full 700px track + grand curves (±260px) fit comfortably
+    // On mobile / narrow screens, zoom out so the full 720px track + grand curves (±270px) fit comfortably
     const isMobile = cssW < 768;
-    const targetVisibleWorldWidth = isMobile ? 1320 : 1000;
+    const targetVisibleWorldWidth = isMobile ? 1340 : 1050;
     const zoomScale = Math.min(1.0, cssW / targetVisibleWorldWidth);
 
     // Viewport Center:
-    // Horizontal center = cssW / 2 (centers the race right in the middle of phone screen)
+    // Horizontal center = cssW / 2 (centers the race right in the middle of screen)
     // Vertical center = on mobile place player at 65% height so player has an expansive view of upcoming bends
     const viewportCenterY = isMobile ? cssH * 0.65 : cssH * 0.54;
 
@@ -387,14 +437,15 @@ export class GameEngine {
     }
     ctx.restore();
 
-    // 4. Render Race Track, Boundaries, & Giant Ovum Egg
+    // 4. Render Race Track, Boundaries, Spikes & Giant Ovum Egg
     this.trackRenderer.renderTrack(
       ctx,
       this.trackWidth,
       this.trackLength,
       this.finishY,
       this.totalElapsedTime,
-      this.cameraY
+      this.cameraY,
+      this.spikes
     );
 
     // 5. Render All Tadpoles (BOTs first, Player on top)
@@ -406,3 +457,4 @@ export class GameEngine {
     ctx.restore();
   }
 }
+

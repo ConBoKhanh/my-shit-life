@@ -1,4 +1,5 @@
 import { TadpoleEntity } from '../entities/Tadpole';
+import { SpikeObstacle } from '../entities/SpikeObstacle';
 import { soundEffects } from '../audio/SoundEffects';
 import { TrackPath } from '../TrackPath';
 
@@ -31,12 +32,50 @@ export class CollisionSystem {
     }
 
     if (hit) {
-      if (!tadpole.isSlowed) {
+      if (!tadpole.isSlowed && !tadpole.isStunned) {
         tadpole.applyBoundarySlow();
         if (tadpole.type === 'player') {
           soundEffects.playBoundaryHit();
           onPlayerHitBoundary?.();
         }
+      }
+    }
+  }
+
+  public checkSpikeCollisions(
+    tadpole: TadpoleEntity,
+    spikes: SpikeObstacle[],
+    onPlayerHitSpike?: () => void
+  ) {
+    // If tadpole is stunned or in post-spike immunity grace period, ignore spike collisions
+    if (tadpole.isStunned || tadpole.spikeImmunityTimer > 0) return;
+
+    for (const spike of spikes) {
+      // Quick bounding box check before hypot
+      const dy = Math.abs(tadpole.y - spike.y);
+      if (dy > tadpole.radius + spike.radius) continue;
+
+      const dx = Math.abs(tadpole.x - spike.x);
+      if (dx > tadpole.radius + spike.radius) continue;
+
+      const dist = Math.hypot(tadpole.x - spike.x, tadpole.y - spike.y);
+      const hitDistance = tadpole.radius + spike.radius;
+
+      if (dist < hitDistance) {
+        // Gently bounce / repel tadpole out of the spike body so it doesn't overlap
+        const nx = dist > 0.001 ? (tadpole.x - spike.x) / dist : 0;
+        const ny = dist > 0.001 ? (tadpole.y - spike.y) / dist : 1;
+        tadpole.x = spike.x + nx * (hitDistance + 10);
+        tadpole.y = spike.y + ny * (hitDistance + 10);
+
+        // Trigger 1.0s stun (plus grace period)
+        tadpole.applyStun(1000);
+
+        if (tadpole.type === 'player') {
+          soundEffects.playSpikeStunSound();
+          onPlayerHitSpike?.();
+        }
+        break;
       }
     }
   }

@@ -1,43 +1,51 @@
 export class TrackPath {
-  public static readonly TOTAL_LENGTH = 5200;
-  public static readonly DEFAULT_WIDTH = 700;
+  public static readonly TOTAL_LENGTH = 7600;
+  public static readonly DEFAULT_WIDTH = 720;
 
   /**
    * Returns the center X coordinate of the track at distance Y (Y <= 0)
-   * Creates a dynamic F1-style circuit with chicanes, high-speed sweepers, and hairpin turns.
+   * Continuous C-infinity harmonic spline with velvety smooth curves, no abrupt jumps or jagged kinks.
    */
   public static getCenterX(y: number): number {
     if (y > 0) return 0;
+    if (-y >= TrackPath.TOTAL_LENGTH) return 0;
     const progress = Math.min(1, Math.max(0, -y / TrackPath.TOTAL_LENGTH));
 
-    // Composite harmonic spline:
-    // 1. Primary macro curves (left & right grand turns)
-    const macro = Math.sin(progress * Math.PI * 2.2) * 260;
-    // 2. High-speed chicane & S-bends
-    const chicane = Math.sin(progress * Math.PI * 5) * 150;
-    // 3. Technical twist in mid-sector
-    const technical = Math.sin(progress * Math.PI * 9) * 65 * (progress > 0.3 && progress < 0.85 ? 1 : 0.3);
-
-    // Smooth envelope: keeps starting grid straight (0 to 0.08) and straightens final approach to egg (0.92 to 1)
+    // Smooth Cosine Bell Envelope for straight starting line and straight finish approach
     let envelope = 1;
-    if (progress < 0.08) {
-      envelope = Math.sin((progress / 0.08) * (Math.PI / 2));
+    if (progress < 0.05) {
+      // Smoothly transition from straight line at spawn
+      envelope = 0.5 * (1 - Math.cos((progress / 0.05) * Math.PI));
     } else if (progress > 0.92) {
-      envelope = Math.sin(((1 - progress) / 0.08) * (Math.PI / 2));
+      // Smoothly straighten toward giant egg at finish
+      envelope = 0.5 * (1 - Math.cos(((1 - progress) / 0.08) * Math.PI));
     }
 
-    return (macro + chicane + technical) * envelope;
+    // Ultra smooth continuous harmonic spline:
+    // 1. Grand high-speed sweepers (left & right grand turns)
+    const grandSweeper = Math.sin(progress * Math.PI * 2) * 270;
+    // 2. Continuous flowing S-chicanes
+    const flowingChicane = Math.sin(progress * Math.PI * 4) * 130;
+    // 3. Subtle organic biological undulation
+    const bioUndulation = Math.sin(progress * Math.PI * 6) * 40;
+
+    return (grandSweeper + flowingChicane + bioUndulation) * envelope;
   }
 
   /**
-   * Returns track width at distance Y
+   * Returns track width at distance Y (smooth organic breathing width & Egg Chamber flare)
    */
   public static getWidth(y: number): number {
     if (y > 0) return TrackPath.DEFAULT_WIDTH;
+    if (-y >= TrackPath.TOTAL_LENGTH) {
+      // Smoothly flare out into the grand Egg Sanctuary amphitheater
+      const past = Math.min(1000, -y - TrackPath.TOTAL_LENGTH);
+      return Math.min(960, TrackPath.DEFAULT_WIDTH + 50 + past * 0.25);
+    }
     const progress = Math.min(1, Math.max(0, -y / TrackPath.TOTAL_LENGTH));
-    // Narrowing in technical hairpins, widening at start and finish
-    const variation = Math.cos(progress * Math.PI * 6) * 55;
-    return Math.max(560, Math.min(780, TrackPath.DEFAULT_WIDTH + variation));
+    // Smooth width variation across sectors
+    const variation = Math.cos(progress * Math.PI * 4) * 50;
+    return Math.max(600, Math.min(800, TrackPath.DEFAULT_WIDTH + variation));
   }
 
   /**
@@ -71,3 +79,4 @@ export class TrackPath {
     };
   }
 }
+

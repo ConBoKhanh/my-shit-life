@@ -35,6 +35,9 @@ export class TadpoleEntity {
   
   public isSlowed: boolean = false;
   public slowTimer: number = 0; // in milliseconds
+  public isStunned: boolean = false;
+  public stunTimer: number = 0; // in milliseconds (1000ms = 1.0s)
+  public spikeImmunityTimer: number = 0; // in milliseconds (prevents being re-stunned immediately)
   public isFinished: boolean = false;
   public finishTime: number = 0;
   
@@ -47,6 +50,7 @@ export class TadpoleEntity {
   public lanePreference: number;
   public wobbleFrequency: number;
   public wobbleTimer: number = Math.random() * 100;
+  public stunRotation: number = 0;
 
   constructor(props: TadpoleProps) {
     this.id = props.id;
@@ -73,7 +77,34 @@ export class TadpoleEntity {
     this.slowTimer = GAME_CONFIG.BOUNDARY_SLOW_DURATION;
   }
 
+  public applyStun(durationMs: number = GAME_CONFIG.SPIKE_STUN_DURATION) {
+    this.isStunned = true;
+    this.stunTimer = durationMs;
+    // 1.0s stun + 1.2s post-stun immunity so tadpole has plenty of time to swim away
+    this.spikeImmunityTimer = durationMs + 1200;
+    this.vx = 0;
+    this.vy = 0;
+  }
+
   public update(dt: number) {
+    // Update stun effect timer (1.0s duration)
+    if (this.isStunned) {
+      this.stunTimer -= dt * 1000;
+      this.stunRotation += dt * 8; // Dizzy star rotation
+      if (this.stunTimer <= 0) {
+        this.isStunned = false;
+        this.stunTimer = 0;
+      }
+    }
+
+    // Update spike immunity grace period timer
+    if (this.spikeImmunityTimer > 0) {
+      this.spikeImmunityTimer -= dt * 1000;
+      if (this.spikeImmunityTimer <= 0) {
+        this.spikeImmunityTimer = 0;
+      }
+    }
+
     // Update slow effect timer
     if (this.isSlowed) {
       this.slowTimer -= dt * 1000;
@@ -85,12 +116,12 @@ export class TadpoleEntity {
 
     // Tail wave animation
     const currentSpeed = Math.hypot(this.vx, this.vy);
-    const speedRatio = Math.max(0.4, currentSpeed / this.baseSpeed);
+    const speedRatio = this.isStunned ? 0.1 : Math.max(0.4, currentSpeed / this.baseSpeed);
     this.tailPhase += dt * this.tailWagSpeed * speedRatio;
     this.wobbleTimer += dt * this.wobbleFrequency;
 
     // Angle interpolation toward movement direction
-    if (currentSpeed > 5) {
+    if (currentSpeed > 5 && !this.isStunned) {
       this.targetAngle = Math.atan2(this.vy, this.vx);
     }
     

@@ -5,18 +5,20 @@ import {
   RotateCcw,
   Volume2,
   VolumeX,
-  Pause,
   Play,
   Sparkles,
   ArrowRight,
   Flame,
   Zap,
+  AlertTriangle,
 } from 'lucide-react';
 import { GameEngine } from '../../../game/tadpole/GameEngine';
 import type { GameStateStatus, WinnerInfo } from '../../../game/tadpole/GameEngine';
 import { VirtualJoystick } from './VirtualJoystick';
 import { soundEffects } from '../../../game/tadpole/audio/SoundEffects';
 import type { InputState } from '../../../game/tadpole/input/InputState';
+import { backgroundMusicManager } from '../../../services/backgroundMusicManager';
+import raceBgmAudioSrc from '../../../assets/Dj Kantik - Teriyaki Boyz - Tokyo Drift & Sean Paul - Temperature (Remix) (mp3cut.net).mp3';
 
 interface TadpoleRaceScreenProps {
   onVictory: (winnerInfo: WinnerInfo) => void;
@@ -29,6 +31,7 @@ export const TadpoleRaceScreen: React.FC<TadpoleRaceScreenProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const engineRef = useRef<GameEngine | null>(null);
+  const raceBgmRef = useRef<HTMLAudioElement | null>(null);
 
   const [status, setStatus] = useState<GameStateStatus>('idle');
   const [countdownText, setCountdownText] = useState<string | number>('');
@@ -38,6 +41,7 @@ export const TadpoleRaceScreen: React.FC<TadpoleRaceScreenProps> = ({
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [winner, setWinner] = useState<WinnerInfo | null>(null);
   const [isSlowed, setIsSlowed] = useState<boolean>(false);
+  const [isStunned, setIsStunned] = useState<boolean>(false);
 
   // Detect mobile
   const [isMobile, setIsMobile] = useState<boolean>(() => {
@@ -94,6 +98,10 @@ export const TadpoleRaceScreen: React.FC<TadpoleRaceScreenProps> = ({
         setIsSlowed(true);
         setTimeout(() => setIsSlowed(false), 500);
       },
+      onPlayerHitSpike: () => {
+        setIsStunned(true);
+        setTimeout(() => setIsStunned(false), 1000);
+      },
     });
 
     engineRef.current = engine;
@@ -105,6 +113,49 @@ export const TadpoleRaceScreen: React.FC<TadpoleRaceScreenProps> = ({
     };
   }, [resizeCanvas]);
 
+  // Đảm bảo dừng hẳn playlist nhạc nền chung khi vào màn đua
+  useEffect(() => {
+    backgroundMusicManager.pauseBackgroundMusic();
+  }, []);
+
+  // Quản lý phát nhạc Tokyo Drift x1.2 cho riêng cuộc đua
+  useEffect(() => {
+    if (status === 'countdown' || status === 'running') {
+      if (!raceBgmRef.current) {
+        const audio = new Audio(raceBgmAudioSrc);
+        audio.loop = true;
+        audio.playbackRate = 1.2;
+        audio.defaultPlaybackRate = 1.2;
+        audio.volume = isMuted ? 0 : 0.35;
+        audio.muted = isMuted;
+        raceBgmRef.current = audio;
+      }
+      raceBgmRef.current.playbackRate = 1.2;
+      raceBgmRef.current.defaultPlaybackRate = 1.2;
+      raceBgmRef.current.muted = isMuted;
+      raceBgmRef.current.volume = isMuted ? 0 : 0.35;
+      raceBgmRef.current.play().catch(() => {});
+    } else if (status === 'paused') {
+      raceBgmRef.current?.pause();
+    } else if (status === 'finished' || status === 'idle') {
+      if (raceBgmRef.current) {
+        raceBgmRef.current.pause();
+        raceBgmRef.current.currentTime = 0;
+      }
+    }
+  }, [status, isMuted]);
+
+  // Dọn dẹp nhạc Tokyo Drift khi rời màn đua
+  useEffect(() => {
+    return () => {
+      if (raceBgmRef.current) {
+        raceBgmRef.current.pause();
+        raceBgmRef.current.src = '';
+        raceBgmRef.current = null;
+      }
+    };
+  }, []);
+
   const handleStartGame = () => {
     setWinner(null);
     engineRef.current?.startRace();
@@ -115,19 +166,15 @@ export const TadpoleRaceScreen: React.FC<TadpoleRaceScreenProps> = ({
     engineRef.current?.startRace();
   };
 
-  const handleTogglePause = () => {
-    if (status === 'running') {
-      engineRef.current?.pause();
-    } else if (status === 'paused') {
-      engineRef.current?.resume();
-    }
-  };
-
-  const handleToggleMute = () => {
+  const handleToggleMute = useCallback(() => {
     const next = !isMuted;
     setIsMuted(next);
     soundEffects.isMuted = next;
-  };
+    if (raceBgmRef.current) {
+      raceBgmRef.current.muted = next;
+      raceBgmRef.current.volume = next ? 0 : 0.35;
+    }
+  }, [isMuted]);
 
   // Vượt màn nhanh (Pass màn / Ctrl + K)
   const handleInstantVictory = useCallback(() => {
@@ -142,6 +189,7 @@ export const TadpoleRaceScreen: React.FC<TadpoleRaceScreenProps> = ({
   // Lắng nghe phím tắt Ctrl + K để pass màn ngay lập tức
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl + K -> Pass race
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         handleInstantVictory();
@@ -247,6 +295,31 @@ export const TadpoleRaceScreen: React.FC<TadpoleRaceScreenProps> = ({
                 <span>CHẠM BIÊN: -50% SPEED</span>
               </motion.div>
             )}
+
+            {/* Stunned Warning Badge */}
+            {isStunned && (
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1.05, opacity: 1 }}
+                exit={{ opacity: 0 }}
+                style={{
+                  backgroundColor: '#7C3AED',
+                  border: '1.5px solid #C084FC',
+                  color: '#FFFFFF',
+                  padding: isMobile ? '4px 6px' : '5px 10px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: isMobile ? '10px' : '11px',
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  boxShadow: '0 0 14px rgba(192, 132, 252, 0.8)',
+                }}
+              >
+                <AlertTriangle size={isMobile ? 11 : 13} color="#FDE047" />
+                <span>DÍNH GAI: CHOÁNG 1s!</span>
+              </motion.div>
+            )}
           </div>
 
           {/* Right: Progress to Egg & Controls */}
@@ -295,44 +368,32 @@ export const TadpoleRaceScreen: React.FC<TadpoleRaceScreenProps> = ({
               </button>
             )}
 
-            {/* Pause / Resume */}
-            <button
-              type="button"
-              onClick={handleTogglePause}
-              style={{
-                background: 'rgba(255, 255, 255, 0.15)',
-                backdropFilter: 'blur(8px)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                borderRadius: 'var(--radius-sm)',
-                padding: isMobile ? '5px 7px' : '8px 12px',
-                cursor: 'pointer',
-                color: '#FFFFFF',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-              title={status === 'paused' ? 'Tiếp tục' : 'Tạm dừng'}
-            >
-              {status === 'paused' ? <Play size={isMobile ? 13 : 16} /> : <Pause size={isMobile ? 13 : 16} />}
-            </button>
-
             {/* Mute / Unmute */}
             <button
               type="button"
-              onClick={handleToggleMute}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleMute();
+              }}
               style={{
-                background: isMuted ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.2)',
+                background: isMuted ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.18)',
                 backdropFilter: 'blur(8px)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
+                border: '1.5px solid rgba(255, 255, 255, 0.35)',
                 borderRadius: 'var(--radius-sm)',
-                padding: isMobile ? '5px 7px' : '8px 12px',
+                padding: isMobile ? '6px 10px' : '8px 14px',
                 cursor: 'pointer',
                 color: isMuted ? 'var(--color-text-disabled)' : '#FFFFFF',
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: isMobile ? '36px' : '42px',
+                minHeight: isMobile ? '36px' : '40px',
+                pointerEvents: 'auto',
+                touchAction: 'manipulation',
               }}
               title={isMuted ? 'Bật âm thanh' : 'Tắt âm thanh'}
             >
-              {isMuted ? <VolumeX size={isMobile ? 13 : 16} /> : <Volume2 size={isMobile ? 13 : 16} />}
+              {isMuted ? <VolumeX size={isMobile ? 15 : 18} /> : <Volume2 size={isMobile ? 15 : 18} />}
             </button>
           </div>
         </div>
@@ -444,16 +505,19 @@ export const TadpoleRaceScreen: React.FC<TadpoleRaceScreenProps> = ({
                 <div style={{ fontWeight: 800, marginBottom: '6px', color: 'var(--color-primary)', fontSize: isMobile ? '13px' : '14px' }}>
                   Luật Sinh Tử (Không Đọc Ráng Chịu):
                 </div>
-                <div style={{ marginBottom: '4px' }}>
-                  • <b>Nòng Nọc Người Thường:</b> Bạn là nòng nọc bình dân đang phải chạy đua với 20 nòng nọc tinh hoa xã hội!
+                <div style={{ marginBottom: '5px' }}>
+                  • <b style={{ color: '#FACC15' }}>Nòng Nọc Người Thường (Bạn):</b> Là nòng nọc bình dân đang phải chạy đua với <b style={{ color: '#38BDF8' }}>20 nòng nọc tinh hoa xã hội</b>!
                 </div>
-                <div style={{ marginBottom: '4px' }}>
-                  • <b>Đua khốc liệt:</b> Bơi cật lực vượt mặt các nòng nọc tỷ phú, chủ tịch, bác sĩ, ca sĩ... để chạm vào <b>Trứng Noãn Bào</b> đầu tiên!
+                <div style={{ marginBottom: '5px' }}>
+                  • <b style={{ color: '#00F2FE' }}>Tranh Noãn Bào:</b> Bơi cật lực vượt mặt các đối thủ tỷ phú, chủ tịch, bác sĩ, siêu sao... để chạm vào <b style={{ color: '#FB7185' }}>Trứng Noãn Bào</b> đầu tiên!
                 </div>
-                <div style={{ marginBottom: '4px' }}>
-                  • <b>Tử địa vạch biên:</b> Cạ vào 2 bên thành sẽ bị tắc đường sinh học, tụt <b>50% tốc độ</b>!
+                <div style={{ marginBottom: '5px' }}>
+                  • <b style={{ color: '#F43F5E' }}>Gai Sinh Học:</b> Đâm vào bụi gai sẽ bị <b style={{ color: '#FACC15' }}>CHOÁNG 1 GIÂY</b> bất động!
                 </div>
-                <div style={{ color: '#F87171' }}>
+                <div style={{ marginBottom: '5px' }}>
+                  • <b style={{ color: '#F87171' }}>Tử địa vạch biên:</b> Cạ vào 2 bên thành sẽ bị tắc đường sinh học, tụt <b style={{ color: '#F87171' }}>50% tốc độ</b>!
+                </div>
+                <div style={{ color: '#FDA4AF', fontStyle: 'italic' }}>
                   • <b>Cảnh báo:</b> Thua cuộc là coi chừng kiếp sau đầu thai nhầm làm Phạm Tường Lan Thy đó!
                 </div>
               </div>
@@ -654,10 +718,18 @@ export const TadpoleRaceScreen: React.FC<TadpoleRaceScreenProps> = ({
                     <div style={{ fontSize: '10px', fontWeight: 700, color: '#F87171', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                       Thân Thế Đối Thủ Về Nhất:
                     </div>
-                    <div style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: 900, color: '#FFFFFF', marginTop: '3px' }}>
+                    <div
+                      style={{
+                        fontSize: isMobile ? '16px' : '19px',
+                        fontWeight: 900,
+                        color: '#FACC15',
+                        marginTop: '3px',
+                        textShadow: '0 0 12px rgba(250, 204, 21, 0.45)',
+                      }}
+                    >
                       {winner.botProfile.title}
                     </div>
-                    <div style={{ fontSize: isMobile ? '11px' : '12px', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+                    <div style={{ fontSize: isMobile ? '11px' : '12px', color: '#FDE047', fontWeight: 600, marginTop: '2px' }}>
                       {winner.botProfile.description}
                     </div>
                     <div style={{ fontSize: isMobile ? '11px' : '12px', fontStyle: 'italic', color: '#FCA5A5', marginTop: '4px' }}>

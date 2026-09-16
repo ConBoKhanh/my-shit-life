@@ -66,6 +66,50 @@ export class SoundEffects {
     }
   }
 
+  public playSpikeStunSound() {
+    if (this.isMuted) return;
+    this.initContext();
+    if (!this.ctx) return;
+
+    try {
+      // 1. Harsh impact pop
+      const osc1 = this.ctx.createOscillator();
+      const gain1 = this.ctx.createGain();
+
+      osc1.frequency.setValueAtTime(480, this.ctx.currentTime);
+      osc1.frequency.exponentialRampToValueAtTime(120, this.ctx.currentTime + 0.18);
+      osc1.type = 'sawtooth';
+
+      gain1.gain.setValueAtTime(0.24, this.ctx.currentTime);
+      gain1.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.18);
+
+      osc1.connect(gain1);
+      gain1.connect(this.ctx.destination);
+
+      osc1.start();
+      osc1.stop(this.ctx.currentTime + 0.2);
+
+      // 2. Dizzy warble chirp
+      const osc2 = this.ctx.createOscillator();
+      const gain2 = this.ctx.createGain();
+
+      osc2.frequency.setValueAtTime(650, this.ctx.currentTime + 0.05);
+      osc2.frequency.linearRampToValueAtTime(320, this.ctx.currentTime + 0.35);
+      osc2.type = 'sine';
+
+      gain2.gain.setValueAtTime(0.18, this.ctx.currentTime + 0.05);
+      gain2.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.38);
+
+      osc2.connect(gain2);
+      gain2.connect(this.ctx.destination);
+
+      osc2.start(this.ctx.currentTime + 0.05);
+      osc2.stop(this.ctx.currentTime + 0.4);
+    } catch {
+      // Safe fallback
+    }
+  }
+
   public playVictoryFanfare() {
     if (this.isMuted) return;
     this.initContext();

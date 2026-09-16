@@ -9,19 +9,25 @@ export interface GameConfigType {
   TADPOLE_RADIUS: number;
   COUNTDOWN_SECONDS: number;
   TARGET_FPS: number;
+  SPIKE_COUNT: number;
+  SPIKE_RADIUS: number;
+  SPIKE_STUN_DURATION: number;
 }
 
 export const GAME_CONFIG: GameConfigType = {
   BOT_COUNT: 20, // 1 Player + 20 BOTs = 21 Tadpoles
   BOT_BASE_SPEED: 260, // pixels per second
-  PLAYER_SPEED_MULTIPLIER: 1.2, // Player is 1.2x faster than base BOT
+  PLAYER_SPEED_MULTIPLIER: 1.07, // Player is 1.07x faster than base BOT
   BOUNDARY_SLOW_FACTOR: 0.5, // 50% speed penalty on boundary contact
   BOUNDARY_SLOW_DURATION: 500, // 500ms slow duration
-  TRACK_WIDTH: 700, // Default width of the race track in world units
-  TRACK_LENGTH: 5200, // Total track distance to the egg (~50s intense race)
+  TRACK_WIDTH: 720, // Default width of the race track in world units
+  TRACK_LENGTH: 7600, // Total track distance to the egg (~30-35s intense race)
   TADPOLE_RADIUS: 14, // Collision & visual radius
   COUNTDOWN_SECONDS: 3,
   TARGET_FPS: 60,
+  SPIKE_COUNT: 22, // Number of spike hazards placed along the track
+  SPIKE_RADIUS: 24, // Collision radius of spike hazard
+  SPIKE_STUN_DURATION: 1000, // 1000ms (1.0s) stun when hitting spike
 };
 
 export interface EliteBotProfile {

@@ -1,4 +1,5 @@
 import { TrackPath } from '../TrackPath';
+import { SpikeObstacle } from '../entities/SpikeObstacle';
 
 export class TrackRenderer {
   public renderTrack(
@@ -7,24 +8,30 @@ export class TrackRenderer {
     trackLength: number,
     finishY: number,
     time: number,
-    cameraY: number = 0
+    cameraY: number = 0,
+    spikes: SpikeObstacle[] = []
   ) {
-    // Determine visible slice range to optimize rendering
-    const viewMargin = 850;
-    const startY = Math.min(250, cameraY + viewMargin);
-    const endY = Math.max(finishY - 200, cameraY - viewMargin);
-    const step = 35; // 35px slice resolution for ultra smooth curves
+    // Determine visible slice range to cover entire camera viewport seamlessly
+    const viewMargin = 1200;
+    const startY = cameraY + viewMargin;
+    const endY = cameraY - viewMargin;
+    const step = 32; // 32px slice resolution for ultra smooth curves
+
+    // 0. Grand Egg Sanctuary Dome Background (When near finish)
+    if (endY < finishY + 800) {
+      this.renderEggSanctumDome(ctx, finishY, time);
+    }
 
     // 1. Render Track Surface Polygons
     ctx.save();
     for (let y = startY; y > endY; y -= step) {
       const y1 = y;
-      const y2 = Math.max(finishY - 200, y - step);
+      const y2 = y - step;
 
       const b1 = TrackPath.getBoundaries(y1);
       const b2 = TrackPath.getBoundaries(y2);
 
-      // 1. Warm organic biological amniotic fluid floor for each slice
+      // Warm organic biological amniotic fluid floor for each slice
       const sliceGrad = ctx.createLinearGradient(b1.leftX, y1, b1.rightX, y1);
       sliceGrad.addColorStop(0, 'rgba(159, 18, 57, 0.65)'); // deep rose red boundary
       sliceGrad.addColorStop(0.25, 'rgba(80, 7, 36, 0.85)'); // rich womb fluid
@@ -72,12 +79,12 @@ export class TrackRenderer {
     ctx.stroke();
     ctx.restore();
 
-    // 3. Render Distance Markers
+    // 3. Render Distance Markers (Up to 100%)
     ctx.save();
     ctx.font = 'bold 12px Inter, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(255, 228, 230, 0.5)';
-    for (let y = -600; y > finishY + 200; y -= 600) {
+    ctx.fillStyle = 'rgba(255, 228, 230, 0.6)';
+    for (let y = -600; y >= finishY; y -= 600) {
       if (y < startY && y > endY) {
         const b = TrackPath.getBoundaries(y);
         ctx.beginPath();
@@ -88,17 +95,20 @@ export class TrackRenderer {
         ctx.strokeStyle = 'rgba(251, 113, 133, 0.25)';
         ctx.stroke();
 
-        const progressPercent = Math.round((Math.abs(y) / trackLength) * 100);
+        const progressPercent = Math.min(100, Math.round((Math.abs(y) / trackLength) * 100));
         ctx.fillText(`CỘT MỐC ${progressPercent}%`, b.centerX, y - 8);
       }
     }
     ctx.restore();
 
-    // 4. Render Left and Right Bioluminescent Boundary Walls & F1 Kerbs
+    // 4. Render Biological Spike Obstacles (Gai Chướng Ngại Vật)
+    this.renderSpikes(ctx, spikes, time, cameraY, viewMargin);
+
+    // 5. Render Left and Right Bioluminescent Boundary Walls & F1 Kerbs
     this.renderCurvedWall(ctx, startY, endY, step, time, true);
     this.renderCurvedWall(ctx, startY, endY, step, time, false);
 
-    // 5. Start Line
+    // 6. Start Line
     if (100 < startY && 100 > endY) {
       const bStart = TrackPath.getBoundaries(100);
       ctx.save();
@@ -117,9 +127,133 @@ export class TrackRenderer {
       ctx.restore();
     }
 
-    // 6. Grand Glowing Ovum / Egg at Finish Line
+    // 7. Grand Glowing Ovum / Egg at Finish Line
     const eggX = TrackPath.getCenterX(finishY);
     this.renderEgg(ctx, eggX, finishY, time);
+  }
+
+  public renderSpikes(
+    ctx: CanvasRenderingContext2D,
+    spikes: SpikeObstacle[],
+    _time: number,
+    cameraY: number,
+    viewMargin: number
+  ) {
+    if (!spikes || spikes.length === 0) return;
+
+    for (const spike of spikes) {
+      // Cull offscreen spikes
+      if (spike.y > cameraY + viewMargin || spike.y < cameraY - viewMargin) continue;
+
+      ctx.save();
+      ctx.translate(spike.x, spike.y);
+
+      const r = spike.radius;
+      const pulse = Math.sin(spike.pulsePhase) * 2;
+      const effectiveRadius = r + pulse;
+
+      // 1. Pulsating Hazard Glow Aura
+      const auraGrad = ctx.createRadialGradient(0, 0, r * 0.3, 0, 0, r * 2.2);
+      auraGrad.addColorStop(0, 'rgba(225, 29, 72, 0.55)');
+      auraGrad.addColorStop(0.5, 'rgba(168, 85, 247, 0.25)');
+      auraGrad.addColorStop(1, 'rgba(168, 85, 247, 0)');
+
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 2.2, 0, Math.PI * 2);
+      ctx.fillStyle = auraGrad;
+      ctx.fill();
+
+      // 2. Rotating Biological Thorn Spines (8 sharp thorn blades)
+      ctx.save();
+      ctx.rotate(spike.rotation);
+      const spineCount = 8;
+      for (let i = 0; i < spineCount; i++) {
+        const spineAngle = (i / spineCount) * Math.PI * 2;
+        const outerLen = effectiveRadius * 1.35;
+        const baseWidth = 7;
+
+        ctx.save();
+        ctx.rotate(spineAngle);
+
+        ctx.beginPath();
+        ctx.moveTo(0, -outerLen);
+        ctx.lineTo(-baseWidth, -r * 0.4);
+        ctx.lineTo(baseWidth, -r * 0.4);
+        ctx.closePath();
+
+        const spineGrad = ctx.createLinearGradient(0, -outerLen, 0, 0);
+        spineGrad.addColorStop(0, '#FFA8A8');
+        spineGrad.addColorStop(0.3, '#E11D48');
+        spineGrad.addColorStop(1, '#4C0519');
+        ctx.fillStyle = spineGrad;
+        ctx.fill();
+
+        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.stroke();
+
+        ctx.restore();
+      }
+      ctx.restore();
+
+      // 3. Central Poisonous Urchin Core
+      const coreGrad = ctx.createRadialGradient(-r * 0.2, -r * 0.2, r * 0.1, 0, 0, r * 0.85);
+      coreGrad.addColorStop(0, '#FFE4E6');
+      coreGrad.addColorStop(0.4, '#BE123C');
+      coreGrad.addColorStop(1, '#4C0519');
+
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.85, 0, Math.PI * 2);
+      ctx.fillStyle = coreGrad;
+      ctx.shadowColor = '#F43F5E';
+      ctx.shadowBlur = 12;
+      ctx.fill();
+
+      // Core inner ring
+      ctx.lineWidth = 1.8;
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.stroke();
+
+      // Pulsing toxic eye center
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.3 + pulse * 0.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#FACC15';
+      ctx.fill();
+
+      ctx.restore();
+    }
+  }
+
+  private renderEggSanctumDome(ctx: CanvasRenderingContext2D, finishY: number, time: number) {
+    ctx.save();
+    ctx.translate(0, finishY);
+
+    // 1. Giant Egg Sanctuary Dome Chamber Background
+    const domeGrad = ctx.createRadialGradient(0, -50, 80, 0, -50, 680);
+    domeGrad.addColorStop(0, 'rgba(159, 18, 57, 0.75)');
+    domeGrad.addColorStop(0.4, 'rgba(80, 7, 36, 0.9)');
+    domeGrad.addColorStop(0.75, 'rgba(40, 4, 18, 0.95)');
+    domeGrad.addColorStop(1, 'rgba(32, 6, 20, 0)');
+
+    ctx.beginPath();
+    ctx.arc(0, -50, 680, 0, Math.PI * 2);
+    ctx.fillStyle = domeGrad;
+    ctx.fill();
+
+    // 2. Concentric Sacred Bio-luminescent Ribs
+    const ringCount = 5;
+    for (let i = 1; i <= ringCount; i++) {
+      const ringRadius = 150 + i * 95;
+      const pulse = Math.sin(time * 2 + i * 0.8) * 4;
+      ctx.beginPath();
+      ctx.arc(0, -50, ringRadius + pulse, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(254, 205, 211, ${0.28 - i * 0.04})`;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([12, 16]);
+      ctx.stroke();
+    }
+
+    ctx.restore();
   }
 
   private renderCurvedWall(
@@ -135,7 +269,7 @@ export class TrackRenderer {
     // 1. Wall Glow Ribbons (Warm Coral / Rose Glow)
     for (let y = startY; y > endY; y -= step) {
       const y1 = y;
-      const y2 = Math.max(endY, y - step);
+      const y2 = y - step;
       const b1 = TrackPath.getBoundaries(y1);
       const b2 = TrackPath.getBoundaries(y2);
 

@@ -129,6 +129,28 @@ export const TadpoleRaceScreen: React.FC<TadpoleRaceScreenProps> = ({
     soundEffects.isMuted = next;
   };
 
+  // Vượt màn nhanh (Pass màn / Ctrl + K)
+  const handleInstantVictory = useCallback(() => {
+    engineRef.current?.stop();
+    onVictory({
+      tadpoleId: 'player',
+      isPlayer: true,
+      name: 'Nòng nọc chính nghĩa (Bạn)',
+    });
+  }, [onVictory]);
+
+  // Lắng nghe phím tắt Ctrl + K để pass màn ngay lập tức
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        handleInstantVictory();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleInstantVictory]);
+
   const handleJoystickInput = useCallback((input: InputState) => {
     if (engineRef.current) {
       engineRef.current.customInput = input;
@@ -246,6 +268,30 @@ export const TadpoleRaceScreen: React.FC<TadpoleRaceScreenProps> = ({
               <Flame size={isMobile ? 13 : 15} color="#FB7185" />
               <span>Đến Đích: {distancePercent}%</span>
             </div>
+
+            {/* Quick Pass Race / Victory (Ctrl + K) */}
+            <button
+              type="button"
+              onClick={handleInstantVictory}
+              style={{
+                background: 'rgba(234, 179, 8, 0.25)',
+                backdropFilter: 'blur(8px)',
+                border: '1.5px solid rgba(250, 204, 21, 0.7)',
+                borderRadius: 'var(--radius-sm)',
+                padding: isMobile ? '5px 8px' : '7px 12px',
+                cursor: 'pointer',
+                color: '#FACC15',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: isMobile ? '10px' : '12px',
+                fontWeight: 800,
+              }}
+              title="Thắng ngay lập tức (Phím tắt: Ctrl + K)"
+            >
+              <Zap size={isMobile ? 12 : 14} color="#FACC15" />
+              <span>Pass {isMobile ? '' : '(Ctrl+K)'}</span>
+            </button>
 
             {/* Pause / Resume */}
             <button
@@ -424,16 +470,40 @@ export const TadpoleRaceScreen: React.FC<TadpoleRaceScreenProps> = ({
                 <span>Bắt Đầu Bơi Giành Slot Làm Người!</span>
               </button>
 
-              {onBackToDashboard && (
+              <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
                 <button
                   type="button"
-                  onClick={onBackToDashboard}
+                  onClick={handleInstantVictory}
                   className="btn-outline"
-                  style={{ width: '100%', marginTop: '10px', padding: isMobile ? '10px' : '12px', fontSize: isMobile ? '13px' : '14px' }}
+                  style={{
+                    flex: 1,
+                    padding: isMobile ? '10px' : '12px',
+                    fontSize: isMobile ? '12px' : '13px',
+                    color: '#FACC15',
+                    borderColor: 'rgba(250, 204, 21, 0.5)',
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '5px',
+                  }}
+                  title="Thắng ngay lập tức (Ctrl + K)"
                 >
-                  <span>Về Bảng Tổng Quan</span>
+                  <Zap size={14} color="#FACC15" />
+                  <span>Pass (Ctrl+K)</span>
                 </button>
-              )}
+
+                {onBackToDashboard && (
+                  <button
+                    type="button"
+                    onClick={onBackToDashboard}
+                    className="btn-outline"
+                    style={{ flex: 1, padding: isMobile ? '10px' : '12px', fontSize: isMobile ? '12px' : '13px' }}
+                  >
+                    <span>Về Tổng Quan</span>
+                  </button>
+                )}
+              </div>
             </motion.div>
           </motion.div>
         )}

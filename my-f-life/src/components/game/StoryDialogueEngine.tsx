@@ -810,9 +810,41 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                 justifyContent: 'center',
                 alignItems: 'flex-end',
                 alignSelf: 'flex-end',
-                filter: 'brightness(1.06) drop-shadow(0 14px 32px rgba(0, 0, 0, 0.65))',
+                filter: 'brightness(1.05) contrast(1.02)',
               }}
             >
+              {/* Soft ambient backlight glow behind character */}
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '15%',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: '90%',
+                  height: '75%',
+                  background: 'radial-gradient(ellipse at center, rgba(139, 92, 246, 0.28) 0%, rgba(139, 92, 246, 0) 70%)',
+                  borderRadius: '50%',
+                  filter: 'blur(20px)',
+                  pointerEvents: 'none',
+                  zIndex: -1,
+                }}
+              />
+              {/* Ground contact shadow */}
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '-4px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: '70%',
+                  height: '16px',
+                  background: 'radial-gradient(ellipse at center, rgba(0, 0, 0, 0.45) 0%, transparent 75%)',
+                  borderRadius: '50%',
+                  filter: 'blur(3px)',
+                  pointerEvents: 'none',
+                  zIndex: -1,
+                }}
+              />
               <img
                 src={resolveAssetUrl(currentSpeaker.sprite)}
                 alt={currentSpeaker.name}
@@ -823,6 +855,8 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                   display: 'block',
                   verticalAlign: 'bottom',
                   marginBottom: 0,
+                  maskImage: 'linear-gradient(to bottom, black 86%, transparent 100%)',
+                  WebkitMaskImage: 'linear-gradient(to bottom, black 86%, transparent 100%)',
                 }}
               />
             </motion.div>
@@ -852,11 +886,45 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                         opacity: 1,
                         zIndex: isSpeaking ? 8 : 4,
                         filter: isSpeaking
-                          ? 'brightness(1.06) drop-shadow(0 16px 36px rgba(108, 92, 231, 0.55))'
-                          : 'brightness(0.42) contrast(0.88)',
+                          ? 'brightness(1.05) contrast(1.02)'
+                          : 'brightness(0.45) contrast(0.9) grayscale(15%)',
                         transition: 'filter 0.3s ease',
                       }}
                     >
+                      {/* Ambient backlight glow when speaking */}
+                      {isSpeaking && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            bottom: '18%',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            width: '100%',
+                            height: '75%',
+                            background: 'radial-gradient(ellipse at center, rgba(139, 92, 246, 0.3) 0%, rgba(139, 92, 246, 0) 72%)',
+                            borderRadius: '50%',
+                            filter: 'blur(24px)',
+                            pointerEvents: 'none',
+                            zIndex: -1,
+                          }}
+                        />
+                      )}
+                      {/* Ground contact shadow */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: '-6px',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          width: '75%',
+                          height: '20px',
+                          background: 'radial-gradient(ellipse at center, rgba(0, 0, 0, 0.5) 0%, transparent 75%)',
+                          borderRadius: '50%',
+                          filter: 'blur(4px)',
+                          pointerEvents: 'none',
+                          zIndex: -1,
+                        }}
+                      />
                       <img
                         src={resolveAssetUrl(char.sprite)}
                         alt={char.name}
@@ -867,6 +935,8 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                           display: 'block',
                           verticalAlign: 'bottom',
                           marginBottom: 0,
+                          maskImage: 'linear-gradient(to bottom, black 88%, transparent 100%)',
+                          WebkitMaskImage: 'linear-gradient(to bottom, black 88%, transparent 100%)',
                         }}
                       />
                     </motion.div>
@@ -896,11 +966,45 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                         opacity: 1,
                         zIndex: isSpeaking ? 8 : 4,
                         filter: isSpeaking
-                          ? 'brightness(1.06) drop-shadow(0 16px 36px rgba(59, 130, 246, 0.55))'
-                          : 'brightness(0.42) contrast(0.88)',
+                          ? 'brightness(1.05) contrast(1.02)'
+                          : 'brightness(0.45) contrast(0.9) grayscale(15%)',
                         transition: 'filter 0.3s ease',
                       }}
                     >
+                      {/* Ambient backlight glow when speaking */}
+                      {isSpeaking && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            bottom: '18%',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            width: '100%',
+                            height: '75%',
+                            background: 'radial-gradient(ellipse at center, rgba(59, 130, 246, 0.3) 0%, rgba(59, 130, 246, 0) 72%)',
+                            borderRadius: '50%',
+                            filter: 'blur(24px)',
+                            pointerEvents: 'none',
+                            zIndex: -1,
+                          }}
+                        />
+                      )}
+                      {/* Ground contact shadow */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: '-6px',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          width: '75%',
+                          height: '20px',
+                          background: 'radial-gradient(ellipse at center, rgba(0, 0, 0, 0.5) 0%, transparent 75%)',
+                          borderRadius: '50%',
+                          filter: 'blur(4px)',
+                          pointerEvents: 'none',
+                          zIndex: -1,
+                        }}
+                      />
                       <img
                         src={resolveAssetUrl(char.sprite)}
                         alt={char.name}
@@ -911,6 +1015,8 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                           display: 'block',
                           verticalAlign: 'bottom',
                           marginBottom: 0,
+                          maskImage: 'linear-gradient(to bottom, black 88%, transparent 100%)',
+                          WebkitMaskImage: 'linear-gradient(to bottom, black 88%, transparent 100%)',
                         }}
                       />
                     </motion.div>

@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import type { UserData } from '../types/game';
 import { useGameStore } from '../stores/useGameStore';
 import { ConfirmDialog } from './common/ConfirmDialog';
+import bgLogin from '../assets/ảnh nền login.png';
 
 export const LoginScreen: React.FC = () => {
   const usersDb = useGameStore((state) => state.usersDb);
@@ -95,15 +96,57 @@ export const LoginScreen: React.FC = () => {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      style={{ width: '100%', maxWidth: '540px', padding: '16px' }}
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        width: '100vw',
+        height: '100dvh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflowY: 'auto',
+        backgroundImage: `url(${bgLogin})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}
     >
-      <div className="game-card">
-        {/* Header game */}
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+      {/* Dark overlay để làm tối và hòa trộn với màu sắc chủ đạo của game */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'radial-gradient(ellipse at center, rgba(14, 9, 26, 0.72) 0%, rgba(10, 6, 20, 0.88) 65%, rgba(6, 3, 12, 0.96) 100%)',
+          backdropFilter: 'brightness(0.65) saturate(0.85) blur(3px)',
+          pointerEvents: 'none',
+          zIndex: 1,
+        }}
+      />
+
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+        style={{
+          position: 'relative',
+          zIndex: 10,
+          width: '100%',
+          maxWidth: '540px',
+          padding: '16px',
+        }}
+      >
+        <div
+          className="game-card"
+          style={{
+            background: 'rgba(26, 20, 43, 0.88)',
+            backdropFilter: 'blur(24px)',
+            border: '1px solid rgba(139, 92, 246, 0.25)',
+            boxShadow: '0 24px 60px rgba(0, 0, 0, 0.65), 0 0 35px rgba(108, 92, 231, 0.15)',
+          }}
+        >
+          {/* Header game */}
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <motion.div
             whileHover={{ rotate: 10, scale: 1.05 }}
             style={{
@@ -121,10 +164,18 @@ export const LoginScreen: React.FC = () => {
           >
             <Gamepad2 size={38} />
           </motion.div>
-          <h1 style={{ fontSize: '24px', fontWeight: 900, color: 'var(--color-text-primary)', letterSpacing: '-0.5px' }}>
+          <h1
+            style={{
+              fontSize: '26px',
+              fontWeight: 900,
+              color: '#F5F0FF',
+              letterSpacing: '-0.5px',
+              textShadow: '0 2px 12px rgba(168, 85, 247, 0.4)',
+            }}
+          >
             Cuộc đời của tôi
           </h1>
-          <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '4px', fontWeight: 600 }}>
+          <p style={{ fontSize: '14px', color: '#D8B4FE', marginTop: '6px', fontWeight: 600 }}>
             Mô phỏng hành trình cuộc đời đầy bất ngờ và lựa chọn
           </p>
         </div>
@@ -147,10 +198,11 @@ export const LoginScreen: React.FC = () => {
                     display: 'block',
                     fontSize: '14px',
                     fontWeight: 700,
-                    color: 'var(--color-text-secondary)',
+                    color: '#EDE9FE',
                     textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
+                    letterSpacing: '0.6px',
                     marginBottom: '8px',
+                    textShadow: '0 1px 6px rgba(168, 85, 247, 0.25)',
                   }}
                 >
                   Nhập tên người chơi
@@ -406,6 +458,7 @@ export const LoginScreen: React.FC = () => {
         )}
 
       </div>
+      </motion.div>
 
       {/* DIALOG XÁC NHẬN: BẮT ĐẦU CUỘC ĐỜI MỚI */}
       <ConfirmDialog
@@ -418,6 +471,6 @@ export const LoginScreen: React.FC = () => {
         onConfirm={handleConfirmResetLife}
         onCancel={() => setIsConfirmResetOpen(false)}
       />
-    </motion.div>
+    </div>
   );
 };

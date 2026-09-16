@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   User,
   Clock,
@@ -10,6 +10,7 @@ import {
   Play,
   Award,
   BookOpen,
+  Film,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { StageData, UserProfile, UserActionLog } from '../types/game';
@@ -17,6 +18,7 @@ import type { StoryChoice } from '../types/story';
 import { useGameStore } from '../stores/useGameStore';
 import { StoryDialogueEngine } from './game/StoryDialogueEngine';
 import { TadpoleRaceScreen } from './game/tadpole/TadpoleRaceScreen';
+import { FertilizationCinemaCutscene } from './game/cutscenes/FertilizationCinemaCutscene';
 import type { WinnerInfo } from '../game/tadpole/GameEngine';
 import storyStagesData from '../data/storyStages.json';
 
@@ -29,7 +31,8 @@ export const GameScreen: React.FC = () => {
   const logUserAction = useGameStore((state) => state.logUserAction);
   const logout = useGameStore((state) => state.logout);
 
-  const [activeView, setActiveView] = useState<'story' | 'dashboard'>('story');
+  const [activeView, setActiveView] = useState<'story' | 'dashboard' | 'fertilization_cutscene'>('story');
+  const [isFlashFading, setIsFlashFading] = useState(false);
 
   if (!currentUser) return null;
 
@@ -87,8 +90,8 @@ export const GameScreen: React.FC = () => {
     };
 
     updateUserProgress(updatedUser);
-    toast.success(`Chuyển sinh thành công! Bạn nhận được tấm vé làm người (+${bonusScore}đ)`);
-    setActiveView('story');
+    toast.success(`Chuyển sinh thành công! Bắt đầu hành trình hình thành sinh linh (+${bonusScore}đ)`);
+    setActiveView('fertilization_cutscene');
   };
 
   const formatActionLogText = (log: UserActionLog, profile?: UserProfile): string => {
@@ -304,20 +307,61 @@ export const GameScreen: React.FC = () => {
     );
   }
 
+  // 1.5 NẾU ĐANG CHIẾU THƯỚC PHIM CHUYỂN SINH (RẠP CHIẾU PHIM THỤ TINH -> PHÔI THAI -> FLASHBANG)
+  if (activeView === 'fertilization_cutscene') {
+    return (
+      <FertilizationCinemaCutscene
+        onExplode={() => {
+          setIsFlashFading(true);
+          setActiveView('story');
+        }}
+      />
+    );
+  }
+
   // 2. NẾU ĐANG Ở CHẾ ĐỘ STORY VÀ CÓ CONFIG THOẠI (STAGE 1 TRỞ ĐI)
   if (activeView === 'story' && activeStepConfig) {
     return (
-      <StoryDialogueEngine
-        stepConfig={activeStepConfig}
-        userProfile={currentUser.profile}
-        initialDialogueIndex={currentUser.currentDialogueIndex || 0}
-        actionLogs={currentUser.actionLogs || []}
-        onDialogueIndexChange={handleDialogueIndexChange}
-        onUpdateProfile={handleUpdateProfile}
-        onStepChoice={handleStoryChoice}
-        onStageCompleted={handleCompleteCurrentStage}
-        onBackToDashboard={() => setActiveView('dashboard')}
-      />
+      <>
+        <StoryDialogueEngine
+          stepConfig={activeStepConfig}
+          userProfile={currentUser.profile}
+          initialDialogueIndex={currentUser.currentDialogueIndex || 0}
+          actionLogs={currentUser.actionLogs || []}
+          onDialogueIndexChange={handleDialogueIndexChange}
+          onUpdateProfile={handleUpdateProfile}
+          onStepChoice={handleStoryChoice}
+          onStageCompleted={handleCompleteCurrentStage}
+          onBackToDashboard={() => setActiveView('dashboard')}
+        />
+
+        {/* Hiệu ứng Flashbang trắng xóa lâu gấp 3 lần hé lộ Màn 1 */}
+        <AnimatePresence>
+          {isFlashFading && (
+            <motion.div
+              key="flash-fade-overlay"
+              initial={{ opacity: 1 }}
+              animate={{ opacity: [1, 1, 0] }}
+              exit={{ opacity: 0 }}
+              transition={{
+                duration: 7.5, // Lâu gấp 3 lần
+                times: [0, 0.45, 1], // Giữ trắng xóa 100% trong ~3.4 giây, sau đó tan mờ dần sang Màn 1
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              onAnimationComplete={() => setIsFlashFading(false)}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                width: '100vw',
+                height: '100dvh',
+                backgroundColor: '#FFFFFF',
+                zIndex: 999999,
+                pointerEvents: 'none',
+              }}
+            />
+          )}
+        </AnimatePresence>
+      </>
     );
   }
 
@@ -397,6 +441,17 @@ export const GameScreen: React.FC = () => {
               <Award size={15} />
               <span>{currentUser.totalScore.toLocaleString()} Điểm</span>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setActiveView('fertilization_cutscene')}
+              className="btn-outline"
+              style={{ padding: '8px 12px', fontSize: '12px', color: '#A855F7', borderColor: 'rgba(168, 85, 247, 0.4)' }}
+              title="Xem lại thước phim rạp Chuyển Sinh & Thụ Tinh"
+            >
+              <Film size={14} />
+              <span>Phim Rạp</span>
+            </button>
 
             <button
               type="button"

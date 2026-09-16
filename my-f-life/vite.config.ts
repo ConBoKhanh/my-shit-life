@@ -12,12 +12,31 @@ function jsonDatabasePlugin(): PluginOption {
     name: 'json-database-api',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
-        if (req.url === '/api/db' && req.method === 'GET') {
+        const urlObj = new URL(req.url || '', 'http://localhost');
+        const pathname = urlObj.pathname;
+
+        const dataPath = path.resolve(__dirname, 'src/data/initialData.json');
+
+        const readDbFile = () => {
           try {
-            const dataPath = path.resolve(__dirname, 'src/data/initialData.json');
-            const content = fs.readFileSync(dataPath, 'utf-8');
+            if (fs.existsSync(dataPath)) {
+              const content = fs.readFileSync(dataPath, 'utf-8');
+              return JSON.parse(content);
+            }
+          } catch {}
+          return { users: {}, defaultStages: [] };
+        };
+
+        const writeDbFile = (data: any) => {
+          fs.writeFileSync(dataPath, JSON.stringify(data, null, 2), 'utf-8');
+        };
+
+        // 1. GET /api/users or GET /api/db (Full database)
+        if ((pathname === '/api/users' || pathname === '/api/db') && req.method === 'GET') {
+          try {
+            const db = readDbFile();
             res.setHeader('Content-Type', 'application/json');
-            res.end(content);
+            res.end(JSON.stringify(db));
           } catch (e) {
             res.statusCode = 500;
             res.end(JSON.stringify({ error: String(e) }));
@@ -25,16 +44,96 @@ function jsonDatabasePlugin(): PluginOption {
           return;
         }
 
-        if (req.url === '/api/db' && req.method === 'POST') {
+        // 2. GET /api/users/:username
+        if (pathname.startsWith('/api/users/') && req.method === 'GET') {
+          try {
+            const rawUsername = pathname.replace('/api/users/', '').trim();
+            const username = decodeURIComponent(rawUsername).toLowerCase();
+            const db = readDbFile();
+            const user = db.users?.[username];
+            if (user) {
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ success: true, user }));
+            } else {
+              res.statusCode = 404;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ success: false, message: `User '${username}' not found` }));
+            }
+          } catch (e) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: String(e) }));
+          }
+          return;
+        }
+
+        // 3. POST /api/users (Create or update single user)
+        if (pathname === '/api/users' && req.method === 'POST') {
           let body = '';
           req.on('data', (chunk) => {
             body += chunk;
           });
           req.on('end', () => {
             try {
-              const dataPath = path.resolve(__dirname, 'src/data/initialData.json');
+              const payload = JSON.parse(body);
+              const user = payload.user || payload;
+              if (!user || !user.username) {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Missing user or username' }));
+                return;
+              }
+              const db = readDbFile();
+              if (!db.users) db.users = {};
+              db.users[user.username] = user;
+              writeDbFile(db);
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ success: true, user }));
+            } catch (e) {
+              res.statusCode = 500;
+              res.end(JSON.stringify({ error: String(e) }));
+            }
+          });
+          return;
+        }
+
+        // 4. PUT /api/users/:username (Update single user)
+        if (pathname.startsWith('/api/users/') && (req.method === 'PUT' || req.method === 'POST')) {
+          const rawUsername = pathname.replace('/api/users/', '').trim();
+          const username = decodeURIComponent(rawUsername).toLowerCase();
+          let body = '';
+          req.on('data', (chunk) => {
+            body += chunk;
+          });
+          req.on('end', () => {
+            try {
+              const payload = JSON.parse(body);
+              const userUpdate = payload.user || payload;
+              const db = readDbFile();
+              if (!db.users) db.users = {};
+              const existingUser = db.users[username] || {};
+              const mergedUser = { ...existingUser, ...userUpdate, username };
+              db.users[username] = mergedUser;
+              writeDbFile(db);
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ success: true, user: mergedUser }));
+            } catch (e) {
+              res.statusCode = 500;
+              res.end(JSON.stringify({ error: String(e) }));
+            }
+          });
+          return;
+        }
+
+        // 5. POST /api/db (Full db sync)
+        if (pathname === '/api/db' && req.method === 'POST') {
+          let body = '';
+          req.on('data', (chunk) => {
+            body += chunk;
+          });
+          req.on('end', () => {
+            try {
               const parsed = JSON.parse(body);
-              fs.writeFileSync(dataPath, JSON.stringify(parsed, null, 2), 'utf-8');
+              writeDbFile(parsed);
               res.setHeader('Content-Type', 'application/json');
               res.end(JSON.stringify({ success: true }));
             } catch (e) {
@@ -55,6 +154,11 @@ function jsonDatabasePlugin(): PluginOption {
 export default defineConfig((): UserConfig => {
   return {
     plugins: [react(), jsonDatabasePlugin()],
+    server: {
+      watch: {
+        ignored: ['**/src/data/initialData.json'],
+      },
+    },
     build: {
       sourcemap: false,
       rollupOptions: {

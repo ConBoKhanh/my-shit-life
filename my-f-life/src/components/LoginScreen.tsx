@@ -22,17 +22,19 @@ export const LoginScreen: React.FC = () => {
   const usersDb = useGameStore((state) => state.usersDb);
   const loginUser = useGameStore((state) => state.loginUser);
   const startNewLife = useGameStore((state) => state.startNewLife);
+  const checkUserByUsername = useGameStore((state) => state.checkUserByUsername);
 
   const [usernameInput, setUsernameInput] = useState('');
   const [checkedUsername, setCheckedUsername] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [isChecking, setIsChecking] = useState(false);
   const [isConfirmResetOpen, setIsConfirmResetOpen] = useState(false);
 
   const cleanInput = usernameInput.trim().toLowerCase();
   const existingUser = checkedUsername ? usersDb[checkedUsername] : null;
 
   // Xử lý nút "Kiểm tra người dùng"
-  const handleCheckUser = (e: React.FormEvent) => {
+  const handleCheckUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cleanInput) {
       setError('Vui lòng nhập tên người chơi');
@@ -41,12 +43,19 @@ export const LoginScreen: React.FC = () => {
       return;
     }
     setError('');
-    setCheckedUsername(cleanInput);
+    setIsChecking(true);
 
-    if (usersDb[cleanInput]) {
-      toast.info(`Tìm thấy hồ sơ của "${cleanInput}"`);
-    } else {
-      toast.info(`Chào mừng tân thủ "${cleanInput}"`);
+    try {
+      const foundUser = await checkUserByUsername(cleanInput);
+      setCheckedUsername(cleanInput);
+
+      if (foundUser || usersDb[cleanInput]) {
+        toast.info(`Tìm thấy hồ sơ người chơi "${cleanInput}"`);
+      } else {
+        toast.info(`Chào mừng tân thủ "${cleanInput}"`);
+      }
+    } finally {
+      setIsChecking(false);
     }
   };
 
@@ -167,9 +176,14 @@ export const LoginScreen: React.FC = () => {
               </div>
 
               {/* Nút Kiểm tra người dùng */}
-              <button type="submit" className="btn-primary" style={{ width: '100%', padding: '14px' }}>
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={isChecking}
+                style={{ width: '100%', padding: '14px', opacity: isChecking ? 0.7 : 1 }}
+              >
                 <Search size={18} />
-                <span>Kiểm Tra Người Dùng</span>
+                <span>{isChecking ? 'Đang Kiểm Tra...' : 'Kiểm Tra Người Dùng'}</span>
               </button>
             </motion.form>
           ) : (

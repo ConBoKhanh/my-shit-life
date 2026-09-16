@@ -2,19 +2,20 @@ import { create } from 'zustand';
 import type { UserData, UsersDatabase, StageData, UserProfile, UserActionLog } from '../types/game';
 import initialData from '../data/initialData.json';
 import { authUtil, type AuthSession } from '../utils/auth';
+import { gameApi } from '../services/api';
 
 const STORAGE_KEY = 'life_game_users_data';
 
-const persistUsersDb = (updatedDb: UsersDatabase) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedDb));
-  if (typeof fetch !== 'undefined') {
-    const defaultStages = initialData.defaultStages;
-    fetch('/api/db', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ users: updatedDb, defaultStages }),
-    }).catch(() => {});
+const persistUsersDb = (updatedDb: UsersDatabase, specificUser?: UserData) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedDb));
+  } catch {}
+
+  // Async sync with Backend API
+  if (specificUser) {
+    gameApi.saveUser(specificUser).catch(() => {});
   }
+  gameApi.syncFullDb(updatedDb).catch(() => {});
 };
 
 interface GameStoreState {
@@ -26,6 +27,7 @@ interface GameStoreState {
   // Actions
   navigate: (route: string) => void;
   initAuthAndData: () => Promise<void>;
+  checkUserByUsername: (username: string) => Promise<UserData | null>;
   loginUser: (user: UserData) => void;
   startNewLife: (username: string) => void;
   updateUserProgress: (updatedUser: UserData) => void;
@@ -48,28 +50,41 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   },
 
   initAuthAndData: async () => {
-    // 1. Load users database from /api/db (server-side initialData.json) with fallback
-    let loadedDb: UsersDatabase = initialData.users as UsersDatabase;
+    // 1. Khởi tạo từ initialData.json mặc định
+    let loadedDb: UsersDatabase = { ...(initialData.users as UsersDatabase) };
+
+    // 2. Hợp nhất dữ liệu đã lưu trong localStorage (Client Cache)
     try {
-      const res = await fetch('/api/db');
-      if (res.ok) {
-        const serverData = await res.json();
-        if (serverData && serverData.users && Object.keys(serverData.users).length > 0) {
-          loadedDb = serverData.users as UsersDatabase;
-        }
-      }
-    } catch {
       const rawData = localStorage.getItem(STORAGE_KEY);
       if (rawData) {
-        try {
-          loadedDb = JSON.parse(rawData);
-        } catch {
-          loadedDb = initialData.users as UsersDatabase;
+        const localDb = JSON.parse(rawData);
+        if (localDb && typeof localDb === 'object') {
+          Object.entries(localDb as UsersDatabase).forEach(([username, u]) => {
+            if (u && typeof u === 'object') {
+              if (!loadedDb[username] || (u.lastPlayedAt && u.lastPlayedAt > (loadedDb[username].lastPlayedAt || ''))) {
+                loadedDb[username] = u;
+              }
+            }
+          });
         }
       }
-    }
+    } catch {}
 
-    // Ensure all existing users in loadedDb have stage_0 Cuộc Đua Chuyển Sinh
+    // 3. Lấy dữ liệu mới nhất từ Backend Server JSON (/api/users)
+    try {
+      const serverData = await gameApi.getAllUsers();
+      if (serverData && serverData.users && typeof serverData.users === 'object') {
+        Object.entries(serverData.users).forEach(([username, u]) => {
+          if (u && typeof u === 'object') {
+            if (!loadedDb[username] || (u.lastPlayedAt && u.lastPlayedAt >= (loadedDb[username].lastPlayedAt || ''))) {
+              loadedDb[username] = u;
+            }
+          }
+        });
+      }
+    } catch {}
+
+    // Đảm bảo tất cả users đều có stage_0 Cuộc Đua Chuyển Sinh
     Object.values(loadedDb).forEach((u) => {
       if (u.stages && !u.stages.some((s) => s.id === 'stage_0')) {
         u.stages.unshift({
@@ -93,10 +108,15 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedDb));
     set({ usersDb: loadedDb });
 
-    // 2. Check 24h Token Session
+    // 4. Kiểm tra Session Token 24h
     const session = authUtil.getSession();
     if (session) {
-      const user = loadedDb[session.username];
+      let user: UserData | null | undefined = loadedDb[session.username];
+      if (!user) {
+        // Cố gắng query từ BE nếu local cache chưa kịp có
+        user = await gameApi.getUserByUsername(session.username);
+      }
+
       if (user) {
         set({ currentUser: user, currentSession: session });
         get().navigate('/game');
@@ -110,10 +130,32 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     get().navigate('/login');
   },
 
+  checkUserByUsername: async (username: string) => {
+    const cleanUsername = username.trim().toLowerCase();
+    if (!cleanUsername) return null;
+
+    // 1. Kiểm tra trong store hiện tại
+    const inMemoryUser = get().usersDb[cleanUsername];
+    if (inMemoryUser) return inMemoryUser;
+
+    // 2. Query BE API
+    try {
+      const serverUser = await gameApi.getUserByUsername(cleanUsername);
+      if (serverUser) {
+        const updatedDb = { ...get().usersDb, [cleanUsername]: serverUser };
+        set({ usersDb: updatedDb });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedDb));
+        return serverUser;
+      }
+    } catch {}
+
+    return null;
+  },
+
   loginUser: (user: UserData) => {
     const session = authUtil.setSession(user.username);
     const updatedDb = { ...get().usersDb, [user.username]: user };
-    persistUsersDb(updatedDb);
+    persistUsersDb(updatedDb, user);
     
     set({
       usersDb: updatedDb,
@@ -155,7 +197,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
 
     const session = authUtil.setSession(username);
     const updatedDb = { ...get().usersDb, [username]: newUser };
-    persistUsersDb(updatedDb);
+    persistUsersDb(updatedDb, newUser);
 
     set({
       usersDb: updatedDb,
@@ -171,7 +213,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       lastPlayedAt: new Date().toISOString(),
     };
     const updatedDb = { ...get().usersDb, [userWithTimestamp.username]: userWithTimestamp };
-    persistUsersDb(updatedDb);
+    persistUsersDb(updatedDb, userWithTimestamp);
     set({ usersDb: updatedDb, currentUser: userWithTimestamp });
   },
 
@@ -187,7 +229,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     };
 
     const updatedDb = { ...get().usersDb, [updatedUser.username]: updatedUser };
-    persistUsersDb(updatedDb);
+    persistUsersDb(updatedDb, updatedUser);
     set({ usersDb: updatedDb, currentUser: updatedUser });
   },
 
@@ -203,7 +245,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     };
 
     const updatedDb = { ...get().usersDb, [updatedUser.username]: updatedUser };
-    persistUsersDb(updatedDb);
+    persistUsersDb(updatedDb, updatedUser);
     set({ usersDb: updatedDb, currentUser: updatedUser });
   },
 
@@ -222,7 +264,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     };
 
     const updatedDb = { ...get().usersDb, [updatedUser.username]: updatedUser };
-    persistUsersDb(updatedDb);
+    persistUsersDb(updatedDb, updatedUser);
     set({ usersDb: updatedDb, currentUser: updatedUser });
   },
 
@@ -251,7 +293,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     };
 
     const updatedDb = { ...get().usersDb, [updatedUser.username]: updatedUser };
-    persistUsersDb(updatedDb);
+    persistUsersDb(updatedDb, updatedUser);
     set({ usersDb: updatedDb, currentUser: updatedUser });
   },
 

@@ -230,7 +230,7 @@
           },
           {
             "id": "1.1.6",
-            "text": "Vung tay tạo dáng ăn mừng 'SIUUUUUUUUUUUUUUUUUU!' kiểu Cristiano Ronaldo",
+            "text": "'SIUUUUUUUUUUUUUUUUUU!'",
             "icon": "Trophy",
             "scoreReward": 0,
             "statEffects": {},
@@ -238,7 +238,7 @@
               {
                 "id": "1.1.6.1",
                 "speakerId": 2,
-                "text": "Ối ối! Bé vừa mở mắt đã dang 2 tay xoay người hô 'SIUUU' như Ronaldo ghi bàn chung kết C1 vậy! Mới sơ sinh mà aura GOAT ngút ngàn thế này thì chịu rồi!",
+                "text": "Ối ối! Bé vừa mở mắt đã dang 2 tay xoay người hô 'SIUUU' như Ronaldo ghi bàn chung kết World Cup 2026 vậy! Mới sơ sinh mà aura GOAT ngút ngàn thế này thì chịu rồi!",
                 "expression": "surprised"
               },
               {

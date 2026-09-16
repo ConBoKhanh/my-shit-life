@@ -12,7 +12,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { StageData, UserProfile } from '../types/game';
+import type { StageData, UserProfile, UserActionLog } from '../types/game';
 import type { StoryChoice } from '../types/story';
 import { useGameStore } from '../stores/useGameStore';
 import { StoryDialogueEngine } from './game/StoryDialogueEngine';
@@ -91,13 +91,68 @@ export const GameScreen: React.FC = () => {
     setActiveView('story');
   };
 
+  const formatActionLogText = (log: UserActionLog, profile?: UserProfile): string => {
+    const gender = profile?.gender || 'male';
+    const genderLabel = gender === 'female' ? 'gái' : 'trai';
+    const charName = profile?.characterName || 'Bé Con';
+    const birth = profile?.birthdate || 'Hôm nay';
+
+    const resolveRaw = (text: string) => {
+      if (!text) return '';
+      return text
+        .replace(/\{gender\}/g, gender)
+        .replace(/\{gender_label\}/g, genderLabel)
+        .replace(/\{gender_value\}/g, genderLabel)
+        .replace(/\{characterName\}/g, charName)
+        .replace(/\{character_name\}/g, charName)
+        .replace(/\{name\}/g, charName)
+        .replace(/\{birthdate\}/g, birth)
+        .replace(/\{names\}/g, charName);
+    };
+
+    if (log.actionType === 'CHOICE_SELECTED') {
+      return resolveRaw(log.choiceText || 'Đã đưa ra quyết định');
+    }
+    if (log.actionType === 'PROFILE_INITIALIZED') {
+      const g = log.metadata?.gender || gender;
+      const b = log.metadata?.birthdate || birth;
+      return `Khởi tạo hồ sơ: Giới tính Bé ${g === 'female' ? 'Gái' : 'Trai'}${b ? ` (Sinh ngày ${b})` : ''}`;
+    }
+    if (log.actionType === 'CHARACTER_NAMED') {
+      const name = log.metadata?.characterName || charName;
+      return `Khai sinh đặt tên bé: "${name}"`;
+    }
+    if (log.actionType === 'STAGE_STARTED') {
+      return `Bắt đầu màn: ${log.stageName || log.stageId}`;
+    }
+    if (log.actionType === 'STAGE_COMPLETED') {
+      return `Hoàn thành xuất sắc: ${log.stageName || log.stageId}`;
+    }
+    return resolveRaw(log.choiceText || log.stageName || log.actionType);
+  };
+
   // Xử lý lựa chọn trong StoryDialogueEngine
   const handleStoryChoice = (choice: StoryChoice) => {
     const scoreGain = typeof choice.scoreReward === 'number' ? choice.scoreReward : 100;
+    const gender = currentUser.profile?.gender || 'male';
+    const genderLabel = gender === 'female' ? 'gái' : 'trai';
+    const charName = currentUser.profile?.characterName || 'Bé Con';
+    const birth = currentUser.profile?.birthdate || 'Hôm nay';
+
+    const resolvedChoiceText = choice.text
+      .replace(/\{gender\}/g, gender)
+      .replace(/\{gender_label\}/g, genderLabel)
+      .replace(/\{gender_value\}/g, genderLabel)
+      .replace(/\{characterName\}/g, charName)
+      .replace(/\{character_name\}/g, charName)
+      .replace(/\{name\}/g, charName)
+      .replace(/\{birthdate\}/g, birth)
+      .replace(/\{names\}/g, charName);
+
     if (scoreGain > 0) {
-      toast.success(`Lựa chọn: ${choice.text.slice(0, 30)}... (+${scoreGain}đ)`);
+      toast.success(`Lựa chọn: ${resolvedChoiceText.slice(0, 30)}... (+${scoreGain}đ)`);
     } else {
-      toast.info(`Lựa chọn: ${choice.text.slice(0, 30)}...`);
+      toast.info(`Lựa chọn: ${resolvedChoiceText.slice(0, 30)}...`);
     }
 
     // Ghi log hành động lựa chọn kèm mã định danh choice.id
@@ -107,7 +162,7 @@ export const GameScreen: React.FC = () => {
       stageName: currentStage.name,
       stepId: currentStepId,
       choiceId: choice.id,
-      choiceText: choice.text,
+      choiceText: resolvedChoiceText,
       scoreReward: scoreGain,
       metadata: {
         nextStepId: choice.nextStepId,
@@ -526,7 +581,7 @@ export const GameScreen: React.FC = () => {
                   </div>
 
                   <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                    {log.choiceText || log.actionType}
+                    {formatActionLogText(log, currentUser.profile)}
                   </div>
                 </div>
 

@@ -215,75 +215,80 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
     if (!char) return null;
 
     let resolvedName = char.name;
-    if (resolvedName.includes('{characterName}')) {
-      resolvedName = resolvedName.replace('{characterName}', userProfile.characterName || 'Bé Con');
-    }
+    const charName = userProfile.characterName || characterNameInput || 'Bé Con';
+    resolvedName = resolvedName.replace(/\{characterName\}/g, charName);
     return {
       ...char,
       name: resolvedName,
       side: currentDialogue.side || char.side,
     };
-  }, [currentDialogue, stepConfig.characters, userProfile.characterName]);
+  }, [currentDialogue, stepConfig.characters, userProfile.characterName, characterNameInput]);
+
+  // Universal text & template variable resolver (Gender, character name, birthdate, pool names)
+  const resolveText = useCallback(
+    (rawText: string, d?: DialogueLine) => {
+      if (!rawText) return '';
+      let text = rawText;
+
+      const gender = userProfile.gender || selectedGender || 'male';
+      const genderLabel = gender === 'female' ? 'gái' : 'trai';
+      const charName = userProfile.characterName || characterNameInput || 'Bé Con';
+      const birth = userProfile.birthdate || birthdateInput || 'Hôm nay';
+
+      text = text.replace(/\{gender\}/g, gender);
+      text = text.replace(/\{gender_label\}/g, genderLabel);
+      text = text.replace(/\{gender_value\}/g, genderLabel);
+      text = text.replace(/\{characterName\}/g, charName);
+      text = text.replace(/\{character_name\}/g, charName);
+      text = text.replace(/\{name\}/g, charName);
+      text = text.replace(/\{birthdate\}/g, birth);
+
+      if (d?.varMap) {
+        Object.entries(d.varMap).forEach(([varKey, mapping]) => {
+          const placeholder = `{${varKey}}`;
+          if (text.includes(placeholder)) {
+            let replacementValue = cachedVariables[`${stepConfig.id}_${d.id}_${varKey}`];
+
+            if (!replacementValue) {
+              if (typeof mapping === 'object' && mapping.fromPool && stepConfig.randomPools) {
+                const pool = stepConfig.randomPools[mapping.fromPool];
+                if (pool) {
+                  if (Array.isArray(pool)) {
+                    replacementValue = pool[Math.floor(Math.random() * pool.length)];
+                  } else if (typeof pool === 'object') {
+                    const subPool = (pool as any)[gender] || (pool as any).male || [];
+                    replacementValue = subPool[Math.floor(Math.random() * subPool.length)] || 'Bé Cưng';
+                  }
+                }
+              } else if (typeof mapping === 'string') {
+                replacementValue = mapping;
+              }
+
+              if (replacementValue) {
+                setCachedVariables((prev) => ({
+                  ...prev,
+                  [`${stepConfig.id}_${d.id}_${varKey}`]: replacementValue!,
+                }));
+              }
+            }
+
+            if (replacementValue) {
+              text = text.replace(new RegExp(`\\{${varKey}\\}`, 'g'), replacementValue);
+            }
+          }
+        });
+      }
+
+      return text;
+    },
+    [userProfile, selectedGender, characterNameInput, birthdateInput, cachedVariables, stepConfig]
+  );
 
   // Dynamic text resolution
   const resolvedFullText = useMemo(() => {
     if (!currentDialogue) return '';
-    let text = currentDialogue.text;
-
-    const gender = userProfile.gender || selectedGender || 'male';
-    const genderLabel = gender === 'female' ? 'gái' : 'trai';
-    text = text.replace(/\{gender\}/g, gender);
-    text = text.replace(/\{gender_label\}/g, genderLabel);
-
-    text = text.replace(/\{characterName\}/g, userProfile.characterName || characterNameInput || 'Bé Con');
-    text = text.replace(/\{birthdate\}/g, userProfile.birthdate || birthdateInput || 'Hôm nay');
-
-    if (currentDialogue.varMap) {
-      Object.entries(currentDialogue.varMap).forEach(([varKey, mapping]) => {
-        const placeholder = `{${varKey}}`;
-        if (text.includes(placeholder)) {
-          let replacementValue = cachedVariables[`${stepConfig.id}_${currentDialogue.id}_${varKey}`];
-
-          if (!replacementValue) {
-            if (typeof mapping === 'object' && mapping.fromPool && stepConfig.randomPools) {
-              const pool = stepConfig.randomPools[mapping.fromPool];
-              if (pool) {
-                if (Array.isArray(pool)) {
-                  replacementValue = pool[Math.floor(Math.random() * pool.length)];
-                } else if (typeof pool === 'object') {
-                  const subPool = pool[gender] || pool.male || [];
-                  replacementValue = subPool[Math.floor(Math.random() * subPool.length)] || 'Bé Cưng';
-                }
-              }
-            } else if (typeof mapping === 'string') {
-              replacementValue = mapping;
-            }
-
-            if (replacementValue) {
-              setCachedVariables((prev) => ({
-                ...prev,
-                [`${stepConfig.id}_${currentDialogue.id}_${varKey}`]: replacementValue,
-              }));
-            }
-          }
-
-          if (replacementValue) {
-            text = text.replace(new RegExp(`\\{${varKey}\\}`, 'g'), replacementValue);
-          }
-        }
-      });
-    }
-
-    return text;
-  }, [
-    currentDialogue,
-    userProfile,
-    selectedGender,
-    characterNameInput,
-    birthdateInput,
-    cachedVariables,
-    stepConfig,
-  ]);
+    return resolveText(currentDialogue.text, currentDialogue);
+  }, [currentDialogue, resolveText]);
 
   // Typewriter effect
   useEffect(() => {
@@ -1139,7 +1144,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px' }}>
                     {renderChoiceIcon(choice.icon)}
                   </div>
-                  <span style={{ flex: 1 }}>{choice.text}</span>
+                  <span style={{ flex: 1 }}>{resolveText(choice.text)}</span>
                 </motion.button>
               ))}
             </div>
@@ -1480,6 +1485,8 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                 <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '4px' }}>
                   {activeDialogueList.slice(0, currentDialogueIndex + 1).map((d) => {
                     const speaker = stepConfig.characters[d.speakerId];
+                    const charName = userProfile.characterName || characterNameInput || 'Bé Con';
+                    const resolvedSpeakerName = (speaker?.name || 'Nhân vật').replace(/\{characterName\}/g, charName);
                     return (
                       <div
                         key={d.id}
@@ -1491,14 +1498,14 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div style={{ fontSize: '12px', fontWeight: 800, color: speaker?.color || 'var(--color-primary)' }}>
-                            {speaker?.name || 'Nhân vật'}
+                            {resolvedSpeakerName}
                           </div>
                           <span style={{ fontSize: '10px', color: 'var(--color-text-disabled)', fontFamily: 'monospace' }}>
                             ID: {d.id}
                           </span>
                         </div>
                         <div style={{ fontSize: '13px', marginTop: '2px', color: 'var(--color-text-primary)' }}>
-                          {d.text}
+                          {resolveText(d.text, d)}
                         </div>
                       </div>
                     );
@@ -1511,54 +1518,74 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                       Chưa có quyết định nào được lưu lại trong phiên này.
                     </div>
                   ) : (
-                    actionLogs.map((log) => (
-                      <div
-                        key={log.id}
-                        style={{
-                          padding: '10px 14px',
-                          borderRadius: 'var(--radius-sm)',
-                          backgroundColor: 'var(--color-background-secondary)',
-                          borderLeft: log.actionType === 'CHOICE_SELECTED' ? '3px solid var(--color-secondary)' : log.actionType === 'STAGE_COMPLETED' ? '3px solid var(--color-success)' : '3px solid var(--color-primary)',
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span
-                              style={{
-                                fontSize: '11px',
-                                fontWeight: 800,
-                                padding: '2px 6px',
-                                borderRadius: 'var(--radius-sm)',
-                                backgroundColor: log.actionType === 'CHOICE_SELECTED' ? 'rgba(255, 184, 77, 0.2)' : 'rgba(108, 92, 231, 0.15)',
-                                color: log.actionType === 'CHOICE_SELECTED' ? '#D98200' : 'var(--color-primary)',
-                              }}
-                            >
-                              {log.actionType === 'CHOICE_SELECTED' ? 'LỰA CHỌN' : log.actionType === 'STAGE_COMPLETED' ? 'HOÀN THÀNH MÀN' : log.actionType === 'STAGE_SELECTED' ? 'CHỌN MÀN' : 'HỒ SƠ'}
-                            </span>
+                    actionLogs.map((log) => {
+                      let displayLogText = '';
+                      if (log.actionType === 'CHOICE_SELECTED') {
+                        displayLogText = resolveText(log.choiceText || 'Đã chọn quyết định');
+                      } else if (log.actionType === 'PROFILE_INITIALIZED') {
+                        const g = log.metadata?.gender || userProfile.gender || selectedGender;
+                        const b = log.metadata?.birthdate || userProfile.birthdate || birthdateInput;
+                        displayLogText = `Khởi tạo hồ sơ: Giới tính Bé ${g === 'female' ? 'Gái' : 'Trai'}${b ? ` (Sinh ngày ${b})` : ''}`;
+                      } else if (log.actionType === 'CHARACTER_NAMED') {
+                        const name = log.metadata?.characterName || userProfile.characterName || characterNameInput;
+                        displayLogText = `Khai sinh đặt tên bé: "${name || 'Bé Con'}"`;
+                      } else if (log.actionType === 'STAGE_STARTED') {
+                        displayLogText = `Bắt đầu màn: ${log.stageName || log.stageId}`;
+                      } else if (log.actionType === 'STAGE_COMPLETED') {
+                        displayLogText = `Hoàn thành xuất sắc: ${log.stageName || log.stageId}`;
+                      } else {
+                        displayLogText = resolveText(log.choiceText || log.stageName || log.actionType);
+                      }
 
-                            {log.choiceId && (
-                              <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-secondary)', fontFamily: 'monospace' }}>
-                                Mã: [{log.choiceId}]
+                      return (
+                        <div
+                          key={log.id}
+                          style={{
+                            padding: '10px 14px',
+                            borderRadius: 'var(--radius-sm)',
+                            backgroundColor: 'var(--color-background-secondary)',
+                            borderLeft: log.actionType === 'CHOICE_SELECTED' ? '3px solid var(--color-secondary)' : log.actionType === 'STAGE_COMPLETED' ? '3px solid var(--color-success)' : '3px solid var(--color-primary)',
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span
+                                style={{
+                                  fontSize: '11px',
+                                  fontWeight: 800,
+                                  padding: '2px 6px',
+                                  borderRadius: 'var(--radius-sm)',
+                                  backgroundColor: log.actionType === 'CHOICE_SELECTED' ? 'rgba(255, 184, 77, 0.2)' : 'rgba(108, 92, 231, 0.15)',
+                                  color: log.actionType === 'CHOICE_SELECTED' ? '#D98200' : 'var(--color-primary)',
+                                }}
+                              >
+                                {log.actionType === 'CHOICE_SELECTED' ? 'LỰA CHỌN' : log.actionType === 'STAGE_COMPLETED' ? 'HOÀN THÀNH MÀN' : log.actionType === 'STAGE_SELECTED' ? 'CHỌN MÀN' : 'HỒ SƠ'}
                               </span>
-                            )}
+
+                              {log.choiceId && (
+                                <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-secondary)', fontFamily: 'monospace' }}>
+                                  Mã: [{log.choiceId}]
+                                </span>
+                              )}
+                            </div>
+
+                            <span style={{ fontSize: '10px', color: 'var(--color-text-disabled)' }}>
+                              {new Date(log.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            </span>
                           </div>
 
-                          <span style={{ fontSize: '10px', color: 'var(--color-text-disabled)' }}>
-                            {new Date(log.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                          </span>
-                        </div>
-
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                          {log.choiceText || log.stageName || log.actionType}
-                        </div>
-
-                        {log.scoreReward && (
-                          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-success)', marginTop: '3px' }}>
-                            +{log.scoreReward} Điểm thưởng
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                            {displayLogText}
                           </div>
-                        )}
-                      </div>
-                    ))
+
+                          {log.scoreReward && (
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--color-success)', marginTop: '3px' }}>
+                              +{log.scoreReward} Điểm thưởng
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               )}

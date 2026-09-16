@@ -11,11 +11,12 @@ const persistUsersDb = (updatedDb: UsersDatabase, specificUser?: UserData) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedDb));
   } catch {}
 
-  // Async sync with Backend API
+  // Lưu trực tiếp user lên Supabase
   if (specificUser) {
-    gameApi.saveUser(specificUser).catch(() => {});
+    gameApi.saveUser(specificUser).catch((err) => {
+      console.warn('Lỗi lưu user lên Supabase:', err);
+    });
   }
-  gameApi.syncFullDb(updatedDb).catch(() => {});
 };
 
 interface GameStoreState {
@@ -50,39 +51,24 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   },
 
   initAuthAndData: async () => {
-    // 1. Khởi tạo từ initialData.json mặc định
-    let loadedDb: UsersDatabase = { ...(initialData.users as UsersDatabase) };
+    // 1. Tải toàn bộ danh sách users từ Supabase (nguồn dữ liệu chuẩn duy nhất)
+    let loadedDb: UsersDatabase = {};
 
-    // 2. Hợp nhất dữ liệu đã lưu trong localStorage (Client Cache)
-    try {
-      const rawData = localStorage.getItem(STORAGE_KEY);
-      if (rawData) {
-        const localDb = JSON.parse(rawData);
-        if (localDb && typeof localDb === 'object') {
-          Object.entries(localDb as UsersDatabase).forEach(([username, u]) => {
-            if (u && typeof u === 'object') {
-              if (!loadedDb[username] || (u.lastPlayedAt && u.lastPlayedAt > (loadedDb[username].lastPlayedAt || ''))) {
-                loadedDb[username] = u;
-              }
-            }
-          });
-        }
-      }
-    } catch {}
-
-    // 3. Lấy dữ liệu mới nhất từ Backend Server JSON (/api/users)
     try {
       const serverData = await gameApi.getAllUsers();
-      if (serverData && serverData.users && typeof serverData.users === 'object') {
-        Object.entries(serverData.users).forEach(([username, u]) => {
-          if (u && typeof u === 'object') {
-            if (!loadedDb[username] || (u.lastPlayedAt && u.lastPlayedAt >= (loadedDb[username].lastPlayedAt || ''))) {
-              loadedDb[username] = u;
-            }
-          }
-        });
+      if (serverData && serverData.users) {
+        loadedDb = serverData.users;
       }
-    } catch {}
+    } catch (err) {
+      console.warn('Không thể tải dữ liệu từ Supabase, thử fallback local cache:', err);
+      // Fallback cache local nếu mất mạng
+      try {
+        const rawData = localStorage.getItem(STORAGE_KEY);
+        if (rawData) {
+          loadedDb = JSON.parse(rawData) || {};
+        }
+      } catch {}
+    }
 
     // Đảm bảo tất cả users đều có stage_0 Cuộc Đua Chuyển Sinh
     Object.values(loadedDb).forEach((u) => {
@@ -108,12 +94,11 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedDb));
     set({ usersDb: loadedDb });
 
-    // 4. Kiểm tra Session Token 24h
+    // 2. Kiểm tra Session Token 24h
     const session = authUtil.getSession();
     if (session) {
       let user: UserData | null | undefined = loadedDb[session.username];
       if (!user) {
-        // Cố gắng query từ BE nếu local cache chưa kịp có
         user = await gameApi.getUserByUsername(session.username);
       }
 
@@ -134,11 +119,11 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const cleanUsername = username.trim().toLowerCase();
     if (!cleanUsername) return null;
 
-    // 1. Kiểm tra trong store hiện tại
+    // 1. Kiểm tra trong memory store
     const inMemoryUser = get().usersDb[cleanUsername];
     if (inMemoryUser) return inMemoryUser;
 
-    // 2. Query BE API
+    // 2. Query trực tiếp từ Supabase
     try {
       const serverUser = await gameApi.getUserByUsername(cleanUsername);
       if (serverUser) {

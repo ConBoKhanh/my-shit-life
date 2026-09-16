@@ -6,5 +6,8 @@
     "dev": "npm --prefix my-f-life run dev",
     "start": "npm --prefix my-f-life run dev",
     "build": "npm --prefix my-f-life run build"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.116.0"
   }
 }

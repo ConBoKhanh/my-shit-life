@@ -35,7 +35,7 @@
           },
           "3": {
             "id": 3,
-            "name": "Bố (Bố Khánh)",
+            "name": "Bố (Huấn Hoa Hòe)",
             "sprite": "asset:bo",
             "side": "right",
             "role": "npc",
@@ -43,7 +43,7 @@
           },
           "4": {
             "id": 4,
-            "name": "Mẹ (Mẹ Hà)",
+            "name": "Mẹ (Trần Lình Ha)",
             "sprite": "asset:me",
             "side": "left",
             "role": "npc",
@@ -95,7 +95,7 @@
           {
             "id": "1.1.1.4",
             "speakerId": 4,
-            "text": "Ông Chã ơi, mấy cái tên đó như bìu ý! Ai đời lại đi đặt tên con gái/con trai cả đời như thế bao giờ!",
+            "text": "Ông Huấn ơi, mấy cái tên đó như bìu ý! Ai đời lại đi đặt tên con gái/con trai cả đời như thế bao giờ!",
             "expression": "angry"
           },
           {

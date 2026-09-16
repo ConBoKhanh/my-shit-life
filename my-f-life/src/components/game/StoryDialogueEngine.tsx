@@ -782,7 +782,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
           display: 'flex',
           justifyContent: isMobile ? 'center' : 'space-between',
           alignItems: 'flex-end',
-          padding: isMobile ? '0 16px' : '0 80px',
+          padding: isMobile ? '0 16px' : '0 48px',
           pointerEvents: 'none',
           zIndex: 10,
         }}
@@ -819,10 +819,10 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
             </motion.div>
           ) : null
         ) : (
-          /* DESKTOP / TABLET MODE: GROUNDED AT BOTTOM: 0 WITH SPOTLIGHT & DARKENING */
+          /* DESKTOP / TABLET MODE: GROUNDED AT BOTTOM: 0 WITH SPOTLIGHT & DARKENING (25% BIGGER) */
           <>
             {/* LEFT CHARACTERS */}
-            <div style={{ display: 'flex', gap: '30px', alignItems: 'flex-end', alignSelf: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-end', alignSelf: 'flex-end' }}>
               {Object.values(stepConfig.characters)
                 .filter((c) => c.side === 'left' && c.sprite)
                 .map((char) => {
@@ -852,8 +852,8 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                         src={resolveAssetUrl(char.sprite)}
                         alt={char.name}
                         style={{
-                          maxHeight: '74vh',
-                          maxWidth: '340px',
+                          maxHeight: '92vh',
+                          maxWidth: '425px',
                           objectFit: 'contain',
                           display: 'block',
                           verticalAlign: 'bottom',
@@ -866,7 +866,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
             </div>
 
             {/* RIGHT CHARACTERS */}
-            <div style={{ display: 'flex', gap: '30px', alignItems: 'flex-end', alignSelf: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-end', alignSelf: 'flex-end' }}>
               {Object.values(stepConfig.characters)
                 .filter((c) => c.side === 'right' && c.sprite)
                 .map((char) => {
@@ -896,8 +896,8 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                         src={resolveAssetUrl(char.sprite)}
                         alt={char.name}
                         style={{
-                          maxHeight: '74vh',
-                          maxWidth: '340px',
+                          maxHeight: '92vh',
+                          maxWidth: '425px',
                           objectFit: 'contain',
                           display: 'block',
                           verticalAlign: 'bottom',

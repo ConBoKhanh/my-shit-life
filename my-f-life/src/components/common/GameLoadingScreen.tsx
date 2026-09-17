@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles } from 'lucide-react';
 
 const LOADING_TIPS = [
   'Đang kết nối dữ liệu kiếp trước...',
@@ -98,24 +97,35 @@ export const GameLoadingScreen: React.FC = () => {
             }}
           />
 
-          {/* Center glowing core icon */}
+          {/* Center glowing core logo */}
           <motion.div
             animate={{
               scale: [0.92, 1.08, 0.92],
             }}
             transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
             style={{
-              width: '56px',
-              height: '56px',
+              width: '60px',
+              height: '60px',
               borderRadius: '18px',
-              background: 'linear-gradient(135deg, #6366F1 0%, #A855F7 50%, #EC4899 100%)',
+              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.5) 0%, rgba(168, 85, 247, 0.5) 50%, rgba(236, 72, 153, 0.5) 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               boxShadow: '0 0 30px rgba(168, 85, 247, 0.6), inset 0 0 12px rgba(255, 255, 255, 0.4)',
+              overflow: 'hidden',
+              padding: '6px',
             }}
           >
-            <Sparkles size={28} color="#FFFFFF" />
+            <img
+              src="/logo.png"
+              alt="Logo"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
+              }}
+            />
           </motion.div>
         </div>
 

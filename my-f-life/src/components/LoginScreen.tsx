@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Gamepad2,
   Search,
   Play,
   RotateCcw,
@@ -148,21 +147,33 @@ export const LoginScreen: React.FC = () => {
           {/* Header game */}
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <motion.div
-            whileHover={{ rotate: 10, scale: 1.05 }}
+            whileHover={{ scale: 1.06, rotate: 1.5 }}
+            transition={{ type: 'spring', stiffness: 350, damping: 18 }}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: '68px',
-              height: '68px',
-              borderRadius: '50%',
-              backgroundColor: 'var(--color-background-secondary)',
-              color: 'var(--color-primary)',
-              marginBottom: '12px',
-              boxShadow: 'inset 0 2px 6px rgba(108, 92, 231, 0.2)',
+              width: '90px',
+              height: '90px',
+              borderRadius: '22px',
+              padding: '6px',
+              background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.3) 0%, rgba(99, 102, 241, 0.2) 100%)',
+              border: '1.5px solid rgba(192, 132, 252, 0.45)',
+              boxShadow: '0 8px 30px rgba(147, 51, 234, 0.35), inset 0 0 14px rgba(255, 255, 255, 0.12)',
+              marginBottom: '14px',
+              overflow: 'hidden',
             }}
           >
-            <Gamepad2 size={38} />
+            <img
+              src="/logo.png"
+              alt="Logo Game"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4))',
+              }}
+            />
           </motion.div>
           <h1
             style={{

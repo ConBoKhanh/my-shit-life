@@ -7,11 +7,27 @@ export interface StageData {
   status: 'locked' | 'in_progress' | 'completed';
 }
 
+export interface CharacterAvatarConfig {
+  skinTone: string;         // Mã màu da (e.g. '#FFE0BD')
+  hairId: string;           // Kiểu tóc (12 kiểu)
+  hairColor: string;        // Màu tóc
+  faceId: string;           // Khuôn mặt biểu cảm (8 kiểu)
+  shirtId: string;          // Áo (20 kiểu)
+  pantsId: string;          // Quần/Váy (20 kiểu)
+  shoesId: string;          // Giày (6 kiểu)
+  accessoryId?: string;     // Phụ kiện (6 kiểu)
+  ageStage?: 'baby' | 'kindergarten' | 'elementary' | 'highschool' | 'adult';
+  heightScale?: number;     // Hệ số kéo dài chiều cao cơ thể
+  legScale?: number;        // Hệ số kéo dài chân
+  headScale?: number;       // Tỷ lệ đầu
+}
+
 export interface UserProfile {
   characterName?: string;
   gender?: 'male' | 'female';
   birthdate?: string;
   babyAvatar?: string;
+  avatarConfig?: CharacterAvatarConfig;
   [key: string]: any;
 }
 
@@ -22,7 +38,8 @@ export type UserActionType =
   | 'STAGE_COMPLETED'
   | 'CHOICE_SELECTED'
   | 'PROFILE_INITIALIZED'
-  | 'CHARACTER_NAMED';
+  | 'CHARACTER_NAMED'
+  | 'CHARACTER_CUSTOMIZED';
 
 export interface UserActionLog {
   id: string;

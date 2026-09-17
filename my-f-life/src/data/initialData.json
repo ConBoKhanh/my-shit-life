@@ -21,15 +21,15 @@
       "id": "stage_2",
       "name": "Màn 2: Lời Nói Đầu Tiên Của Bé",
       "currentStep": 0,
-      "totalSteps": 1,
+      "totalSteps": 2,
       "score": 0,
       "status": "locked"
     },
     {
       "id": "stage_3",
-      "name": "Màn 3: Đại Học Bươn Chải",
+      "name": "Màn 3: Bước Vào Mẫu Giáo",
       "currentStep": 0,
-      "totalSteps": 8,
+      "totalSteps": 4,
       "score": 0,
       "status": "locked"
     },

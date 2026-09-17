@@ -77,7 +77,35 @@
               "Thị Sida",
               "Bùi Mỹ Tâm"
             ]
-          }
+          },
+          "random_dad_future_job": [
+            "làm Chủ Tịch tập đoàn đa quốc gia cưỡi Maybach đi đàm phán hợp đồng nghìn tỷ",
+            "làm Streamer triệu view ngồi đếm tiền donate mỏi tay",
+            "làm Tuyển Thủ Esports vô địch thế giới gánh team đỉnh nóc",
+            "làm Kỹ Sư AI lương trăm triệu nuôi bố mẹ an hưởng tuổi già",
+            "làm Siêu Cầu Thủ bóng đá rinh 8 Quả Bóng Vàng",
+            "làm Idol Tóp Tóp vạn người mê nhảy điệu Vinahey cháy phố",
+            "làm Tổng Tài bá đạo vung tiền mua đứt cả khu phố"
+          ],
+          "random_mom_future_job": [
+            "làm Bác Sĩ cứu người hoặc Nhà Khoa Học tài ba được xã hội kính trọng",
+            "du học sinh xuất sắc đứng nhất trường mang học bổng toàn phần về cho mẹ",
+            "làm Nghệ Sĩ dương cầm quý phái thanh lịch vạn người ngưỡng mộ",
+            "học hành đàng hoàng tử tế, sau này làm Giám Đốc ngân hàng",
+            "sau này lấy được người bạn đời đại gia môn đăng hộ đối rồi về báo hiếu mẹ"
+          ],
+          "random_dad_compliment": [
+            "Nhìn cái trán dô thông minh đỉnh nóc kịch trần này đích thị là thừa hưởng 100% gen tinh hoa của bố rồi!",
+            "Nhìn ánh mắt sắc sảo sáng ngời như sao quả tạ thế này là biết có chí làm đại gia!",
+            "Mới lọt lòng mà thần thái tự tin, ngầu đét như siêu sao Hollywood!",
+            "Đôi chân dài miên man trộm vía, quả này sau này đá bóng cho Real Madrid hoặc làm siêu mẫu quốc tế!"
+          ],
+          "random_mom_compliment": [
+            "Gớm ông cứ nhận vơ! Cái mũi dọc dừa với làn da trắng hồng là giống mẹ nó rành rành ra đấy!",
+            "Giống ông cái tính điêu toa thì có! Con giống mẹ cái nụ cười duyên dáng đáng yêu đây này!",
+            "Miệng chúm chím dễ thương thế này sau này ăn nói ngọt ngào ai cũng thương cũng quý!",
+            "Nét nào ra nét đấy, đúng là kiệt tác mẹ mang nặng đẻ đau chín tháng mười ngày!"
+          ]
         },
         "dialogues": [
           {
@@ -144,6 +172,46 @@
             "id": "1.1.1.7",
             "speakerId": 2,
             "text": "Chào mừng bé {characterName} (sinh ngày {birthdate}) đã chính thức đến với thế giới rực rỡ này nhé!",
+            "expression": "happy"
+          },
+          {
+            "id": "1.1.1.8",
+            "speakerId": 3,
+            "text": "{dad_comp} Sau này lớn lên nhất định con sẽ {dad_job} cho cả họ nở mày nở mặt!",
+            "expression": "proud",
+            "varMap": {
+              "dad_comp": {
+                "fromPool": "random_dad_compliment"
+              },
+              "dad_job": {
+                "fromPool": "random_dad_future_job"
+              }
+            }
+          },
+          {
+            "id": "1.1.1.9",
+            "speakerId": 4,
+            "text": "{mom_comp} Tôi chỉ mong con sau này {mom_job}, chứ không lông bông ba ngơ như ông là tôi mừng rớt nước mắt rồi!",
+            "expression": "thinking",
+            "varMap": {
+              "mom_comp": {
+                "fromPool": "random_mom_compliment"
+              },
+              "mom_job": {
+                "fromPool": "random_mom_future_job"
+              }
+            }
+          },
+          {
+            "id": "1.1.1.10",
+            "speakerId": 3,
+            "text": "Ơ hay cái bà này! Tôi thế này mà bảo lông bông à? Bố cháu đẹp trai hào hoa phong nhã nhất cái xóm này đấy nhé!",
+            "expression": "surprised"
+          },
+          {
+            "id": "1.1.1.11",
+            "speakerId": 2,
+            "text": "Haha hai anh chị cứ yên tâm, trộm vía bé hồng hào khỏe mạnh thế này thì tương lai xán lạn lắm! Nào bé yêu, hãy thể hiện phản ứng đầu đời của mình đi nào!",
             "expression": "happy"
           }
         ],
@@ -426,7 +494,7 @@
                 "expression": "happy"
               }
             ],
-            "nextStepId": "stage_completed"
+            "nextStepId": "step_2_daily_life"
           },
           {
             "id": "2.1.2",
@@ -471,7 +539,7 @@
                 "expression": "proud"
               }
             ],
-            "nextStepId": "stage_completed"
+            "nextStepId": "step_2_daily_life"
           },
           {
             "id": "2.1.3",
@@ -516,7 +584,7 @@
                 "expression": "angry"
               }
             ],
-            "nextStepId": "stage_completed"
+            "nextStepId": "step_2_daily_life"
           },
           {
             "id": "2.1.4",
@@ -555,7 +623,7 @@
                 "expression": "proud"
               }
             ],
-            "nextStepId": "stage_completed"
+            "nextStepId": "step_2_daily_life"
           },
           {
             "id": "2.1.5",
@@ -594,7 +662,893 @@
                 "expression": "proud"
               }
             ],
-            "nextStepId": "stage_completed"
+            "nextStepId": "step_2_daily_life"
+          }
+        ]
+      },
+      "step_2_daily_life": {
+        "id": "step_2_daily_life",
+        "stepNumber": 2,
+        "title": "Cuộc Sống Hằng Ngày Của Bé {characterName}",
+        "dayLabel": "Giai đoạn: 1-2 Tuổi (Ở Nhà Cùng Bố Mẹ)",
+        "locationName": "Phòng Khách Gia Đình",
+        "screenType": "dialogue_scene",
+        "bgm": "",
+        "background": {
+          "url": "asset:bg_livingroom",
+          "ambientEffect": "sunlight"
+        },
+        "characters": {
+          "1": {
+            "id": 1,
+            "name": "Bé ({characterName})",
+            "sprite": "asset:baby_1",
+            "side": "center",
+            "role": "player",
+            "color": "var(--color-primary)"
+          },
+          "3": {
+            "id": 3,
+            "name": "Bố (Huấn Hoa Hòe)",
+            "sprite": "asset:bo",
+            "side": "right",
+            "role": "npc",
+            "color": "#3B82F6"
+          },
+          "4": {
+            "id": 4,
+            "name": "Mẹ (Trần Lình Ha)",
+            "sprite": "asset:me",
+            "side": "left",
+            "role": "npc",
+            "color": "#EC4899"
+          }
+        },
+        "randomPools": {
+          "random_pee_drama_dad": [
+            "Ối giời ơi sofa da tiền triệu! Mẹ nó ơi mau ra xử lý, tôi đang dở trận combat rank Cao Thủ không buông tay được!",
+            "Trời ơi nước tràn bờ đê! Mẹ cháu khéo tay mau lấy khăn lau đi, tôi ngửi mùi này là tôi bị dị ứng hắt xì!",
+            "Bà nó ơi con tè rồi kìa! Hôm nay đến phiên bà trông con ca chiều, tôi chỉ phụ trách ca sáng thôi đấy nhé!",
+            "Oẳn tù tì đi! Ai thua thì đi giặt đệm sofa và thay tã cho con! ...Á đù tôi ra kéo bà ra búa, chơi bẩn thế!",
+            "Haha bé con bắn tia nước chuẩn đấy, suýt trúng mặt bố! Nhưng mà mẹ ơi cứu với, bãi này to quá sức tưởng tượng!"
+          ],
+          "random_pee_drama_mom": [
+            "Combat cái đầu buồi ông! Tôi rút dây mạng bây giờ, con tè ướt sũng ra đấy mà còn ngồi dán mắt vào điện thoại!",
+            "Ông Huấn! Sofa này ông tự mua thì tự đi mà lau! Tôi còn đang bận đắp mặt nạ dưỡng da!",
+            "Ca sáng ông ngủ đến 11h trưa mà dám bảo trực ca sáng à? Mau đi lấy nước ấm lau cho con ngay không hăm tã bây giờ!",
+            "Thua thì tự giác đi làm đi đừng có lải nhải! Bố con nhà này đúng là một phường nghịch ngợm!",
+            "Trời ơi vừa mới thay bộ quần áo đẹp xong, hai bố con tính biến cái phòng khách thành công viên nước Đầm Sen đấy à?!"
+          ],
+          "random_poo_drama_dad": [
+            "Ặc ặc... Mùi gì mà nồng nàn ngạt ngào cả phòng khách thế này?! Cứu tôi với mụ vợ ơi, vũ khí sinh học cấp 10!",
+            "Bà Linh ơi ra thay bỉm cho con kìa! Tôi... tôi vừa ăn bát bún chả xong, ngửi quả này là trào ngược dạ dày mất!",
+            "Trộm vía con tôi tiêu hóa tốt, 'lộc vàng' đầy bỉm luôn! Nhưng quả này vượt quá thẩm quyền của bố rồi, mời mẹ vào cuộc!",
+            "Nhìn bãi phân này là biết giống gen mẹ, đường ruột khỏe mạnh vô đối! Thôi mẹ đi rửa đít cho con cho có tình mẫu tử nhé!",
+            "Ối dồi ôi nó bò đi kìa! Nó quẹt một vệt vàng ươm dài 2 mét ra sàn gỗ rồi! Cứu mạng cứu mạng!"
+          ],
+          "random_poo_drama_mom": [
+            "Ông Huấn! Lần trước tôi dọn rồi, lần này đến lượt ông! Đừng có giả vờ ngất xỉu trốn tránh trách nhiệm!",
+            "Ai bảo trưa nay ông cho con ăn quả bơ với sữa chua cho lắm vào! Tự gieo nhân nào thì gặt quả nấy đi!",
+            "Tình mẫu tử cái mả bố ông! Tôi lấy luôn cái tã này tôi dí vào mặt ông bây giờ, mau bế con vào nhà tắm!",
+            "Gen mẹ cái khỉ gió! Cái nết ỉa thối này là đúc từ một khuôn nhà nội nhà ông ra chứ đâu!",
+            "Trời đất ơi cứu tôi! Sàn nhà vừa mới lau bóng loáng! Mau bế con lên nhanh không nó lăn ra bây giờ ông Huấn ơi!"
+          ]
+        },
+        "dialogues": [
+          {
+            "id": "2.2.0",
+            "speakerId": 1,
+            "text": "Một ngày mới tràn đầy năng lượng tại phòng khách ấm cúng. Bố Huấn đang nằm ườn trên sofa, Mẹ Linh đang ngồi nhâm nhi tách trà..."
+          },
+          {
+            "id": "2.2.1",
+            "speakerId": 3,
+            "text": "Hôm nay thời tiết đẹp thật đấy, con cưng của bố đang ngồi chơi ngoan ngoãn quá!",
+            "expression": "happy"
+          },
+          {
+            "id": "2.2.2",
+            "speakerId": 4,
+            "text": "Ông lo mà để mắt trông chừng con đấy nhé, đừng có mà cắm mặt vào điện thoại cả ngày!",
+            "expression": "neutral"
+          },
+          {
+            "id": "2.2.3",
+            "speakerId": 1,
+            "text": "(Trong người mình đang cảm thấy rạo rực ngứa ngáy chân tay... Bây giờ nên làm gì để khuấy động không khí gia đình đây ta?)",
+            "expression": "thinking"
+          }
+        ],
+        "choices": [
+          {
+            "id": "2.2.c1",
+            "text": "Đái 1 bãi khai mù giải tỏa cơ thể 💦",
+            "icon": "Flame",
+            "scoreReward": 0,
+            "loopBackToChoices": true,
+            "reactionDialogues": [
+              {
+                "id": "2.2.c1.1",
+                "speakerId": 1,
+                "text": "Xè xè xè xè... 💦",
+                "expression": "happy"
+              },
+              {
+                "id": "2.2.c1.2",
+                "speakerId": 3,
+                "text": "{pee_dad}",
+                "expression": "surprised",
+                "varMap": {
+                  "pee_dad": {
+                    "fromPool": "random_pee_drama_dad"
+                  }
+                }
+              },
+              {
+                "id": "2.2.c1.3",
+                "speakerId": 4,
+                "text": "{pee_mom}",
+                "expression": "angry",
+                "varMap": {
+                  "pee_mom": {
+                    "fromPool": "random_pee_drama_mom"
+                  }
+                }
+              },
+              {
+                "id": "2.2.c1.4",
+                "speakerId": 1,
+                "text": "(Haha hai bố mẹ cuống cuồng đùn đẩy nhau nhìn hài hước thật đấy, cảm thấy sảng khoái nhẹ nhõm cả người!)",
+                "expression": "happy"
+              }
+            ]
+          },
+          {
+            "id": "2.2.c2",
+            "text": "Ỉa 1 bãi 'vàng son' nồng nàn tình thương 💩",
+            "icon": "Flame",
+            "scoreReward": 0,
+            "loopBackToChoices": true,
+            "reactionDialogues": [
+              {
+                "id": "2.2.c2.1",
+                "speakerId": 1,
+                "text": "Urrrggghhh... Phùuuu! 💩",
+                "expression": "happy"
+              },
+              {
+                "id": "2.2.c2.2",
+                "speakerId": 3,
+                "text": "{poo_dad}",
+                "expression": "surprised",
+                "varMap": {
+                  "poo_dad": {
+                    "fromPool": "random_poo_drama_dad"
+                  }
+                }
+              },
+              {
+                "id": "2.2.c2.3",
+                "speakerId": 4,
+                "text": "{poo_mom}",
+                "expression": "angry",
+                "varMap": {
+                  "poo_mom": {
+                    "fromPool": "random_poo_drama_mom"
+                  }
+                }
+              },
+              {
+                "id": "2.2.c2.4",
+                "speakerId": 1,
+                "text": "(Bố mẹ đùn đẩy một hồi rồi bố Huấn cũng phải ngậm ngùi bế mình đi rửa mông sạch sẽ thơm tho!)",
+                "expression": "happy"
+              }
+            ]
+          },
+          {
+            "id": "2.2.c3",
+            "text": "Bật Tivi xem truyền hình giải trí 📺✨",
+            "icon": "Laptop",
+            "actionModal": "watch_tv",
+            "scoreReward": 0,
+            "loopBackToChoices": true,
+            "reactionDialogues": [
+              {
+                "id": "2.2.c3.1",
+                "speakerId": 3,
+                "text": "Bé con ngủ một giấc say sưa thơm mùi sữa, tỉnh dậy mắt sáng ngời tràn đầy năng lượng rồi kìa!",
+                "expression": "proud"
+              },
+              {
+                "id": "2.2.c3.2",
+                "speakerId": 4,
+                "text": "Trộm vía ngủ dậy không khóc nhè tí nào, bé cưng của mẹ ngoan nhất nhà luôn!",
+                "expression": "happy"
+              }
+            ]
+          },
+          {
+            "id": "2.2.c4",
+            "text": "Giật điện thoại bố lướt TikTok xem video ngắn 📱🔥",
+            "icon": "Zap",
+            "actionModal": "watch_tiktok",
+            "scoreReward": 0,
+            "loopBackToChoices": true,
+            "reactionDialogues": [
+              {
+                "id": "2.2.c4.1",
+                "speakerId": 4,
+                "text": "Ối giời ơi ông Huấn! Máy ông lướt toàn video gái xinh nhảy lắc hông Tóp Tóp thế này hả?! 😡💃",
+                "expression": "angry"
+              },
+              {
+                "id": "2.2.c4.2",
+                "speakerId": 3,
+                "text": "Ơ kìa bà nó ơi oan cho tôi quá! Do thuật toán AI TikTok nó tự đẩy vào mục 'Dành cho bạn' chứ tôi thề tôi có tìm đâu!",
+                "expression": "surprised"
+              },
+              {
+                "id": "2.2.c4.3",
+                "speakerId": 4,
+                "text": "Thuật toán cái đầu buồi ông! Ông còn bấm tim với comment 'Nhảy nét căng em ơi' lúc 2h sáng rành rành ra đây này! Tối nay ông ra ban công ngủ với con muỗi!",
+                "expression": "angry"
+              },
+              {
+                "id": "2.2.c4.4",
+                "speakerId": 3,
+                "text": "Trời ơi cứu bố với con ơi, mẹ con đanh đá quá... T_T",
+                "expression": "surprised"
+              },
+              {
+                "id": "2.2.c4.5",
+                "speakerId": 1,
+                "text": "(Nhìn bố bị mẹ mắng te tua mà mình cười nắc nẻ cả bụng kkk!)",
+                "expression": "happy"
+              }
+            ]
+          },
+          {
+            "id": "2.2.c5",
+            "text": "Khóc ré lên ăn vạ đòi bố mẹ dỗ dành 😭🎭",
+            "icon": "Volume2",
+            "scoreReward": 0,
+            "loopBackToChoices": true,
+            "reactionDialogues": [
+              {
+                "id": "2.2.c5.1",
+                "speakerId": 1,
+                "text": "Oa oa oa oa... Huhu oa oa! 😭",
+                "expression": "surprised"
+              },
+              {
+                "id": "2.2.c5.2",
+                "speakerId": 3,
+                "text": "Ối cục vàng của bố sao thế này! Để bố múa quạt Vinahey làm trò hề cho con xem này! Ú òa ú òa!",
+                "expression": "happy"
+              },
+              {
+                "id": "2.2.c5.3",
+                "speakerId": 4,
+                "text": "Ông làm mặt xấu thế con nó càng khóc thét! Ra đây mẹ bế mẹ hát ru 'À ơi hoa bay lung linh' nào!",
+                "expression": "happy"
+              },
+              {
+                "id": "2.2.c5.4",
+                "speakerId": 1,
+                "text": "(Được bố mẹ xúm vào cưng nựng, mình nín khóc rồi cười toe toét! Khí chất của bé yêu là số một!)",
+                "expression": "happy"
+              }
+            ]
+          },
+          {
+            "id": "2.2.c6",
+            "text": "Đói bụng đòi bú sữa bình thơm ngon 🍼😋",
+            "icon": "Heart",
+            "scoreReward": 0,
+            "loopBackToChoices": true,
+            "reactionDialogues": [
+              {
+                "id": "2.2.c6.1",
+                "speakerId": 1,
+                "text": "Măm măm... Chẹp chẹp chẹp! 🍼",
+                "expression": "happy"
+              },
+              {
+                "id": "2.2.c6.2",
+                "speakerId": 4,
+                "text": "Sữa ấm thơm ngon của bé cưng đến rồi đây! Nào ngoan mẹ cho bú bình nhé!",
+                "expression": "happy"
+              },
+              {
+                "id": "2.2.c6.3",
+                "speakerId": 3,
+                "text": "Cho bố xin một ngụm thử độ nóng... Ôi ngọt ngào béo ngậy chuẩn sữa bột nhập khẩu Úc có khác!",
+                "expression": "proud"
+              },
+              {
+                "id": "2.2.c6.4",
+                "speakerId": 4,
+                "text": "Ông lại giành sữa của con! Bố gì mà như con nít không bằng!",
+                "expression": "angry"
+              },
+              {
+                "id": "2.2.c6.5",
+                "speakerId": 1,
+                "text": "(Bú một hơi no căng bụng, mắt lim dim thỏa mãn vô cùng!)",
+                "expression": "happy"
+              }
+            ]
+          },
+          {
+            "id": "2.2.c7",
+            "text": "Bò loanh quanh phòng khách khám phá 🚼⚡",
+            "icon": "Sparkles",
+            "scoreReward": 0,
+            "loopBackToChoices": true,
+            "reactionDialogues": [
+              {
+                "id": "2.2.c7.1",
+                "speakerId": 1,
+                "text": "Bò bò bò... Bịch bịch bịch! 🚼",
+                "expression": "happy"
+              },
+              {
+                "id": "2.2.c7.2",
+                "speakerId": 3,
+                "text": "Coi chừng cái chân bàn con ơi! Úi suýt nữa đụng đầu, bố nhanh tay đỡ kịp!",
+                "expression": "surprised"
+              },
+              {
+                "id": "2.2.c7.3",
+                "speakerId": 4,
+                "text": "Trộm vía mới 1 tuổi mà bò thoăn thoắt như vận động viên điền kinh, sau này gánh team là cái chắc!",
+                "expression": "happy"
+              },
+              {
+                "id": "2.2.c7.4",
+                "speakerId": 1,
+                "text": "(Chui tọt vào gầm sofa lấy trộm được chiếc phong bì quỹ đen 5 triệu của bố giấu kĩ bấy lâu nay mang ra nộp cho mẹ kkk!)",
+                "expression": "proud"
+              },
+              {
+                "id": "2.2.c7.5",
+                "speakerId": 4,
+                "text": "Ủa ông Huấn? Quỹ đen 5 triệu giấu dưới chân sofa hả??? Tịch thu luôn!",
+                "expression": "angry"
+              },
+              {
+                "id": "2.2.c7.6",
+                "speakerId": 3,
+                "text": "💀💀💀 Trời ơi con với chả cái... Bố nuôi con bằng từng này mà con nỡ lòng nào bán đứng bố...",
+                "expression": "surprised"
+              }
+            ]
+          },
+          {
+            "id": "2.2.c8",
+            "text": "Bé đã chơi đã đời và sẵn sàng lớn lên! (Qua Màn Tiếp) 🚀✨",
+            "icon": "Trophy",
+            "scoreReward": 500,
+            "nextStepId": "stage_completed",
+            "reactionDialogues": [
+              {
+                "id": "2.2.c8.1",
+                "speakerId": 1,
+                "text": "Ạ bố Ạ mẹ! Bé đã sẵn sàng bước sang giai đoạn tiếp theo của cuộc đời! 🌟",
+                "expression": "proud"
+              },
+              {
+                "id": "2.2.c8.2",
+                "speakerId": 3,
+                "text": "Thấm thoát con tôi đã lớn khôn từng ngày rồi, tự hào về con quá!",
+                "expression": "proud"
+              },
+              {
+                "id": "2.2.c8.3",
+                "speakerId": 4,
+                "text": "Cố gắng lên nhé con yêu, chặng đường phía trước còn bao điều kỳ diệu đang đón chờ con!",
+                "expression": "happy"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "stage_3": {
+    "stageId": "stage_3",
+    "stageName": "Màn 3: Bước Vào Mẫu Giáo",
+    "initialStepId": "step_3_character_creation",
+    "steps": {
+      "step_3_character_creation": {
+        "id": "step_3_character_creation",
+        "stepNumber": 1,
+        "title": "Thử Đồ Đi Học Mẫu Giáo",
+        "dayLabel": "Ngày Khai Giảng Mầm Non",
+        "locationName": "Phòng Thay Đồ Của Bé",
+        "screenType": "dialogue_scene",
+        "bgm": "",
+        "background": {
+          "url": "asset:bg_livingroom",
+          "ambientEffect": "sunlight"
+        },
+        "characters": {
+          "1": {
+            "id": 1,
+            "name": "Bé {characterName}",
+            "sprite": "",
+            "side": "left",
+            "role": "player",
+            "color": "var(--color-primary)"
+          },
+          "3": {
+            "id": 3,
+            "name": "Bố ({dadName})",
+            "sprite": "asset:bo",
+            "side": "right",
+            "role": "npc",
+            "color": "#3B82F6"
+          },
+          "4": {
+            "id": 4,
+            "name": "Mẹ ({momName})",
+            "sprite": "asset:me",
+            "side": "left",
+            "role": "npc",
+            "color": "#EC4899"
+          }
+        },
+        "dialogues": [
+          {
+            "id": "3.1.1",
+            "speakerId": 4,
+            "text": "Dậy mau nào con ơi! Hôm nay là ngày đầu tiên con chính thức vào trường Mầm Non Ánh Dương rồi!",
+            "expression": "happy"
+          },
+          {
+            "id": "3.1.2",
+            "speakerId": 3,
+            "text": "Úi giời ơi, con cưng của bố thấm thoắt đã lớn thế này rồi! Nào, mở tủ đồ ra chọn ngay quả diện mạo thật cháy phố cho bố xem nào!",
+            "expression": "proud"
+          },
+          {
+            "id": "3.1.3",
+            "speakerId": 1,
+            "text": "Dạ! Con muốn tự tay chọn tóc, mặt, áo, quần, giày và balo thật chất chơi!",
+            "expression": "happy",
+            "triggerAction": {
+              "type": "character_customizer",
+              "title": "Studio Tùy Chỉnh Diện Mạo Mẫu Giáo",
+              "description": "Tự do chọn Tóc, Mặt, Áo, Quần, Giày và Phụ Kiện cho bé!"
+            }
+          },
+          {
+            "id": "3.1.4",
+            "speakerId": 3,
+            "text": "Haha đỉnh nóc kịch trần luôn! Nhìn quả outfit chất chơi này ai bảo không phải gen nhà họ Huấn nào!",
+            "expression": "proud"
+          },
+          {
+            "id": "3.1.5",
+            "speakerId": 4,
+            "text": "Trộm vía đẹp trai sáng sủa quá đi thôi! Nào, ăn nhẹ hộp sữa chua rồi bố chở đến trường Mầm Non ngay nhé!",
+            "expression": "happy"
+          }
+        ],
+        "choices": [
+          {
+            "id": "3.1.c1",
+            "text": "Leo lên xe máy bố phóng vèo tới cổng trường Mầm Non! 🛵✨",
+            "icon": "Sparkles",
+            "scoreReward": 300,
+            "nextStepId": "step_3_first_day_school",
+            "reactionDialogues": [
+              {
+                "id": "3.1.c1.1",
+                "speakerId": 1,
+                "text": "Vroooom! Xe bố chạy nhanh như phi thuyền vũ trụ kkk!",
+                "expression": "happy"
+              },
+              {
+                "id": "3.1.c1.2",
+                "speakerId": 3,
+                "text": "Bám chắc vào eo bố nhé! Đến cổng trường giật giải bé ngầu nhất khối mầm non nào!",
+                "expression": "proud"
+              }
+            ]
+          }
+        ]
+      },
+      "step_3_first_day_school": {
+        "id": "step_3_first_day_school",
+        "stepNumber": 2,
+        "title": "Cổng Trường Mầm Non Ánh Dương",
+        "dayLabel": "Buổi Sáng Đầu Tiên",
+        "locationName": "Cổng Trường Mầm Non Ánh Dương",
+        "screenType": "dialogue_scene",
+        "bgm": "",
+        "background": {
+          "url": "asset:bg_livingroom",
+          "ambientEffect": "sunlight"
+        },
+        "characters": {
+          "1": {
+            "id": 1,
+            "name": "Bé {characterName}",
+            "sprite": "",
+            "side": "left",
+            "role": "player",
+            "color": "var(--color-primary)"
+          },
+          "2": {
+            "id": 2,
+            "name": "Cô Giáo Thảo (Chủ Nhiệm)",
+            "sprite": "asset:yta",
+            "side": "right",
+            "role": "npc",
+            "color": "#10B981"
+          },
+          "3": {
+            "id": 3,
+            "name": "Bố ({dadName})",
+            "sprite": "asset:bo",
+            "side": "right",
+            "role": "npc",
+            "color": "#3B82F6"
+          },
+          "4": {
+            "id": 4,
+            "name": "Mẹ ({momName})",
+            "sprite": "asset:me",
+            "side": "left",
+            "role": "npc",
+            "color": "#EC4899"
+          }
+        },
+        "dialogues": [
+          {
+            "id": "3.2.1",
+            "speakerId": 2,
+            "text": "Cô chào bé {characterName} nhé! Ôi trộm vía hôm nay mặc bộ đồ xinh xắn đáng yêu quá, cô đón bé vào lớp nhé!",
+            "expression": "happy"
+          },
+          {
+            "id": "3.2.2",
+            "speakerId": 4,
+            "text": "Cháu nó hơi nghịch ngợm một tí, có gì nhờ cô giáo bảo ban uốn nắn giúp gia đình với ạ!",
+            "expression": "happy"
+          },
+          {
+            "id": "3.2.3",
+            "speakerId": 3,
+            "text": "Này con trai, vào lớp đừng có bắt nạt bạn bè nhé... cơ mà thằng nào bắt nạt con thì cứ bảo bố!",
+            "expression": "proud"
+          },
+          {
+            "id": "3.2.4",
+            "speakerId": 1,
+            "text": "Xung quanh có bao nhiêu là bạn nhỏ, cầu trượt, bập bênh với góc đồ chơi lego siêu khủng...",
+            "expression": "thinking"
+          }
+        ],
+        "choices": [
+          {
+            "id": "3.2.c1",
+            "text": "Ôm chặt chân mẹ khóc lóc đòi về uống sữa! 😭🍼",
+            "icon": "Heart",
+            "scoreReward": 350,
+            "statEffects": {
+              "happiness": 30,
+              "energy": 40
+            },
+            "nextStepId": "step_3_lunch_and_nap",
+            "reactionDialogues": [
+              {
+                "id": "3.2.c1.1",
+                "speakerId": 1,
+                "text": "Oaaaa mẹ ơi con không đi học đâu! Ở nhà sướng hơn hu hu hu!",
+                "expression": "surprised"
+              },
+              {
+                "id": "3.2.c1.2",
+                "speakerId": 4,
+                "text": "Thôi nào nín đi con yêu, chiều mẹ mua cho hộp kem socola to bự nhé!",
+                "expression": "happy"
+              },
+              {
+                "id": "3.2.c1.3",
+                "speakerId": 2,
+                "text": "Cô dẫn bé vào lớp xem các bạn đua xe ô tô đồ chơi nhé, vui lắm nè!",
+                "expression": "happy"
+              }
+            ]
+          },
+          {
+            "id": "3.2.c2",
+            "text": "Tự tin sải bước vào lớp giật lấy ô tô siêu nhân của bạn! 🦸‍♂️⚡",
+            "icon": "Flame",
+            "scoreReward": 450,
+            "statEffects": {
+              "happiness": 60,
+              "energy": 60
+            },
+            "nextStepId": "step_3_lunch_and_nap",
+            "reactionDialogues": [
+              {
+                "id": "3.2.c2.1",
+                "speakerId": 1,
+                "text": "Chiếc ô tô biến hình này thuộc về ta! Hahaha!",
+                "expression": "proud"
+              },
+              {
+                "id": "3.2.c2.2",
+                "speakerId": 3,
+                "text": "Đấy thấy chưa! Khí chất đại ca mầm non bộc lộ ngay từ ngày đầu tiên!",
+                "expression": "proud"
+              },
+              {
+                "id": "3.2.c2.3",
+                "speakerId": 2,
+                "text": "Ấy ấy bé {characterName} ơi, mình chơi chung hòa thuận với bạn Tí Đô nhé con!",
+                "expression": "neutral"
+              }
+            ]
+          },
+          {
+            "id": "3.2.c3",
+            "text": "Bật nhạc múa quạt Vinahey chào cờ chấn động trường! 🕺✨",
+            "icon": "Sparkles",
+            "scoreReward": 500,
+            "statEffects": {
+              "happiness": 80,
+              "energy": 70
+            },
+            "nextStepId": "step_3_lunch_and_nap",
+            "reactionDialogues": [
+              {
+                "id": "3.2.c3.1",
+                "speakerId": 1,
+                "text": "Nhạc lên là anh em mầm non bay lắc! Quạt mười tám tầng mây!",
+                "expression": "happy"
+              },
+              {
+                "id": "3.2.c3.2",
+                "speakerId": 2,
+                "text": "Trời ơi các bạn nhỏ trong trường bu lại vỗ tay ầm ầm kìa! Tài năng thiên bẩm!",
+                "expression": "surprised"
+              },
+              {
+                "id": "3.2.c3.3",
+                "speakerId": 4,
+                "text": "Tôi đến lạy bố con nhà ông, đi học mà như đi diễn xiếc rong vậy trời!",
+                "expression": "neutral"
+              }
+            ]
+          }
+        ]
+      },
+      "step_3_lunch_and_nap": {
+        "id": "step_3_lunch_and_nap",
+        "stepNumber": 3,
+        "title": "Cuộc Chiến Giờ Ăn & Giờ Ngủ Trưa",
+        "dayLabel": "Giờ Ăn Trưa Mầm Non",
+        "locationName": "Phòng Sinh Hoạt Lớp Chồi 1",
+        "screenType": "dialogue_scene",
+        "bgm": "",
+        "background": {
+          "url": "asset:bg_livingroom",
+          "ambientEffect": "sunlight"
+        },
+        "characters": {
+          "1": {
+            "id": 1,
+            "name": "Bé {characterName}",
+            "sprite": "",
+            "side": "left",
+            "role": "player",
+            "color": "var(--color-primary)"
+          },
+          "2": {
+            "id": 2,
+            "name": "Cô Giáo Thảo",
+            "sprite": "asset:yta",
+            "side": "right",
+            "role": "npc",
+            "color": "#10B981"
+          }
+        },
+        "dialogues": [
+          {
+            "id": "3.3.1",
+            "speakerId": 2,
+            "text": "Đã đến giờ ăn trưa rồi các bé ơi! Hôm nay thực đơn có cháo sườn bí đỏ và sữa chua dâu tây thơm ngon!",
+            "expression": "happy"
+          },
+          {
+            "id": "3.3.2",
+            "speakerId": 1,
+            "text": "(Nhìn bát cháo sườn nóng hổi... bên cạnh là bạn Cu Tèo đang lén giấu thìa, còn bạn Bé Na thì ăn chậm như rùa bò)",
+            "expression": "thinking"
+          }
+        ],
+        "choices": [
+          {
+            "id": "3.3.c1",
+            "text": "Vét sạch bách bát cháo trong 3 nốt nhạc giật cúp Bé Ngoan! 🥣⭐",
+            "icon": "Award",
+            "scoreReward": 400,
+            "statEffects": {
+              "energy": 80,
+              "happiness": 50
+            },
+            "nextStepId": "step_3_graduation",
+            "reactionDialogues": [
+              {
+                "id": "3.3.c1.1",
+                "speakerId": 1,
+                "text": "Ăn sạch không còn một hạt cháo dính bát! Nhanh nhất lớp luôn!",
+                "expression": "proud"
+              },
+              {
+                "id": "3.3.c1.2",
+                "speakerId": 2,
+                "text": "Hoan hô bé {characterName}! Cô tặng bé một bông hoa điểm mười cài ngực nhé!",
+                "expression": "happy"
+              }
+            ]
+          },
+          {
+            "id": "3.3.c2",
+            "text": "Trốn giờ ngủ trưa vẽ râu mèo lên mặt bạn Cu Tèo! 🎨😼",
+            "icon": "Flame",
+            "scoreReward": 450,
+            "statEffects": {
+              "energy": 50,
+              "happiness": 70
+            },
+            "nextStepId": "step_3_graduation",
+            "reactionDialogues": [
+              {
+                "id": "3.3.c2.1",
+                "speakerId": 1,
+                "text": "(Khẽ rón rén rút cây bút sáp màu đen tô vẽ 6 cọng râu mèo cực chuẩn kkk)",
+                "expression": "proud"
+              },
+              {
+                "id": "3.3.c2.2",
+                "speakerId": 2,
+                "text": "Trời đất ơi! Cu Tèo dậy nhìn vào gương tưởng mình biến thành mèo máy Doraemon khóc thét rồi kìa!",
+                "expression": "surprised"
+              }
+            ]
+          },
+          {
+            "id": "3.3.c3",
+            "text": "Nhường hộp sữa chua dâu cho bạn Bé Na xinh xắn! 🧃💘",
+            "icon": "Heart",
+            "scoreReward": 450,
+            "statEffects": {
+              "happiness": 80,
+              "energy": 40
+            },
+            "nextStepId": "step_3_graduation",
+            "reactionDialogues": [
+              {
+                "id": "3.3.c3.1",
+                "speakerId": 1,
+                "text": "Hộp sữa chua này tặng bạn Bé Na đó, ăn đi cho mau lớn nhé!",
+                "expression": "happy"
+              },
+              {
+                "id": "3.3.c3.2",
+                "speakerId": 2,
+                "text": "Ôi bé {characterName} ga-lăng quá, đúng là quý ông nhí tương lai!",
+                "expression": "happy"
+              }
+            ]
+          }
+        ]
+      },
+      "step_3_graduation": {
+        "id": "step_3_graduation",
+        "stepNumber": 4,
+        "title": "Lễ Bế Giảng & Nhận Phiếu Bé Ngoan",
+        "dayLabel": "Ngày Tốt Nghiệp Mầm Non",
+        "locationName": "Sân Khấu Trường Mầm Non Ánh Dương",
+        "screenType": "dialogue_scene",
+        "bgm": "",
+        "background": {
+          "url": "asset:bg_livingroom",
+          "ambientEffect": "sunlight"
+        },
+        "characters": {
+          "1": {
+            "id": 1,
+            "name": "Bé {characterName}",
+            "sprite": "",
+            "side": "left",
+            "role": "player",
+            "color": "var(--color-primary)"
+          },
+          "2": {
+            "id": 2,
+            "name": "Cô Hiệu Trưởng",
+            "sprite": "asset:yta",
+            "side": "right",
+            "role": "npc",
+            "color": "#10B981"
+          },
+          "3": {
+            "id": 3,
+            "name": "Bố ({dadName})",
+            "sprite": "asset:bo",
+            "side": "right",
+            "role": "npc",
+            "color": "#3B82F6"
+          },
+          "4": {
+            "id": 4,
+            "name": "Mẹ ({momName})",
+            "sprite": "asset:me",
+            "side": "left",
+            "role": "npc",
+            "color": "#EC4899"
+          }
+        },
+        "dialogues": [
+          {
+            "id": "3.4.1",
+            "speakerId": 2,
+            "text": "Chúc mừng toàn thể các bé lớp Lá đã hoàn thành xuất sắc chặng đường Mầm Non tuổi thơ!",
+            "expression": "happy"
+          },
+          {
+            "id": "3.4.2",
+            "speakerId": 2,
+            "text": "Đặc biệt tuyên dương bé {characterName} đã xuất sắc đoạt danh hiệu Bé Khỏe Bé Ngoan Xuất Sắc Toàn Trường!",
+            "expression": "happy"
+          },
+          {
+            "id": "3.4.3",
+            "speakerId": 3,
+            "text": "Bố rơi nước mắt vì tự hào rồi đây con ơi! Con nhà tông không giống lông cũng giống cánh!",
+            "expression": "proud"
+          },
+          {
+            "id": "3.4.4",
+            "speakerId": 4,
+            "text": "Mẹ đã mua sẵn cặp sách, bút chì và thước kẻ chuẩn bị đưa con vào Lớp 1 Tiểu Học rồi nhé!",
+            "expression": "happy"
+          },
+          {
+            "id": "3.4.5",
+            "speakerId": 1,
+            "text": "Con cảm ơn bố mẹ và các cô giáo! Con đã sẵn sàng lớn lên bước vào trường Tiểu Học!",
+            "expression": "proud"
+          }
+        ],
+        "choices": [
+          {
+            "id": "3.4.c1",
+            "text": "Tốt Nghiệp Mầm Non & Sẵn Sàng Vào Lớp 1 Tiểu Học! 🚀🎓",
+            "icon": "Trophy",
+            "scoreReward": 600,
+            "nextStepId": "stage_completed",
+            "reactionDialogues": [
+              {
+                "id": "3.4.c1.1",
+                "speakerId": 1,
+                "text": "Tạm biệt trường Mầm Non thân yêu! Tương lai tươi sáng đang vẫy gọi!",
+                "expression": "proud"
+              },
+              {
+                "id": "3.4.c1.2",
+                "speakerId": 3,
+                "text": "Tiểu Học ơi, thần đồng nhà bố đến đây!",
+                "expression": "proud"
+              }
+            ]
           }
         ]
       }

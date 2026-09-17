@@ -1,16 +1,7 @@
-import React, { useState, useRef } from 'react';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import type { Swiper as SwiperCore } from 'swiper';
-import { EffectCoverflow, Pagination, Navigation } from 'swiper/modules';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Check, Heart, Baby, ChevronLeft, ChevronRight } from 'lucide-react';
 import { BABY_AVATARS } from '../../utils/assets';
-
-// Import Swiper styles
-import 'swiper/css';
-import 'swiper/css/effect-coverflow';
-import 'swiper/css/pagination';
-import 'swiper/css/navigation';
 
 interface BabyAvatarPickerProps {
   currentAvatar?: string;
@@ -28,8 +19,15 @@ export const BabyAvatarPicker: React.FC<BabyAvatarPickerProps> = ({
     BABY_AVATARS.findIndex((b) => `asset:${b.id}` === currentAvatar)
   );
   const [activeIndex, setActiveIndex] = useState<number>(initialIndex);
-  const swiperRef = useRef<SwiperCore | null>(null);
   const selectedBaby = BABY_AVATARS[activeIndex] || BABY_AVATARS[0];
+
+  const handlePrev = () => {
+    setActiveIndex((prev) => (prev > 0 ? prev - 1 : BABY_AVATARS.length - 1));
+  };
+
+  const handleNext = () => {
+    setActiveIndex((prev) => (prev < BABY_AVATARS.length - 1 ? prev + 1 : 0));
+  };
 
   return (
     <div
@@ -65,11 +63,11 @@ export const BabyAvatarPicker: React.FC<BabyAvatarPickerProps> = ({
           Chọn Diện Mạo Của Bé: {characterName}
         </h3>
         <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
-          Vuốt sang trái/phải hoặc dùng nút điều hướng để chọn diện mạo ưng ý nhất nhé!
+          Bấm các mũi tên hoặc bấm trực tiếp vào từng bé để chọn diện mạo ưng ý nhất nhé!
         </p>
       </div>
 
-      {/* Swiper Coverflow Carousel Container with Nav Buttons */}
+      {/* 3D Coverflow Carousel Container with Nav Buttons */}
       <div
         style={{
           width: '100%',
@@ -79,6 +77,8 @@ export const BabyAvatarPicker: React.FC<BabyAvatarPickerProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
+          height: '320px',
+          perspective: '1000px',
         }}
       >
         {/* Previous Button */}
@@ -86,18 +86,18 @@ export const BabyAvatarPicker: React.FC<BabyAvatarPickerProps> = ({
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            swiperRef.current?.slidePrev();
+            handlePrev();
           }}
           aria-label="Previous avatar"
           style={{
             position: 'absolute',
             left: '4px',
-            zIndex: 10,
-            width: '40px',
-            height: '40px',
+            zIndex: 30,
+            width: '42px',
+            height: '42px',
             borderRadius: '50%',
-            backgroundColor: 'rgba(255, 255, 255, 0.92)',
-            boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            boxShadow: '0 4px 14px rgba(0,0,0,0.25)',
             border: '1px solid var(--color-border)',
             cursor: 'pointer',
             display: 'flex',
@@ -107,137 +107,136 @@ export const BabyAvatarPicker: React.FC<BabyAvatarPickerProps> = ({
             transition: 'all 0.2s ease',
           }}
         >
-          <ChevronLeft size={22} />
+          <ChevronLeft size={24} />
         </button>
 
-        {/* Swiper Component */}
-        <div style={{ width: '100%', height: '330px' }}>
-          <Swiper
-            onSwiper={(swiper) => (swiperRef.current = swiper)}
-            effect={'coverflow'}
-            grabCursor={true}
-            centeredSlides={true}
-            slidesPerView={'auto'}
-            initialSlide={initialIndex}
-            coverflowEffect={{
-              rotate: 20,
-              stretch: 0,
-              depth: 130,
-              modifier: 1,
-              slideShadows: false,
-            }}
-            pagination={{ clickable: true }}
-            modules={[EffectCoverflow, Pagination, Navigation]}
-            onSlideChange={(swiper) => setActiveIndex(swiper.activeIndex)}
-            style={{ width: '100%', height: '100%', paddingBottom: '36px' }}
-          >
+        {/* Carousel Cards Track */}
+        <div
+          style={{
+            position: 'relative',
+            width: '240px',
+            height: '270px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <AnimatePresence initial={false}>
             {BABY_AVATARS.map((baby, idx) => {
+              const offset = idx - activeIndex;
+              const absOffset = Math.abs(offset);
+
+              // Only render visible items within distance of 2
+              if (absOffset > 2 && !(activeIndex <= 1 && idx >= BABY_AVATARS.length - 2) && !(activeIndex >= BABY_AVATARS.length - 2 && idx <= 1)) {
+                return null;
+              }
+
               const isSelected = activeIndex === idx;
+              const translateX = offset * 130;
+              const scale = isSelected ? 1.08 : Math.max(0.75, 1 - absOffset * 0.18);
+              const rotateY = offset * -25;
+              const zIndex = 20 - absOffset;
+              const opacity = isSelected ? 1 : Math.max(0.4, 1 - absOffset * 0.35);
+
               return (
-                <SwiperSlide
+                <motion.div
                   key={baby.id}
+                  onClick={() => setActiveIndex(idx)}
+                  animate={{
+                    x: translateX,
+                    scale,
+                    rotateY,
+                    opacity,
+                    zIndex,
+                  }}
+                  transition={{ type: 'spring', stiffness: 280, damping: 28 }}
                   style={{
-                    width: '220px',
-                    height: '275px',
+                    position: 'absolute',
+                    width: '210px',
+                    height: '255px',
+                    backgroundColor: isSelected ? '#FFFFFF' : 'rgba(255, 255, 255, 0.85)',
+                    borderRadius: 'var(--radius-xl)',
+                    border: isSelected ? '3px solid var(--color-primary)' : '1.5px solid var(--color-border)',
+                    boxShadow: isSelected
+                      ? '0 18px 40px rgba(108, 92, 231, 0.4)'
+                      : '0 6px 16px rgba(0, 0, 0, 0.1)',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    padding: '14px 10px',
+                    cursor: 'pointer',
+                    transformStyle: 'preserve-3d',
                   }}
                 >
-                  <motion.div
-                    animate={{
-                      scale: isSelected ? 1.08 : 0.88,
-                      opacity: isSelected ? 1 : 0.65,
-                    }}
-                    transition={{ duration: 0.25 }}
+                  {/* Index Tag */}
+                  <div
                     style={{
-                      width: '200px',
-                      height: '245px',
-                      backgroundColor: isSelected ? '#FFFFFF' : 'rgba(255, 255, 255, 0.75)',
-                      borderRadius: 'var(--radius-xl)',
-                      border: isSelected ? '3px solid var(--color-primary)' : '1.5px solid var(--color-border)',
-                      boxShadow: isSelected
-                        ? '0 16px 36px rgba(108, 92, 231, 0.35)'
-                        : '0 6px 16px rgba(0, 0, 0, 0.08)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: '12px 10px',
-                      position: 'relative',
-                      cursor: 'pointer',
+                      position: 'absolute',
+                      top: '10px',
+                      left: '10px',
+                      backgroundColor: isSelected ? 'var(--color-primary)' : 'rgba(0,0,0,0.06)',
+                      color: isSelected ? '#FFFFFF' : 'var(--color-text-secondary)',
+                      fontSize: '11px',
+                      fontWeight: 800,
+                      padding: '2px 7px',
+                      borderRadius: '10px',
                     }}
-                    onClick={() => swiperRef.current?.slideTo(idx)}
                   >
-                    {/* Index Tag */}
+                    #{idx + 1}
+                  </div>
+
+                  {isSelected && (
                     <div
                       style={{
                         position: 'absolute',
-                        top: '10px',
-                        left: '10px',
-                        backgroundColor: isSelected ? 'var(--color-primary)' : 'rgba(0,0,0,0.06)',
-                        color: isSelected ? '#FFFFFF' : 'var(--color-text-secondary)',
-                        fontSize: '11px',
-                        fontWeight: 800,
-                        padding: '2px 7px',
-                        borderRadius: '10px',
+                        top: '-8px',
+                        right: '-8px',
+                        backgroundColor: 'var(--color-primary)',
+                        color: '#FFFFFF',
+                        borderRadius: '50%',
+                        width: '28px',
+                        height: '28px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 4px 12px rgba(108, 92, 231, 0.5)',
                       }}
                     >
-                      #{idx + 1}
+                      <Check size={16} />
                     </div>
+                  )}
 
-                    {isSelected && (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: '-8px',
-                          right: '-8px',
-                          backgroundColor: 'var(--color-primary)',
-                          color: '#FFFFFF',
-                          borderRadius: '50%',
-                          width: '28px',
-                          height: '28px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          boxShadow: '0 4px 12px rgba(108, 92, 231, 0.5)',
-                        }}
-                      >
-                        <Check size={16} />
-                      </div>
-                    )}
+                  <img
+                    src={baby.src}
+                    alt={baby.name}
+                    style={{
+                      width: '145px',
+                      height: '145px',
+                      objectFit: 'contain',
+                      filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.18))',
+                    }}
+                  />
 
-                    <img
-                      src={baby.src}
-                      alt={baby.name}
-                      style={{
-                        width: '155px',
-                        height: '155px',
-                        objectFit: 'contain',
-                        filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.18))',
-                      }}
-                    />
-                    <span
-                      style={{
-                        fontSize: '13px',
-                        fontWeight: 800,
-                        color: isSelected ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-                        marginTop: '8px',
-                        textAlign: 'center',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        maxWidth: '180px',
-                      }}
-                    >
-                      {baby.name}
-                    </span>
-                  </motion.div>
-                </SwiperSlide>
+                  <span
+                    style={{
+                      fontSize: '13px',
+                      fontWeight: 800,
+                      color: isSelected ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                      marginTop: '8px',
+                      textAlign: 'center',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      maxWidth: '180px',
+                    }}
+                  >
+                    {baby.name}
+                  </span>
+                </motion.div>
               );
             })}
-          </Swiper>
+          </AnimatePresence>
         </div>
 
         {/* Next Button */}
@@ -245,18 +244,18 @@ export const BabyAvatarPicker: React.FC<BabyAvatarPickerProps> = ({
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            swiperRef.current?.slideNext();
+            handleNext();
           }}
           aria-label="Next avatar"
           style={{
             position: 'absolute',
             right: '4px',
-            zIndex: 10,
-            width: '40px',
-            height: '40px',
+            zIndex: 30,
+            width: '42px',
+            height: '42px',
             borderRadius: '50%',
-            backgroundColor: 'rgba(255, 255, 255, 0.92)',
-            boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            boxShadow: '0 4px 14px rgba(0,0,0,0.25)',
             border: '1px solid var(--color-border)',
             cursor: 'pointer',
             display: 'flex',
@@ -266,8 +265,29 @@ export const BabyAvatarPicker: React.FC<BabyAvatarPickerProps> = ({
             transition: 'all 0.2s ease',
           }}
         >
-          <ChevronRight size={22} />
+          <ChevronRight size={24} />
         </button>
+      </div>
+
+      {/* Pagination Dots */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        {BABY_AVATARS.map((_, idx) => (
+          <button
+            key={idx}
+            type="button"
+            onClick={() => setActiveIndex(idx)}
+            style={{
+              width: activeIndex === idx ? '20px' : '8px',
+              height: '8px',
+              borderRadius: '4px',
+              backgroundColor: activeIndex === idx ? 'var(--color-primary)' : 'rgba(0,0,0,0.18)',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.25s ease',
+              padding: 0,
+            }}
+          />
+        ))}
       </div>
 
       {/* Selected Baby Badge */}

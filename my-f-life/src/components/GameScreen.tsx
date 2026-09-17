@@ -27,6 +27,7 @@ import { FertilizationCinemaCutscene } from './game/cutscenes/FertilizationCinem
 import type { WinnerInfo } from '../game/tadpole/GameEngine';
 import storyStagesData from '../data/storyStages.json';
 import { backgroundMusicManager } from '../services/backgroundMusicManager';
+import { CharacterAvatarRenderer } from './game/character/CharacterAvatarRenderer';
 
 export const GameScreen: React.FC = () => {
   const currentUser = useGameStore((state) => state.currentUser);
@@ -179,6 +180,9 @@ export const GameScreen: React.FC = () => {
     if (log.actionType === 'CHARACTER_NAMED') {
       const name = log.metadata?.characterName || charName;
       return `Khai sinh đặt tên bé: "${name}"`;
+    }
+    if (log.actionType === 'CHARACTER_CUSTOMIZED') {
+      return `Tùy chỉnh diện mạo bé mẫu giáo: ${log.details || 'Thời trang mầm non'}`;
     }
     if (log.actionType === 'STAGE_STARTED') {
       return `Bắt đầu màn: ${log.stageName || log.stageId}`;
@@ -461,6 +465,20 @@ export const GameScreen: React.FC = () => {
       });
     }
 
+    if (profileUpdate.avatarConfig) {
+      logUserAction({
+        actionType: 'CHARACTER_CUSTOMIZED',
+        stageId: currentStage.id,
+        stageName: currentStage.name,
+        stepId: currentStepId,
+        details: 'Phối đồ đi học Mẫu Giáo (+500đ)',
+        scoreReward: 500,
+        metadata: {
+          avatarConfig: profileUpdate.avatarConfig,
+        },
+      });
+    }
+
     updateUserProfile(profileUpdate, nextDialogueIndex);
   };
 
@@ -503,6 +521,7 @@ export const GameScreen: React.FC = () => {
           key={`${currentUser.currentStageId}_${activeStepConfig.id}`}
           stepConfig={activeStepConfig}
           userProfile={currentUser.profile}
+          selectedChoiceIds={currentUser.selectedChoiceIds || []}
           initialDialogueIndex={currentUser.currentDialogueIndex || 0}
           actionLogs={currentUser.actionLogs || []}
           onDialogueIndexChange={handleDialogueIndexChange}
@@ -557,6 +576,46 @@ export const GameScreen: React.FC = () => {
         gap: '16px',
       }}
     >
+      {/* Brand Header with Logo */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '12px',
+          padding: '4px 0 0 0',
+        }}
+      >
+        <motion.img
+          whileHover={{ scale: 1.08, rotate: 3 }}
+          src="/logo.png"
+          alt="Logo Game"
+          style={{
+            width: '44px',
+            height: '44px',
+            objectFit: 'contain',
+            filter: 'drop-shadow(0 4px 12px rgba(168, 85, 247, 0.45))',
+          }}
+        />
+        <div>
+          <h1
+            style={{
+              fontSize: '20px',
+              fontWeight: 900,
+              color: '#F5F0FF',
+              letterSpacing: '-0.3px',
+              margin: 0,
+              textShadow: '0 2px 10px rgba(168, 85, 247, 0.4)',
+            }}
+          >
+            Cuộc Đời Của Tôi
+          </h1>
+          <p style={{ fontSize: '12px', color: '#D8B4FE', margin: 0, fontWeight: 600 }}>
+            Hành trình mô phỏng cuộc đời
+          </p>
+        </div>
+      </div>
+
       {/* 1. TOP MAIN HEADER */}
       <div className="game-card" style={{ padding: '16px 20px' }}>
         <div
@@ -576,15 +635,21 @@ export const GameScreen: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: '38px',
-                  height: '38px',
+                  width: '42px',
+                  height: '42px',
                   borderRadius: '50%',
                   backgroundColor: 'var(--color-background-secondary)',
                   color: 'var(--color-primary)',
                   fontWeight: 900,
+                  overflow: 'hidden',
+                  border: '1.5px solid var(--color-border)',
                 }}
               >
-                <User size={20} />
+                {currentUser.profile?.avatarConfig ? (
+                  <CharacterAvatarRenderer config={currentUser.profile.avatarConfig} width={40} height={50} showShadow={false} />
+                ) : (
+                  <User size={20} />
+                )}
               </div>
 
               <div>

@@ -20,7 +20,7 @@ export type VariableMappingType = {
 export type VariableMap = Record<string, VariableMappingType | string>;
 
 export interface StoryActionConfig {
-  type: 'profile_init' | 'name_picker' | 'choice_modal' | 'custom_modal' | 'baby_avatar_select';
+  type: 'profile_init' | 'name_picker' | 'choice_modal' | 'custom_modal' | 'baby_avatar_select' | 'character_customizer';
   title: string;
   description?: string;
   saveField?: string;
@@ -55,6 +55,8 @@ export interface StoryChoice {
   reactionDialogues?: DialogueLine[]; // Danh sách các câu thoại phản hồi từ NPC/Y tá theo lựa chọn này (1.1.4.1, 1.1.4.2...)
   nextStepId?: string; // Bước tiếp theo để chuyển đến
   nextStageId?: string; // Màn tiếp theo nếu rẽ nhánh sang màn khác
+  actionModal?: 'watch_tv' | 'watch_tiktok'; // Mở modal tương tác đặc biệt
+  loopBackToChoices?: boolean; // Quay lại bảng lựa chọn sau khi kết thúc reaction dialogs
 }
 
 export interface StoryStepConfig {

@@ -27,16 +27,21 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { StoryStepConfig, DialogueLine, StoryChoice, StoryActionConfig } from '../../types/story';
-import type { UserProfile, UserActionLog } from '../../types/game';
+import type { UserProfile, UserActionLog, CharacterAvatarConfig } from '../../types/game';
 import { resolveAssetUrl, getRandomHospitalBackground } from '../../utils/assets';
 import { GameDatePicker } from '../common/GameDatePicker';
 import { BabyAvatarPicker } from '../common/BabyAvatarPicker';
 import { StageTitleSplash } from '../common/StageTitleSplash';
+import { TvWatchingModal } from './modals/TvWatchingModal';
+import { TikTokFeedModal } from './modals/TikTokFeedModal';
 import { backgroundMusicManager } from '../../services/backgroundMusicManager';
+import { CharacterCustomizerModal } from './character/CharacterCustomizerModal';
+import { CharacterAvatarRenderer } from './character/CharacterAvatarRenderer';
 
 interface StoryDialogueEngineProps {
   stepConfig: StoryStepConfig;
   userProfile?: UserProfile;
+  selectedChoiceIds?: string[];
   initialDialogueIndex?: number;
   actionLogs?: UserActionLog[];
   onDialogueIndexChange?: (index: number) => void;
@@ -49,6 +54,7 @@ interface StoryDialogueEngineProps {
 export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
   stepConfig,
   userProfile = {},
+  selectedChoiceIds = [],
   initialDialogueIndex = 0,
   actionLogs = [],
   onDialogueIndexChange,
@@ -70,11 +76,36 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
   const [cachedVariables, setCachedVariables] = useState<Record<string, string>>({});
   const [isMuted, setIsMuted] = useState(false);
 
+  // Local record of selected choice IDs to immediately filter out used options
+  const [localSelectedChoiceIds, setLocalSelectedChoiceIds] = useState<string[]>(() => selectedChoiceIds || []);
+
+  useEffect(() => {
+    setLocalSelectedChoiceIds(selectedChoiceIds || []);
+  }, [selectedChoiceIds]);
+
+  // Danh sách các lựa chọn chưa được chọn (Lựa chọn qua màn luôn hiển thị)
+  const availableChoices = useMemo(() => {
+    if (!stepConfig.choices) return [];
+    return stepConfig.choices.filter((choice) => {
+      // Lựa chọn kết thúc màn hoặc qua màn kế tiếp luôn hiển thị
+      if (choice.nextStepId === 'stage_completed' || choice.id.endsWith('c8')) {
+        return true;
+      }
+      // Loại bỏ lựa chọn đã chọn
+      return !localSelectedChoiceIds.includes(choice.id);
+    });
+  }, [stepConfig.choices, localSelectedChoiceIds]);
+
   // Floating score feedback
   const [floatingScore, setFloatingScore] = useState<number | null>(null);
 
   // Pending selected choice transition (after reaction dialogues finish)
   const [pendingChoiceTransition, setPendingChoiceTransition] = useState<StoryChoice | null>(null);
+
+  // Interactive Action Modals (Smart TV & TikTok feed)
+  const [isTvOpen, setIsTvOpen] = useState(false);
+  const [isTikTokOpen, setIsTikTokOpen] = useState(false);
+  const [activeInteractiveChoice, setActiveInteractiveChoice] = useState<StoryChoice | null>(null);
 
   // Audio refs & Typewriter timer ref
   const typewriterAudioCtxRef = useRef<AudioContext | null>(null);
@@ -97,6 +128,9 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
   const [birthdateInput, setBirthdateInput] = useState(userProfile.birthdate || '2000-09-16');
   const [characterNameInput, setCharacterNameInput] = useState(userProfile.characterName || '');
   const [selectedBabyAvatar, setSelectedBabyAvatar] = useState<string>(userProfile.babyAvatar || '');
+
+  // Check if current stage is Stage 3+ (Kindergarten or older) where custom 3D avatar is used
+  const isCustomAvatarStage = !stepConfig.id.startsWith('step_1') && !stepConfig.id.startsWith('step_2');
 
   useEffect(() => {
     if (userProfile.babyAvatar) {
@@ -151,12 +185,13 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
       setActiveModalAction(null);
       setPendingChoiceTransition(null);
       setFloatingScore(null);
+      setLocalSelectedChoiceIds(selectedChoiceIds || []);
       handledTriggersRef.current = new Set(
         stepConfig.dialogues.slice(0, startIdx).map((d) => d.id)
       );
       onDialogueIndexChange?.(startIdx);
     }
-  }, [stepConfig.id, stepConfig.dialogues, initialDialogueIndex, onDialogueIndexChange]);
+  }, [stepConfig.id, stepConfig.dialogues, initialDialogueIndex, selectedChoiceIds, onDialogueIndexChange]);
 
   // Quản lý theo dõi bài hát nền hiện tại
   const [currentTrackInfo, setCurrentTrackInfo] = useState(() => backgroundMusicManager.getCurrentTrack());
@@ -230,14 +265,20 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
       name = name.replace(/\{momName\}/g, momName);
       char.name = name;
 
-      // Assign baby avatar sprite for player / baby in Stage 2+ or when selected
+      // Assign avatar sprite for player in Stage 3+ (custom avatar) or Stage 1 & 2 (baby avatars)
       if (char.role === 'player' || char.id === 1 || String(char.id) === '1') {
-        if (stepConfig.id === 'step_2_first_words') {
-          char.sprite = selectedBabyAvatar || userProfile.babyAvatar || 'asset:baby_1';
-        } else if (userProfile.babyAvatar && stepConfig.id !== 'step_1_birth') {
-          char.sprite = userProfile.babyAvatar;
+        const isBabyStage = stepConfig.id.startsWith('step_1') || stepConfig.id.startsWith('step_2');
+        if (isBabyStage) {
+          if (stepConfig.id.startsWith('step_2') || stepConfig.id === 'step_2_first_words') {
+            char.sprite = selectedBabyAvatar || userProfile.babyAvatar || 'asset:baby_1';
+          } else if (userProfile.babyAvatar && stepConfig.id !== 'step_1_birth') {
+            char.sprite = userProfile.babyAvatar;
+          } else {
+            char.sprite = rawChar.sprite || 'asset:baby_1';
+          }
         } else {
-          char.sprite = rawChar.sprite || '';
+          // Stage 3+ (Mẫu giáo trở lên): Sử dụng avatar tùy biến 3D
+          char.sprite = 'asset:custom_avatar';
         }
       }
 
@@ -436,7 +477,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
 
   // Advance dialogue callback
   const handleNextDialogue = useCallback(() => {
-    if (activeModalAction || showHistoryModal) return;
+    if (activeModalAction || showHistoryModal || isTvOpen || isTikTokOpen) return;
 
     // Fast-forward typewriter if currently typing
     if (isTyping) {
@@ -455,8 +496,18 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
       onDialogueIndexChange?.(nextIdx);
     } else {
       if (pendingChoiceTransition) {
-        onStepChoice(pendingChoiceTransition);
-        setPendingChoiceTransition(null);
+        if (pendingChoiceTransition.loopBackToChoices) {
+          // Quay lại bảng lựa chọn của step hiện tại
+          setActiveDialogueList(stepConfig.dialogues);
+          setCurrentDialogueIndex(stepConfig.dialogues.length);
+          setPendingChoiceTransition(null);
+          setDisplayedText('');
+          setIsTyping(false);
+          onDialogueIndexChange?.(stepConfig.dialogues.length);
+        } else {
+          onStepChoice(pendingChoiceTransition);
+          setPendingChoiceTransition(null);
+        }
       } else {
         const nextIdx = activeDialogueList.length;
         setCurrentDialogueIndex(nextIdx);
@@ -466,11 +517,14 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
   }, [
     activeModalAction,
     showHistoryModal,
+    isTvOpen,
+    isTikTokOpen,
     isTyping,
     resolvedFullText,
     currentDialogueIndex,
     activeDialogueList.length,
     pendingChoiceTransition,
+    stepConfig.dialogues,
     onStepChoice,
     onDialogueIndexChange,
   ]);
@@ -478,7 +532,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
   // Global Keyboard Navigation Listener: Any key advances dialogue except inputs / modifier keys
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (activeModalAction || showHistoryModal || showChoices) return;
+      if (activeModalAction || showHistoryModal || showChoices || isTvOpen || isTikTokOpen) return;
 
       const target = e.target as HTMLElement | null;
       const targetTag = target?.tagName?.toLowerCase();
@@ -527,11 +581,11 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeModalAction, showHistoryModal, showChoices, handleNextDialogue]);
+  }, [activeModalAction, showHistoryModal, showChoices, isTvOpen, isTikTokOpen, handleNextDialogue]);
 
   // Global screen click handler
   const handleGlobalScreenClick = (e: React.MouseEvent) => {
-    if (activeModalAction || showHistoryModal || showChoices) return;
+    if (activeModalAction || showHistoryModal || showChoices || isTvOpen || isTikTokOpen) return;
 
     const target = e.target as HTMLElement;
     // Don't advance if clicked on any interactive button, input, select, form, or element marked as no-advance
@@ -544,17 +598,23 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
 
   // Auto-play timer: Tự động chuyển câu thoại tiếp theo sau mỗi 5 giây
   useEffect(() => {
-    if (!isAutoPlay || isTyping || showChoices || activeModalAction) return;
+    if (!isAutoPlay || isTyping || showChoices || activeModalAction || isTvOpen || isTikTokOpen) return;
 
     const autoTimer = setTimeout(() => {
       handleNextDialogue();
     }, 5000);
 
     return () => clearTimeout(autoTimer);
-  }, [isAutoPlay, isTyping, showChoices, activeModalAction, currentDialogueIndex, activeDialogueList, handleNextDialogue]);
+  }, [isAutoPlay, isTyping, showChoices, activeModalAction, isTvOpen, isTikTokOpen, currentDialogueIndex, activeDialogueList, handleNextDialogue]);
 
   // User selects an option
   const handleSelectChoice = (choice: StoryChoice) => {
+    // 1. Lưu ngay ID lựa chọn vào danh sách đã chọn để loại bỏ khỏi menu
+    setLocalSelectedChoiceIds((prev) => (prev.includes(choice.id) ? prev : [...prev, choice.id]));
+
+    // 2. Gửi sự kiện để lưu vào Supabase database / localStorage
+    onStepChoice(choice);
+
     // Phát âm thanh hiệu ứng riêng nếu có (Ví dụ: SIUUUU Cristiano Ronaldo)
     const choiceSfx = choice.sfx
       ? resolveAssetUrl(choice.sfx)
@@ -566,7 +626,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
       backgroundMusicManager.playDialogueAudio(choiceSfx, 0.95);
     }
 
-    const scoreGain = typeof choice.scoreReward === 'number' ? choice.scoreReward : 100;
+    const scoreGain = typeof choice.scoreReward === 'number' ? choice.scoreReward : 0;
     if (scoreGain > 0) {
       setFloatingScore(scoreGain);
       toast.success(`Nhận thưởng +${scoreGain} điểm!`);
@@ -576,14 +636,66 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
       }, 2000);
     }
 
+    // Nếu là lựa chọn mở Modal Xem Tivi
+    if (choice.actionModal === 'watch_tv') {
+      setActiveInteractiveChoice(choice);
+      setIsTvOpen(true);
+      return;
+    }
+
+    // Nếu là lựa chọn mở Modal Xem TikTok máy bố
+    if (choice.actionModal === 'watch_tiktok') {
+      setActiveInteractiveChoice(choice);
+      setIsTikTokOpen(true);
+      return;
+    }
+
     if (choice.reactionDialogues && choice.reactionDialogues.length > 0) {
       setPendingChoiceTransition(choice);
       setActiveDialogueList(choice.reactionDialogues);
       setCurrentDialogueIndex(0);
       setDisplayedText('');
       setIsTyping(false);
-    } else {
-      onStepChoice(choice);
+    } else if (choice.loopBackToChoices) {
+      setActiveDialogueList(stepConfig.dialogues);
+      setCurrentDialogueIndex(stepConfig.dialogues.length);
+      setPendingChoiceTransition(null);
+    }
+  };
+
+  // Callback khi đóng Modal Xem Tivi
+  const handleTvClose = (_eventOutcome?: 'fell_asleep' | 'normal_close') => {
+    setIsTvOpen(false);
+    if (activeInteractiveChoice?.reactionDialogues && activeInteractiveChoice.reactionDialogues.length > 0) {
+      setPendingChoiceTransition(activeInteractiveChoice);
+      setActiveDialogueList(activeInteractiveChoice.reactionDialogues);
+      setCurrentDialogueIndex(0);
+      setDisplayedText('');
+      setIsTyping(false);
+    } else if (activeInteractiveChoice?.loopBackToChoices) {
+      setActiveDialogueList(stepConfig.dialogues);
+      setCurrentDialogueIndex(stepConfig.dialogues.length);
+      setPendingChoiceTransition(null);
+    } else if (activeInteractiveChoice) {
+      onStepChoice(activeInteractiveChoice);
+    }
+  };
+
+  // Callback khi đóng Modal Xem TikTok máy bố
+  const handleTikTokClose = (_eventOutcome?: 'mom_caught_girls' | 'normal_close') => {
+    setIsTikTokOpen(false);
+    if (activeInteractiveChoice?.reactionDialogues && activeInteractiveChoice.reactionDialogues.length > 0) {
+      setPendingChoiceTransition(activeInteractiveChoice);
+      setActiveDialogueList(activeInteractiveChoice.reactionDialogues);
+      setCurrentDialogueIndex(0);
+      setDisplayedText('');
+      setIsTyping(false);
+    } else if (activeInteractiveChoice?.loopBackToChoices) {
+      setActiveDialogueList(stepConfig.dialogues);
+      setCurrentDialogueIndex(stepConfig.dialogues.length);
+      setPendingChoiceTransition(null);
+    } else if (activeInteractiveChoice) {
+      onStepChoice(activeInteractiveChoice);
     }
   };
 
@@ -627,6 +739,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
 
   // Submit baby avatar selection (Swiper)
   const handleSelectBabyAvatar = (avatarId: string) => {
+    setSelectedBabyAvatar(avatarId);
     const nextIdx = currentDialogueIndex < activeDialogueList.length - 1 ? currentDialogueIndex + 1 : currentDialogueIndex;
     onUpdateProfile(
       {
@@ -635,6 +748,23 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
       nextIdx
     );
     toast.success('Đã chọn diện mạo bé yêu thành công!');
+    setActiveModalAction(null);
+    setCurrentDialogueIndex(nextIdx);
+    onDialogueIndexChange?.(nextIdx);
+  };
+
+  // Submit character customizer (Stage 3 Kindergarten)
+  const handleConfirmCharacterCustomizer = (newConfig: CharacterAvatarConfig) => {
+    const nextIdx = currentDialogueIndex < activeDialogueList.length - 1 ? currentDialogueIndex + 1 : currentDialogueIndex;
+    onUpdateProfile(
+      {
+        avatarConfig: newConfig,
+      },
+      nextIdx
+    );
+    toast.success('Đã lưu diện mạo bé mẫu giáo thành công! (+500đ Phong Cách)');
+    setFloatingScore(500);
+    setTimeout(() => setFloatingScore(null), 2000);
     setActiveModalAction(null);
     setCurrentDialogueIndex(nextIdx);
     onDialogueIndexChange?.(nextIdx);
@@ -791,7 +921,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
           >
             <MapPin size={14} color="var(--color-primary)" />
             <span style={{ fontSize: isMobile ? '12px' : '13px', fontWeight: 800, color: 'var(--color-text-primary)' }}>
-              {stepConfig.locationName || stepConfig.title}
+              {resolveText(stepConfig.locationName || stepConfig.title)}
             </span>
           </div>
 
@@ -908,7 +1038,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
             }}
           >
             <Calendar size={13} />
-            <span>{stepConfig.dayLabel || `Step ${stepConfig.stepNumber}`}</span>
+            <span>{resolveText(stepConfig.dayLabel || `Step ${stepConfig.stepNumber}`)}</span>
           </div>
 
           <button
@@ -1032,20 +1162,26 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                   zIndex: -1,
                 }}
               />
-              <img
-                src={resolveAssetUrl(currentSpeaker.sprite)}
-                alt={currentSpeaker.name}
-                style={{
-                  maxHeight: '42dvh',
-                  maxWidth: '76vw',
-                  objectFit: 'contain',
-                  display: 'block',
-                  verticalAlign: 'bottom',
-                  marginBottom: 0,
-                  maskImage: 'linear-gradient(to bottom, black 86%, transparent 100%)',
-                  WebkitMaskImage: 'linear-gradient(to bottom, black 86%, transparent 100%)',
-                }}
-              />
+              {(currentSpeaker.role === 'player' || currentSpeaker.id === 1 || String(currentSpeaker.id) === '1') && isCustomAvatarStage && userProfile.avatarConfig ? (
+                <div style={{ maxHeight: '44dvh', maxWidth: '80vw', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                  <CharacterAvatarRenderer config={userProfile.avatarConfig} width={180} height={250} showShadow={false} use3D={true} />
+                </div>
+              ) : (
+                <img
+                  src={resolveAssetUrl(currentSpeaker.sprite)}
+                  alt={currentSpeaker.name}
+                  style={{
+                    maxHeight: '42dvh',
+                    maxWidth: '76vw',
+                    objectFit: 'contain',
+                    display: 'block',
+                    verticalAlign: 'bottom',
+                    marginBottom: 0,
+                    maskImage: 'linear-gradient(to bottom, black 86%, transparent 100%)',
+                    WebkitMaskImage: 'linear-gradient(to bottom, black 86%, transparent 100%)',
+                  }}
+                />
+              )}
             </motion.div>
           ) : null
         ) : (
@@ -1115,20 +1251,26 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                           zIndex: -1,
                         }}
                       />
-                      <img
-                        src={resolveAssetUrl(char.sprite)}
-                        alt={char.name}
-                        style={{
-                          maxHeight: isBaby ? '48vh' : '92vh',
-                          maxWidth: isBaby ? '260px' : '425px',
-                          objectFit: 'contain',
-                          display: 'block',
-                          verticalAlign: 'bottom',
-                          marginBottom: 0,
-                          maskImage: isBaby ? 'none' : 'linear-gradient(to bottom, black 88%, transparent 100%)',
-                          WebkitMaskImage: isBaby ? 'none' : 'linear-gradient(to bottom, black 88%, transparent 100%)',
-                        }}
-                      />
+                      {isBaby && isCustomAvatarStage && userProfile.avatarConfig ? (
+                        <div style={{ maxHeight: '52vh', maxWidth: '280px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                          <CharacterAvatarRenderer config={userProfile.avatarConfig} width={240} height={330} showShadow={false} use3D={true} />
+                        </div>
+                      ) : (
+                        <img
+                          src={resolveAssetUrl(char.sprite)}
+                          alt={char.name}
+                          style={{
+                            maxHeight: isBaby ? '48vh' : '92vh',
+                            maxWidth: isBaby ? '260px' : '425px',
+                            objectFit: 'contain',
+                            display: 'block',
+                            verticalAlign: 'bottom',
+                            marginBottom: 0,
+                            maskImage: isBaby ? 'none' : 'linear-gradient(to bottom, black 88%, transparent 100%)',
+                            WebkitMaskImage: isBaby ? 'none' : 'linear-gradient(to bottom, black 88%, transparent 100%)',
+                          }}
+                        />
+                      )}
                     </motion.div>
                   );
                 })}
@@ -1196,19 +1338,25 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                           zIndex: -1,
                         }}
                       />
-                      <img
-                        src={resolveAssetUrl(char.sprite)}
-                        alt={char.name}
-                        style={{
-                          maxHeight: isBaby ? '50vh' : '88vh',
-                          maxWidth: isBaby ? '280px' : '400px',
-                          objectFit: 'contain',
-                          display: 'block',
-                          verticalAlign: 'bottom',
-                          marginBottom: 0,
-                          filter: isSpeaking ? 'drop-shadow(0 8px 20px rgba(0,0,0,0.3))' : 'drop-shadow(0 4px 10px rgba(0,0,0,0.2))',
-                        }}
-                      />
+                      {isBaby && isCustomAvatarStage && userProfile.avatarConfig ? (
+                        <div style={{ maxHeight: '52vh', maxWidth: '280px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                          <CharacterAvatarRenderer config={userProfile.avatarConfig} width={240} height={330} showShadow={false} use3D={true} />
+                        </div>
+                      ) : (
+                        <img
+                          src={resolveAssetUrl(char.sprite)}
+                          alt={char.name}
+                          style={{
+                            maxHeight: isBaby ? '50vh' : '88vh',
+                            maxWidth: isBaby ? '280px' : '400px',
+                            objectFit: 'contain',
+                            display: 'block',
+                            verticalAlign: 'bottom',
+                            marginBottom: 0,
+                            filter: isSpeaking ? 'drop-shadow(0 8px 20px rgba(0,0,0,0.3))' : 'drop-shadow(0 4px 10px rgba(0,0,0,0.2))',
+                          }}
+                        />
+                      )}
                     </motion.div>
                   );
                 })}
@@ -1278,20 +1426,26 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                           zIndex: -1,
                         }}
                       />
-                      <img
-                        src={resolveAssetUrl(char.sprite)}
-                        alt={char.name}
-                        style={{
-                          maxHeight: isBaby ? '48vh' : '92vh',
-                          maxWidth: isBaby ? '260px' : '425px',
-                          objectFit: 'contain',
-                          display: 'block',
-                          verticalAlign: 'bottom',
-                          marginBottom: 0,
-                          maskImage: isBaby ? 'none' : 'linear-gradient(to bottom, black 88%, transparent 100%)',
-                          WebkitMaskImage: isBaby ? 'none' : 'linear-gradient(to bottom, black 88%, transparent 100%)',
-                        }}
-                      />
+                      {isBaby && isCustomAvatarStage && userProfile.avatarConfig ? (
+                        <div style={{ maxHeight: '52vh', maxWidth: '280px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+                          <CharacterAvatarRenderer config={userProfile.avatarConfig} width={240} height={330} showShadow={false} use3D={true} />
+                        </div>
+                      ) : (
+                        <img
+                          src={resolveAssetUrl(char.sprite)}
+                          alt={char.name}
+                          style={{
+                            maxHeight: isBaby ? '48vh' : '92vh',
+                            maxWidth: isBaby ? '260px' : '425px',
+                            objectFit: 'contain',
+                            display: 'block',
+                            verticalAlign: 'bottom',
+                            marginBottom: 0,
+                            maskImage: isBaby ? 'none' : 'linear-gradient(to bottom, black 88%, transparent 100%)',
+                            WebkitMaskImage: isBaby ? 'none' : 'linear-gradient(to bottom, black 88%, transparent 100%)',
+                          }}
+                        />
+                      )}
                     </motion.div>
                   );
                 })}
@@ -1494,7 +1648,7 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
                 </h3>
               </div>
               <span style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.6)', fontWeight: 600 }}>
-                {(stepConfig.choices?.length || 0)} phương án
+                {availableChoices.length} phương án
               </span>
             </div>
 
@@ -1502,23 +1656,23 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
               style={{
                 display: 'grid',
                 gridTemplateColumns: isMobile
-                  ? (stepConfig.choices?.length || 0) <= 2
+                  ? availableChoices.length <= 2
                     ? '1fr'
                     : 'repeat(2, 1fr)'
-                  : (stepConfig.choices?.length || 0) === 1
+                  : availableChoices.length === 1
                     ? '1fr'
-                    : (stepConfig.choices?.length || 0) === 2
+                    : availableChoices.length === 2
                       ? 'repeat(2, 1fr)'
-                      : (stepConfig.choices?.length || 0) === 3
+                      : availableChoices.length === 3
                         ? 'repeat(3, 1fr)'
-                        : (stepConfig.choices?.length || 0) === 4
+                        : availableChoices.length === 4
                           ? 'repeat(2, 1fr)'
                           : 'repeat(3, 1fr)',
                 gap: isMobile ? '6px' : '8px',
               }}
             >
-              {stepConfig.choices?.map((choice) => {
-                const totalChoices = stepConfig.choices?.length || 0;
+              {availableChoices.map((choice) => {
+                const totalChoices = availableChoices.length;
                 return (
                   <motion.button
                     key={choice.id}
@@ -1875,6 +2029,19 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
         )}
       </AnimatePresence>
 
+      {/* 6.6. POPUP MODAL: CHARACTER CUSTOMIZER (STAGE 3 MẪU GIÁO) */}
+      <AnimatePresence>
+        {activeModalAction?.type === 'character_customizer' && (
+          <CharacterCustomizerModal
+            initialConfig={userProfile.avatarConfig}
+            characterName={userProfile.characterName || characterNameInput || 'Bé Con'}
+            gender={userProfile.gender || selectedGender || 'male'}
+            onConfirm={handleConfirmCharacterCustomizer}
+            onClose={() => setActiveModalAction(null)}
+          />
+        )}
+      </AnimatePresence>
+
       {/* 7. HISTORY MODAL */}
       <AnimatePresence>
         {showHistoryModal && (
@@ -2066,13 +2233,27 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
         {showTitleSplash && (
           <StageTitleSplash
             stageNumber={stepConfig.id === 'step_2_first_words' ? 2 : (stepConfig.stepNumber || 1)}
-            stageName={stepConfig.title || 'Màn Chơi Mới'}
-            subtitle={stepConfig.dayLabel || 'Hành trình cuộc đời tiếp diễn...'}
+            stageName={resolveText(stepConfig.title || 'Màn Chơi Mới')}
+            subtitle={resolveText(stepConfig.dayLabel || 'Hành trình cuộc đời tiếp diễn...')}
             onComplete={() => setShowTitleSplash(false)}
             durationMs={2200}
           />
         )}
       </AnimatePresence>
+
+      {/* SMART TV WATCHING MODAL */}
+      <TvWatchingModal
+        isOpen={isTvOpen}
+        characterName={userProfile.characterName || characterNameInput || 'Bé Con'}
+        onClose={handleTvClose}
+      />
+
+      {/* TIKTOK FEED MODAL */}
+      <TikTokFeedModal
+        isOpen={isTikTokOpen}
+        characterName={userProfile.characterName || characterNameInput || 'Bé Con'}
+        onClose={handleTikTokClose}
+      />
     </div>
   );
 };

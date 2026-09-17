@@ -12,6 +12,7 @@ export interface IHumanCharacter {
   updateOutfit(config: RealisticAvatarConfig): void;
   update(delta: number, time: number, mouseNormalized: { x: number; y: number }): void;
   dispose(): void;
+  setPose?(poseId: string): void;
 }
 
 /**
@@ -225,7 +226,7 @@ export class SculptedGlbCharacter implements IHumanCharacter {
 
     // 2. Tinh chỉnh tỷ lệ vóc dáng cơ thể (Height, Weight, Shoulder)
     if (config.body) {
-      const heightRatio = Math.max(0.75, Math.min(1.25, config.body.heightCm / 176));
+      const heightRatio = Math.max(0.70, Math.min(1.30, (config.body.heightCm || 105) / 105));
       const buildWeight = Math.max(0.8, Math.min(1.3, config.body.weightKg / 68));
       const shoulderRatio = Math.max(0.85, Math.min(1.25, config.body.shoulderWidthScale || 1.0));
 

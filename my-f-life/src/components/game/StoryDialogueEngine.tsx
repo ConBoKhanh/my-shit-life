@@ -268,14 +268,13 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
       // Assign avatar sprite for player in Stage 3+ (custom avatar) or Stage 1 & 2 (baby avatars)
       if (char.role === 'player' || char.id === 1 || String(char.id) === '1') {
         const isBabyStage = stepConfig.id.startsWith('step_1') || stepConfig.id.startsWith('step_2');
-        if (isBabyStage) {
-          if (stepConfig.id.startsWith('step_2') || stepConfig.id === 'step_2_first_words') {
-            char.sprite = selectedBabyAvatar || userProfile.babyAvatar || 'asset:baby_1';
-          } else if (userProfile.babyAvatar && stepConfig.id !== 'step_1_birth') {
-            char.sprite = userProfile.babyAvatar;
-          } else {
-            char.sprite = rawChar.sprite || 'asset:baby_1';
-          }
+        if (stepConfig.id.startsWith('step_1') || stepConfig.id === 'step_1_birth') {
+          // Màn 1 (Khoa sản Bệnh Viện Phụ Sản): Bé sơ sinh vừa sinh ra, chỉ có Bố, Mẹ và Cô Y Tá trên màn hình
+          char.sprite = '';
+        } else if (stepConfig.id.startsWith('step_2') || stepConfig.id === 'step_2_first_words') {
+          char.sprite = selectedBabyAvatar || userProfile.babyAvatar || 'asset:baby_1';
+        } else if (isBabyStage) {
+          char.sprite = selectedBabyAvatar || userProfile.babyAvatar || 'asset:baby_1';
         } else {
           // Stage 3+ (Mẫu giáo trở lên): Sử dụng avatar tùy biến 3D
           char.sprite = 'asset:custom_avatar';
@@ -505,8 +504,9 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
           setIsTyping(false);
           onDialogueIndexChange?.(stepConfig.dialogues.length);
         } else {
-          onStepChoice(pendingChoiceTransition);
+          const choiceToEmit = pendingChoiceTransition;
           setPendingChoiceTransition(null);
+          onStepChoice(choiceToEmit);
         }
       } else {
         const nextIdx = activeDialogueList.length;
@@ -612,9 +612,6 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
     // 1. Lưu ngay ID lựa chọn vào danh sách đã chọn để loại bỏ khỏi menu
     setLocalSelectedChoiceIds((prev) => (prev.includes(choice.id) ? prev : [...prev, choice.id]));
 
-    // 2. Gửi sự kiện để lưu vào Supabase database / localStorage
-    onStepChoice(choice);
-
     // Phát âm thanh hiệu ứng riêng nếu có (Ví dụ: SIUUUU Cristiano Ronaldo)
     const choiceSfx = choice.sfx
       ? resolveAssetUrl(choice.sfx)
@@ -660,6 +657,8 @@ export const StoryDialogueEngine: React.FC<StoryDialogueEngineProps> = ({
       setActiveDialogueList(stepConfig.dialogues);
       setCurrentDialogueIndex(stepConfig.dialogues.length);
       setPendingChoiceTransition(null);
+    } else {
+      onStepChoice(choice);
     }
   };
 

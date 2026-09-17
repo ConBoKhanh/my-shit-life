@@ -32,6 +32,19 @@ export class ArticulatedMannequin implements IHumanCharacter {
   public chestBone: THREE.Group;
   public neckBone: THREE.Group;
   public headBone: THREE.Group;
+  private headMesh: THREE.Mesh | null = null;
+  private leftEyeGroup: THREE.Group | null = null;
+  private rightEyeGroup: THREE.Group | null = null;
+  private leftBrowMesh: THREE.Mesh | null = null;
+  private rightBrowMesh: THREE.Mesh | null = null;
+  private eyeMaterial: THREE.MeshPhysicalMaterial;
+  private eyeTexture: THREE.CanvasTexture | null = null;
+  private eyeCanvas: HTMLCanvasElement | null = null;
+  private pupilMaterial: THREE.MeshBasicMaterial;
+  private browMaterial: THREE.MeshBasicMaterial;
+  private lipMaterial: THREE.MeshPhysicalMaterial;
+  private upperLipMesh: THREE.Mesh | null = null;
+  private lowerLipMesh: THREE.Mesh | null = null;
 
   // Upper Limbs
   public leftShoulder: THREE.Group;
@@ -59,8 +72,9 @@ export class ArticulatedMannequin implements IHumanCharacter {
   public leftFoot: THREE.Group;
   public rightFoot: THREE.Group;
 
-  // Animation cycle
+  // Animation cycle & Scale tracking
   private weightShiftCycle: number = 0;
+  private currentLegScale: number = 1.0;
 
   constructor(customColorHex: string = '#B57850') {
     this.root = new THREE.Group();
@@ -94,14 +108,47 @@ export class ArticulatedMannequin implements IHumanCharacter {
       side: THREE.DoubleSide,
     });
 
+    const initialEyeTexture = this.getOrCreateEyeTexture('#151316');
+    this.eyeMaterial = new THREE.MeshPhysicalMaterial({
+      map: initialEyeTexture,
+      roughness: 0.12,
+      metalness: 0.02,
+      clearcoat: 0.95,
+      clearcoatRoughness: 0.06,
+      side: THREE.DoubleSide,
+    });
+
+    this.pupilMaterial = new THREE.MeshBasicMaterial({
+      color: 0x050505,
+    });
+
+    this.browMaterial = new THREE.MeshBasicMaterial({
+      color: 0x181210,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -2,
+    });
+
+    this.lipMaterial = new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color('#DE7E8A'),
+      roughness: 0.35,
+      metalness: 0.02,
+      clearcoat: 0.45,
+      clearcoatRoughness: 0.20,
+      polygonOffset: true,
+      polygonOffsetFactor: -1.5,
+      polygonOffsetUnits: -1.5,
+      side: THREE.DoubleSide,
+    });
+
     // 2. Harmonious Proportional Skeletal Hierarchy
     this.spineRoot = new THREE.Group();
     this.spineRoot.name = 'Spine_Root';
     this.root.add(this.spineRoot);
 
-    // Pelvis anchor at Y = 0.74m
+    // Pelvis anchor at Y = 0.662m (bàn chân chạm chuẩn xác Y = 0.00m tại mặt sàn/mặt bục)
     this.pelvisBone = new THREE.Group();
-    this.pelvisBone.position.set(0, 0.74, 0);
+    this.pelvisBone.position.set(0, 0.662, 0);
     this.spineRoot.add(this.pelvisBone);
 
     // Waist / Floating Abdomen (attached above Pelvis, overlaps 3cm inside pelvis)
@@ -114,23 +161,23 @@ export class ArticulatedMannequin implements IHumanCharacter {
     this.chestBone.position.set(0, 0.12, 0);
     this.waistBone.add(this.chestBone);
 
-    // Neck (nested in chest collar at Y = 0.170m)
+    // Neck (nested deep in chest collar at Y = 0.150m)
     this.neckBone = new THREE.Group();
-    this.neckBone.position.set(0, 0.170, 0);
+    this.neckBone.position.set(0, 0.150, 0);
     this.chestBone.add(this.neckBone);
 
-    // Head (atop neck at Y = 0.050m)
+    // Head (atop lengthened neck at Y = 0.082m)
     this.headBone = new THREE.Group();
-    this.headBone.position.set(0, 0.050, 0);
+    this.headBone.position.set(0, 0.082, 0);
     this.neckBone.add(this.headBone);
 
-    // Shoulders placed flush with broad chest shelf (X = ±0.138, Y = 0.138)
+    // Shoulders placed flush under acromion shelf and socket (X = ±0.125, Y = 0.114)
     this.leftShoulder = new THREE.Group();
-    this.leftShoulder.position.set(-0.138, 0.138, 0);
+    this.leftShoulder.position.set(-0.125, 0.114, 0);
     this.chestBone.add(this.leftShoulder);
 
     this.rightShoulder = new THREE.Group();
-    this.rightShoulder.position.set(0.138, 0.138, 0);
+    this.rightShoulder.position.set(0.125, 0.114, 0);
     this.chestBone.add(this.rightShoulder);
 
     // Upper Arms (Length: 0.22m)
@@ -162,13 +209,13 @@ export class ArticulatedMannequin implements IHumanCharacter {
     this.rightHand.position.set(0, -0.20, 0);
     this.rightForearm.add(this.rightHand);
 
-    // 4-Stage Drop-Down Hip System (X = ±0.074, Y = -0.030, deep inside pelvis)
+    // 4-Stage Drop-Down Hip System (X = ±0.060 - 2 chân mở rộng vừa vặn ra ngoài bẹn)
     this.dropDownPegL = new THREE.Group();
-    this.dropDownPegL.position.set(-0.074, -0.030, 0);
+    this.dropDownPegL.position.set(-0.060, -0.030, 0);
     this.pelvisBone.add(this.dropDownPegL);
 
     this.dropDownPegR = new THREE.Group();
-    this.dropDownPegR.position.set(0.074, -0.030, 0);
+    this.dropDownPegR.position.set(0.060, -0.030, 0);
     this.pelvisBone.add(this.dropDownPegR);
 
     this.leftHipBallGroup = new THREE.Group();
@@ -220,40 +267,272 @@ export class ArticulatedMannequin implements IHumanCharacter {
     this.buildHipsAndLegs();
   }
 
+  /**
+   * Tạo hoặc cập nhật Canvas Texture độ phân giải cao cho mắt (Sclera + Iris + Pupil + Catchlight)
+   * Giữ tròng mắt luôn hiển thị 100% rực rỡ ở mọi góc nhìn (thẳng, nghiêng 3/4, nhìn ngang) mà không bao giờ bị chìm/mất
+   */
+  private getOrCreateEyeTexture(colorHex = '#151316'): THREE.CanvasTexture {
+    const size = 512;
+    if (!this.eyeCanvas) {
+      this.eyeCanvas = document.createElement('canvas');
+      this.eyeCanvas.width = size;
+      this.eyeCanvas.height = size;
+    }
+    const canvas = this.eyeCanvas;
+    const ctx = canvas.getContext('2d')!;
+
+    const cx = size / 2;
+    const cy = size / 2;
+
+    // 1. Sclera (Tròng trắng mịn màng với viền bóng đổ ambient vi mô)
+    ctx.fillStyle = '#f6f8fb';
+    ctx.fillRect(0, 0, size, size);
+
+    const scleraGrad = ctx.createRadialGradient(cx, cy, size * 0.22, cx, cy, size * 0.48);
+    scleraGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+    scleraGrad.addColorStop(0.7, 'rgba(215, 224, 238, 0.22)');
+    scleraGrad.addColorStop(1, 'rgba(175, 190, 210, 0.60)');
+    ctx.fillStyle = scleraGrad;
+    ctx.fillRect(0, 0, size, size);
+
+    // 2. Iris (Tròng màu rực rỡ với vân mống mắt & Limbal Ring)
+    const irisRadius = size * 0.26; // ~133px - tỷ lệ tròng mắt chuẩn Anime / Realistic
+    
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, irisRadius, 0, Math.PI * 2);
+    ctx.clip();
+
+    const baseCol = new THREE.Color(colorHex);
+    const darkColStyle = baseCol.clone().multiplyScalar(0.35).getStyle();
+    const mainColStyle = baseCol.getStyle();
+    const brightColStyle = baseCol.clone().offsetHSL(0, 0.05, 0.22).getStyle();
+
+    const irisGrad = ctx.createRadialGradient(cx, cy, size * 0.04, cx, cy, irisRadius);
+    irisGrad.addColorStop(0, darkColStyle);
+    irisGrad.addColorStop(0.40, mainColStyle);
+    irisGrad.addColorStop(0.85, brightColStyle);
+    irisGrad.addColorStop(1.0, '#0a0810'); // Limbal ring
+    ctx.fillStyle = irisGrad;
+    ctx.fillRect(0, 0, size, size);
+
+    // Vân mống mắt (Iris radial striations)
+    ctx.lineWidth = 1.6;
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 32) {
+      const cosA = Math.cos(a);
+      const sinA = Math.sin(a);
+      const rInner = irisRadius * 0.28;
+      const rOuter = irisRadius * 0.95;
+      ctx.strokeStyle = (a % (Math.PI / 16) === 0) ? 'rgba(255, 255, 255, 0.40)' : darkColStyle;
+      ctx.beginPath();
+      ctx.moveTo(cx + cosA * rInner, cy + sinA * rInner);
+      ctx.lineTo(cx + cosA * rOuter, cy + sinA * rOuter);
+      ctx.stroke();
+    }
+
+    // 3. Pupil (Con ngươi đen tuyền ở trung tâm)
+    const pupilRadius = irisRadius * 0.46;
+    ctx.beginPath();
+    ctx.arc(cx, cy, pupilRadius, 0, Math.PI * 2);
+    ctx.fillStyle = '#050408';
+    ctx.fill();
+
+    // 4. Catchlights (Điểm phản quang long lanh)
+    // Đốm sáng lớn
+    ctx.beginPath();
+    ctx.arc(cx - irisRadius * 0.32, cy - irisRadius * 0.30, pupilRadius * 0.34, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+
+    // Đốm sáng phụ
+    ctx.beginPath();
+    ctx.arc(cx + irisRadius * 0.28, cy + irisRadius * 0.28, pupilRadius * 0.20, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.80)';
+    ctx.fill();
+
+    ctx.restore();
+
+    if (!this.eyeTexture) {
+      this.eyeTexture = new THREE.CanvasTexture(canvas);
+      this.eyeTexture.colorSpace = THREE.SRGBColorSpace;
+    }
+    this.eyeTexture.needsUpdate = true;
+    return this.eyeTexture;
+  }
+
+  /**
+   * Tạo hình học giác mạc 3D cong lồi tự nhiên với tọa độ UV phẳng chuẩn xác
+   */
+  private createEyeballGeometry(rX: number, rY: number, rZ: number): THREE.BufferGeometry {
+    const U_SEGS = 24;
+    const V_SEGS = 20;
+    const positions: number[] = [];
+    const uvs: number[] = [];
+    const indices: number[] = [];
+
+    for (let v = 0; v <= V_SEGS; v++) {
+      const vFrac = v / V_SEGS; // 0 at top to 1 at bottom
+      const phi = vFrac * Math.PI; // 0 to PI
+      const sinPhi = Math.sin(phi);
+      const cosPhi = Math.cos(phi);
+
+      for (let u = 0; u <= U_SEGS; u++) {
+        const uFrac = u / U_SEGS; // 0 at left to 1 at right
+        const theta = (uFrac - 0.5) * Math.PI * 0.96; // -0.48*PI to +0.48*PI
+        const sinTheta = Math.sin(theta);
+        const cosTheta = Math.cos(theta);
+
+        const px = sinTheta * sinPhi * rX * 1.5;
+        const py = cosPhi * rY;
+        const pz = cosTheta * sinPhi * rZ;
+
+        // Planar normalized UV centered at (0.5, 0.5):
+        const uCoord = 0.5 + (px / (rX * 2.2));
+        const vCoord = 0.5 + (py / (rY * 2.0));
+
+        positions.push(px, py, pz);
+        uvs.push(Math.max(0, Math.min(1, uCoord)), Math.max(0, Math.min(1, vCoord)));
+      }
+    }
+
+    for (let v = 0; v < V_SEGS; v++) {
+      for (let u = 0; u < U_SEGS; u++) {
+        const i0 = v * (U_SEGS + 1) + u;
+        const i1 = i0 + 1;
+        const i2 = (v + 1) * (U_SEGS + 1) + u;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i2, i1);
+        indices.push(i1, i2, i3);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
   // ===========================================================================
-  // 1. HEAD: Unified Sculpted Head (Đầu Điêu Khắc Liền Khối, Mềm Mại & Gọt Gọn Gàng)
+  // 1. HEAD: Unified Sculpted Head (Khối Sọ & Gương Mặt V-Line Thanh Thoát, Tự Nhiên)
   // ===========================================================================
   private buildHead() {
     const headContainer = new THREE.Group();
     headContainer.position.set(0, 0.006, 0.003);
 
-    // 1. Unified Sculpted Head (Khối sọ & khuôn mặt điêu khắc tinh xảo chuẩn tỉ lệ ảnh mẫu)
+    // 1. Unified Sculpted Head (Khối sọ thon gọn, cằm V-line tự nhiên, mũi thanh thoát)
     const headGeo = this.createUnifiedSculptedHeadGeometry();
     const headMesh = new THREE.Mesh(headGeo, this.bodyMaterial);
     headMesh.castShadow = true;
     headMesh.receiveShadow = true;
+    this.headMesh = headMesh;
     headContainer.add(headMesh);
 
-    // 2. Vành tai giải phẫu học thanh tú (Anatomical Ear - Concha, Helix Rim & Lobe)
+    // 1.1 Stylized High-Definition Anime/Realistic Eyes (Single Unified Cornea Dome with Canvas Texture)
+    const eyeGeo = this.createEyeballGeometry(0.0072, 0.0048, 0.0024);
+    const eyelinerMat = new THREE.MeshBasicMaterial({ color: 0x181210 });
+
+    [-1, 1].forEach((dir) => {
+      const eyeGroup = new THREE.Group();
+      // Đặt chìm sâu vào đáy hốc mắt 3D: x = ±0.021m, y = 0.011m, z = 0.0366m
+      eyeGroup.position.set(dir * 0.0210, 0.0110, 0.0366);
+      eyeGroup.rotation.y = dir * 0.06;
+
+      // 1. Unified Eyeball Mesh (Trọn vẹn tròng trắng + tròng màu + con ngươi trên 1 bề mặt cong 3D)
+      const eyeMesh = new THREE.Mesh(eyeGeo, this.eyeMaterial);
+      eyeMesh.renderOrder = 3;
+      eyeGroup.add(eyeMesh);
+
+      // 2. Viền mí mắt trên ôm sát da mí mắt
+      const ptsEye = [
+        new THREE.Vector3(-0.0062, -0.0005, 0.0003),
+        new THREE.Vector3(0.0000, 0.0022, 0.0005),
+        new THREE.Vector3(0.0064, -0.0002, 0.0004),
+      ];
+      const eyeLidCurve = new THREE.CatmullRomCurve3(ptsEye);
+      const eyeLidGeo = new THREE.TubeGeometry(eyeLidCurve, 12, 0.00022, 6, false);
+      const eyeLidMesh = new THREE.Mesh(eyeLidGeo, eyelinerMat);
+      eyeLidMesh.renderOrder = 4;
+      eyeGroup.add(eyeLidMesh);
+
+      headContainer.add(eyeGroup);
+
+      if (dir < 0) {
+        this.leftEyeGroup = eyeGroup;
+      } else {
+        this.rightEyeGroup = eyeGroup;
+      }
+    });
+
+    // 1.2 Chân Mày Thanh Tú Chìm Mịn Trên Mặt Da Xương Trán
+    [-1, 1].forEach((dir) => {
+      const pts = [
+        new THREE.Vector3(dir * 0.0075, 0.0188, 0.0436),
+        new THREE.Vector3(dir * 0.0185, 0.0212, 0.0402),
+        new THREE.Vector3(dir * 0.0305, 0.0175, 0.0322),
+      ];
+      const browCurve = new THREE.CatmullRomCurve3(pts);
+      const browGeo = new THREE.TubeGeometry(browCurve, 16, 0.00038, 8, false);
+      const browMesh = new THREE.Mesh(browGeo, this.browMaterial);
+      browMesh.renderOrder = 5;
+      headContainer.add(browMesh);
+
+      if (dir < 0) {
+        this.leftBrowMesh = browMesh;
+      } else {
+        this.rightBrowMesh = browMesh;
+      }
+    });
+
+    // 1.3 Đôi Môi Chìm Mịn Theo Khối Mặt (Không Lồi Lơ Lửng)
+    const upperLipPts = [
+      new THREE.Vector3(-0.0115, -0.0245, 0.0418),
+      new THREE.Vector3(-0.0045, -0.0220, 0.0442),
+      new THREE.Vector3(0.0000, -0.0232, 0.0438),
+      new THREE.Vector3(0.0045, -0.0220, 0.0442),
+      new THREE.Vector3(0.0115, -0.0245, 0.0418),
+    ];
+    const upperLipCurve = new THREE.CatmullRomCurve3(upperLipPts);
+    const upperLipGeo = new THREE.TubeGeometry(upperLipCurve, 20, 0.00055, 8, false);
+    const upperLipMesh = new THREE.Mesh(upperLipGeo, this.lipMaterial);
+    upperLipMesh.renderOrder = 4;
+    headContainer.add(upperLipMesh);
+    this.upperLipMesh = upperLipMesh;
+
+    const lowerLipPts = [
+      new THREE.Vector3(-0.0105, -0.0255, 0.0420),
+      new THREE.Vector3(0.0000, -0.0280, 0.0442),
+      new THREE.Vector3(0.0105, -0.0255, 0.0420),
+    ];
+    const lowerLipCurve = new THREE.CatmullRomCurve3(lowerLipPts);
+    const lowerLipGeo = new THREE.TubeGeometry(lowerLipCurve, 16, 0.00070, 8, false);
+    const lowerLipMesh = new THREE.Mesh(lowerLipGeo, this.lipMaterial);
+    lowerLipMesh.renderOrder = 4;
+    headContainer.add(lowerLipMesh);
+    this.lowerLipMesh = lowerLipMesh;
+
+    // 2. Vành tai giải phẫu học thanh tú ôm sát sọ (Anatomical Slim Ear)
     [-1, 1].forEach((dir) => {
       const earGroup = new THREE.Group();
-      // Đặt ngang tầm đuôi mắt tới chân mũi, nghiêng nhẹ về sau 10 độ
-      earGroup.position.set(dir * 0.052, 0.012, -0.008);
-      earGroup.rotation.set(0.04, dir * 0.14, -dir * 0.06);
+      // Đặt ngang tầm từ đuôi mắt đến chân cánh mũi, áp sát sọ tự nhiên
+      earGroup.position.set(dir * 0.0445, 0.002, -0.008);
+      earGroup.rotation.set(0.04, dir * 0.10, -dir * 0.05);
 
       // Thân lòng tai đặc (Concha bowl)
       const conchaGeo = new THREE.SphereGeometry(0.0090, 16, 12);
-      conchaGeo.scale(0.28, 1.25, 0.70);
+      conchaGeo.scale(0.28, 1.20, 0.70);
       const conchaMesh = new THREE.Mesh(conchaGeo, this.bodyMaterial);
       conchaMesh.castShadow = true;
       earGroup.add(conchaMesh);
 
       // Vành sụn ngoài uốn cong (Outer Helix Rim)
-      const helixGeo = new THREE.TorusGeometry(0.0082, 0.0016, 8, 18, Math.PI * 1.12);
+      const helixGeo = new THREE.TorusGeometry(0.0085, 0.0015, 8, 20, Math.PI * 1.15);
       helixGeo.rotateZ(Math.PI / 2 + (dir > 0 ? 0.14 : -0.14));
-      helixGeo.scale(0.48, 1.10, 0.88);
+      helixGeo.scale(0.46, 1.10, 0.88);
       const helixMesh = new THREE.Mesh(helixGeo, this.bodyMaterial);
-      helixMesh.position.set(dir * 0.0012, 0.002, -0.001);
+      helixMesh.position.set(dir * 0.0010, 0.002, -0.001);
       helixMesh.castShadow = true;
       earGroup.add(helixMesh);
 
@@ -268,220 +547,458 @@ export class ArticulatedMannequin implements IHumanCharacter {
       headContainer.add(earGroup);
     });
 
-    // 3. Khớp xoay đáy sọ (Skull Base Socket)
-    const skullSocketGeo = new THREE.SphereGeometry(0.025, 24, 18);
+    // 3. Khớp xoay đáy sọ (Skull Base Socket - nằm gọn sâu bên trong hốc sọ, không lồi dưới cằm)
+    const skullSocketGeo = new THREE.SphereGeometry(0.016, 20, 16);
     const skullSocket = new THREE.Mesh(skullSocketGeo, this.jointMaterial);
-    skullSocket.position.set(0, -0.042, -0.004);
+    skullSocket.position.set(0, -0.010, -0.005);
     headContainer.add(skullSocket);
 
     this.headBone.add(headContainer);
   }
 
   /**
-   * Generates a realistic, exquisitely sculpted human male head geometry matching the reference model.
-   * - Eliminates bird-beak over-projection: nose, lips, and chin share the classic aesthetic E-line.
-   * - Forehead is upright and anatomically arched.
-   * - Deep-set orbital eye cavities with natural eyelid forms.
-   * - Chiseled straight nasal bridge with refined tip and alae.
-   * - Expressive lips (Cupid's bow, lower lip cushion, labiomental crease).
-   * - Strong, masculine, rounded-square chin.
-   * - Seamless nape contouring directly into the neck cylinder.
+   * Generates an aesthetically pleasing, slim, chiseled human head with natural harmonious profile.
+   * - Proportions: Smooth natural cranial vault, refined straight nose with gentle nasion dip,
+   *   elegant Cupid lips, and smooth continuous V-Line chin without jagged steps or artifacts.
    */
-  private createUnifiedSculptedHeadGeometry(): THREE.BufferGeometry {
-    const geo = new THREE.SphereGeometry(1, 84, 68);
-    const pos = geo.attributes.position;
+  private createUnifiedSculptedHeadGeometry(config?: RealisticAvatarConfig): THREE.BufferGeometry {
+    const V = 100; // Height rings from crown down to chin/skull base
+    const U = 88;  // Longitudinal radial slices
+    const positions: number[] = [];
+    const uvs: number[] = [];
+    const indices: number[] = [];
 
-    const yCenter = 0.012;
-    const rYTop = 0.064; // Đỉnh sọ y = 0.076m
-    const rYBot = 0.060; // Đáy cằm y = -0.048m
+    const isNarrowEyes = config?.eyeShapeId === 'eye_shape_narrow_slanted';
+    const isPhoenixEyes = config?.eyeShapeId === 'eye_shape_phoenix';
+    const isBigRoundEyes = config?.eyeShapeId === 'eye_shape_big_round';
 
-    const rXBase = 0.057; // Bán kính ngang sọ = 5.7cm (rộng 11.4cm)
-    const rZFront = 0.056; // Chiều sâu mặt trước = 5.6cm
-    const rZBack = 0.072;  // Chiều sâu gáy sau = 7.2cm
+    const isLlineNose = config?.noseShapeId === 'nose_straight_l_line';
+    const isWitchNose = config?.noseShapeId === 'nose_witch_hooked';
+    const isCuteSnubNose = config?.noseShapeId === 'nose_cute_button_snub';
 
-    for (let k = 0; k < pos.count; k++) {
-      const x0 = pos.getX(k);
-      const y0 = pos.getY(k);
-      const z0 = pos.getZ(k);
+    const isMasculineJaw = config?.jawlineShapeId === 'jaw_structured_masculine';
+    const isTreLip = config?.mouthShapeId === 'mouth_pouting_thick_tre';
+    const isPlumpLip = config?.mouthShapeId === 'mouth_plump_full';
+    const isSwordBrow = config?.eyebrowShapeId === 'brow_sword_bold';
 
-      let y: number;
-      if (y0 >= 0) {
-        y = yCenter + y0 * rYTop;
-        if (z0 < 0) y += y0 * 0.003; // Đỉnh sọ dốc nhẹ về sau
-      } else {
-        const tLow = -y0;
-        y = yCenter - tLow * rYBot;
-      }
+    // Head proportions: yTop = 0.070m, yBottom = -0.050m (total 0.120m)
+    const yTop = 0.070;
+    const yBottom = -0.050;
+    const yTotal = yTop - yBottom; // 0.120m
 
-      // Hộp sọ dáng quả trứng chuẩn giải phẫu (thuôn trán trước, nở rộng xương đỉnh phía sau)
-      const crWidth = rXBase * (1.0 - 0.09 * Math.max(0, z0));
-      let px = x0 * crWidth;
-      let pz = z0 * (z0 >= 0 ? rZFront : rZBack);
+    for (let v = 0; v <= V; v++) {
+      const vFrac = v / V;
+      const y = yTop - vFrac * yTotal;
+      // Normalized height fraction from chin/nape (0.0) up to crown (1.0)
+      const h = (y - yBottom) / yTotal;
+      const hEq = 0.50; // Parietal equator height (around eye level, y ≈ 0.010m)
 
-      // Vát phẳng thái dương mềm mại (Loomis temporal planes) - dùng hàm mượt, không tạo gờ ngấn
-      const templeT = Math.max(0, Math.min(1, (Math.abs(x0) - 0.35) / 0.35));
-      const templeY = Math.max(0, Math.sin(Math.max(0, Math.min(1, (y0 + 0.1) / 0.8)) * Math.PI));
-      const templeZ = Math.max(0, z0 + 0.3);
-      px *= 1.0 - templeT * templeY * Math.min(1, templeZ) * 0.10;
+      for (let u = 0; u <= U; u++) {
+        const uFrac = u / U;
+        const theta = uFrac * Math.PI * 2;
+        const cosT = Math.cos(theta); // > 0 front, < 0 back
+        const sinT = Math.sin(theta); // < 0 left, > 0 right
+        const absSin = Math.abs(sinT);
 
-      // =======================================================================
-      // CHI TIẾT KHUÔN MẶT ĐIÊU KHẮC (Theo sát tượng mẫu tham chiếu)
-      // =======================================================================
-      if (z0 > 0.15) {
-        // 1. CUNG MÀY & ẤN ĐƯỜNG (Supraorbital Ridge & Glabella)
-        const browDist = (y - 0.029) / 0.010;
-        if (Math.abs(browDist) < 1.0) {
-          const browYFactor = Math.cos(browDist * Math.PI * 0.5);
-          const browArch = Math.sin(Math.min(1.0, Math.abs(x0) / 0.45) * Math.PI);
-          pz += browYFactor * (0.0032 + 0.0022 * browArch) * Math.max(0, z0);
+        let rx: number;
+        let rz_front: number;
+        let rz_back: number;
+
+        if (h >= hEq) {
+          // Upper Cranium Dome (h from 0.50 to 1.0) - Vòm sọ tròn trịa tự nhiên
+          const tCran = (h - hEq) / (1.0 - hEq);
+          const dome = Math.sqrt(Math.max(0.00001, 1.0 - tCran * tCran));
+          rx = 0.0465 * dome;
+          rz_front = 0.0450 * dome * (0.92 + 0.08 * dome);
+          rz_back = 0.0550 * dome * (0.90 + 0.10 * dome);
+
+          // Subtle temporal plane flattening
+          if (absSin > 0.35 && tCran < 0.85) {
+            const templeY = Math.sin((tCran / 0.85) * Math.PI);
+            const templeX = Math.sin(((absSin - 0.35) / 0.65) * Math.PI);
+            rx *= 1.0 - templeY * templeX * 0.030;
+          }
+        } else {
+          // Lower Face, Cheeks, V-Line Jaw & Nape (h from 0.50 down to 0.0)
+          const tLow = (hEq - h) / hEq;
+          const tLow2 = tLow * tLow;
+          // Smooth, elegant V-line taper towards chin
+          const taperCoeff = isMasculineJaw ? 0.36 : 0.44;
+          const vLineTaper = 1.0 - taperCoeff * Math.pow(tLow, 1.15) + 0.03 * Math.pow(tLow, 2.2);
+          rx = 0.0465 * vLineTaper;
+          rz_front = 0.0450 * (1.0 - 0.04 * tLow2);
+          rz_back = 0.0550 * (1.0 - 0.42 * tLow2 + 0.05 * tLow2 * tLow);
         }
 
-        // 2. HỐC MẮT & MÍ MẮT (Orbital Sockets & Eyelids - Lõm sâu tự nhiên)
-        if (y >= 0.010 && y <= 0.027 && Math.abs(px) >= 0.014 && Math.abs(px) <= 0.042) {
-          const ex = (Math.abs(px) - 0.028) / 0.014;
-          const ey = (y - 0.018) / 0.008;
-          const eR2 = ex * ex + ey * ey;
-          if (eR2 < 1.0) {
-            const socketDepth = Math.cos(Math.sqrt(eR2) * Math.PI * 0.5);
-            pz -= socketDepth * 0.0055;
-            if (eR2 < 0.45) {
-              const lid = Math.cos((Math.sqrt(eR2) / Math.sqrt(0.45)) * Math.PI * 0.5);
-              pz += lid * 0.0032;
+        let px = sinT * rx;
+        let pz = cosT >= 0 ? cosT * rz_front : cosT * rz_back;
+
+        // Submental undercutting (đáy hàm vuốt êm liên tục 100% C2 vào cổ, không gãy gập, không gờ bậc)
+        if (y < -0.034) {
+          const underT = (-0.034 - y) / (-0.034 - yBottom);
+          const underCut = underT * underT;
+          const angleBlend = 0.5 + 0.5 * (1.0 - cosT); // 0 at front, 1 at back
+          px *= 1.0 - underCut * 0.12;
+          pz *= 1.0 - underCut * (0.08 + 0.14 * angleBlend);
+        }
+
+        // =====================================================================
+        // NATURAL HARMONIOUS FACIAL FEATURES (Đường nét thanh tú, không thừa thô)
+        // =====================================================================
+        if (cosT > 0.15) {
+          const frontFactor = Math.min(1.0, (cosT - 0.15) / 0.42);
+
+          // 1. Forehead & Glabella (Vầng trán thanh tú, phẳng mịn)
+          if (y >= 0.018 && y <= 0.055) {
+            const fY = Math.sin(((y - 0.018) / 0.037) * Math.PI);
+            const fX = Math.exp(-Math.pow(px / 0.028, 2));
+            pz += fY * fX * 0.0012 * frontFactor;
+          }
+
+          // 2. Supraorbital Brow Ridge (Cung mày nhẹ nhàng, thanh thoát)
+          if (y >= 0.014 && y <= 0.026 && Math.abs(px) <= 0.036) {
+            const bY = Math.sin(((y - 0.014) / 0.012) * Math.PI);
+            const bX = Math.exp(-Math.pow(px / 0.028, 2));
+            const browArch = isSwordBrow
+              ? 0.85 + 0.30 * Math.sin((Math.abs(px) / 0.036) * Math.PI)
+              : 0.90 + 0.18 * Math.sin((Math.abs(px) / 0.036) * Math.PI);
+            pz += bY * bX * browArch * 0.0014 * frontFactor;
+          }
+
+          // 3. Orbital Eye Sockets & Eyelids (4 Dáng Mắt: từ mắt híp đến mắt to tròn - hốc mắt chìm sâu tự nhiên)
+          let eyeRadiusX = 0.0112;
+          let eyeRadiusY = 0.0070;
+          let eyeTilt = 0;
+          let socketDepth = 0.0048;
+
+          if (isNarrowEyes) {
+            // 1. Mắt Híp / Một Mí: hẹp dọc (0.0034m), thon dài ngang (0.0132m)
+            eyeRadiusX = 0.0132;
+            eyeRadiusY = 0.0034;
+            socketDepth = 0.0038;
+          } else if (isPhoenixEyes) {
+            // 3. Mắt Phượng Sắc Nét: đuôi mắt cong nhẹ xếch
+            eyeRadiusX = 0.0122;
+            eyeRadiusY = 0.0062;
+            eyeTilt = (Math.abs(px) - 0.021) * 0.18;
+            socketDepth = 0.0048;
+          } else if (isBigRoundEyes) {
+            // 4. Mắt To Tròn Long Lanh: mở rộng theo chiều dọc (0.0096m), hai mí rõ rệt
+            eyeRadiusX = 0.0118;
+            eyeRadiusY = 0.0096;
+            socketDepth = 0.0054;
+          }
+
+          const eyeDistX = (Math.abs(px) - 0.021) / eyeRadiusX;
+          const eyeDistY = (y - (0.011 + eyeTilt)) / eyeRadiusY;
+          const eyeR2 = eyeDistX * eyeDistX + eyeDistY * eyeDistY;
+
+          if (eyeR2 < 1.0) {
+            const socketCos = Math.cos(Math.sqrt(eyeR2) * Math.PI * 0.5);
+            pz -= socketCos * socketDepth * frontFactor;
+
+            // Mí mắt trên
+            const lidTop = 0.011 + eyeRadiusY * 0.90;
+            const lidBot = 0.011 + eyeRadiusY * 0.12;
+            if (y >= lidBot && y <= lidTop) {
+              const lidY = Math.sin(((y - lidBot) / (lidTop - lidBot)) * Math.PI);
+              const lidX = Math.exp(-Math.pow((Math.abs(px) - 0.021) / (eyeRadiusX * 0.65), 2));
+              pz += lidY * lidX * (isNarrowEyes ? 0.0004 : (isBigRoundEyes ? 0.0009 : 0.0006)) * frontFactor;
             }
           }
-        }
 
-        // 3. SỐNG MŨI CHUẨN TỈ LỆ (Chiseled Nasal Bridge - KHÔNG BỊ MỎ CHIM)
-        if (y >= -0.001 && y <= 0.025) {
-          const noseT = (y - (-0.001)) / 0.026;
-          const noseHalfW = 0.0040 + Math.pow(1.0 - noseT, 1.2) * 0.0055;
-          const noseXRatio = Math.abs(px) / noseHalfW;
-          if (noseXRatio < 1.0) {
-            const noseCross = Math.cos(noseXRatio * Math.PI * 0.5);
-            const tipBell = Math.sin((1.0 - noseT) * Math.PI * 0.78);
-            const noseHeight = 0.0025 + tipBell * 0.0090;
-            pz += noseHeight * noseCross;
+          // 4. Zygomatic Cheekbones (Gò má thanh tú tự nhiên)
+          if (y >= -0.012 && y <= 0.014 && Math.abs(px) >= 0.018 && Math.abs(px) <= 0.040) {
+            const chY = Math.sin(((y - (-0.012)) / 0.026) * Math.PI);
+            const chX = Math.sin(((Math.abs(px) - 0.018) / 0.022) * Math.PI);
+            pz += chY * chX * 0.0015 * frontFactor;
+          }
+
+          // 5. 4 DÁNG MŨI 3D ĐIÊU KHẮC RÕ RỆT (S-Line, L-Line, Phù Thủy Khoằm To, Hếch Hạt Mít)
+          const yBotNose = isWitchNose ? -0.023 : (isCuteSnubNose ? -0.014 : -0.015);
+          const yTopNose = isWitchNose ? 0.026 : 0.021;
+
+          if (y >= yBotNose && y <= yTopNose) {
+            const tau = (y - yBotNose) / (yTopNose - yBotNose); // 0 at subnasale, 1 at nasion
+            let noseH = 0;
+            let sigmaX = 0.0038;
+            let alarMax = 0.0026;
+            let alarWidth = 0.0115;
+
+            if (isWitchNose) {
+              // 3. MŨI PHÙ THỦY KHOẰM TO 🧙‍♀️: Sống mũi gồ to khổng lồ, chóp mũi vươn dài khoằm quặp chúc xuống dưới quá môi trên
+              const hump = 0.0240 * Math.exp(-Math.pow((tau - 0.65) / 0.20, 2));
+              const beak = 0.0280 * Math.exp(-Math.pow((tau - 0.28) / 0.18, 2));
+              const droop = 0.0180 * Math.exp(-Math.pow((tau - 0.10) / 0.15, 2));
+              const generalBridge = 0.0090 * Math.sin(tau * Math.PI);
+              noseH = Math.max(generalBridge, Math.max(hump, Math.max(beak, droop)));
+              sigmaX = 0.0068 + 0.0040 * Math.sin(tau * Math.PI);
+              alarMax = 0.0070;
+              alarWidth = 0.0185;
+            } else if (isCuteSnubNose) {
+              // 4. MŨI HẾCH HẠT MÍT BABY 👶: Gốc mũi phẳng tẹt dí, chóp mũi vo tròn như hạt mít/hòn bi hếch cao lên trên
+              // Gốc mũi tẹt lõm gần như phẳng sát sọ
+              const flatBridge = 0.0008 * Math.sin(tau * Math.PI);
+              // Hạt mít tròn vo ở vị trí cao tau = 0.38
+              const buttonBall = 0.0075 * Math.exp(-Math.pow((tau - 0.38) / 0.13, 2));
+              // Phần đáy mũi thụt lùi vào trong để hếch lên
+              const snubRetreat = (tau < 0.22) ? (tau / 0.22) : 1.0;
+              noseH = Math.max(flatBridge, buttonBall) * snubRetreat;
+              sigmaX = (tau < 0.55) ? 0.0065 : 0.0025;
+              alarMax = 0.0038;
+              alarWidth = 0.0130;
+            } else if (isLlineNose) {
+              // 2. MŨI CAO THẲNG L-LINE: Sống mũi cao thẳng tắp từ đỉnh trán xuống chóp mũi, góc mũi trán sắc sảo Tây phương
+              const straightLine = 0.0065 + 0.0040 * (1.0 - Math.pow(tau - 0.25, 2));
+              noseH = Math.max(0.0040, straightLine);
+              sigmaX = 0.0025 + 0.0012 * Math.sin(tau * Math.PI);
+              alarMax = 0.0020;
+              alarWidth = 0.0095;
+            } else {
+              // 1. MŨI S-LINE TỰ NHIÊN: Đường cong võng nhẹ Á Đông, đầu mũi thon gọn mềm mại
+              const envelope = Math.pow(Math.sin(tau * Math.PI), 1.20);
+              const tip = 0.0042 * Math.exp(-Math.pow((tau - 0.28) / 0.16, 2));
+              noseH = (0.0036 + tip) * envelope;
+              sigmaX = 0.0036 + 0.0020 * Math.sin(tau * Math.PI);
+              alarMax = 0.0026;
+              alarWidth = 0.0115;
+            }
+
+            const bX = Math.exp(-Math.pow(px / sigmaX, 2));
+            pz += noseH * bX * frontFactor;
+
+            // Cánh mũi & Rãnh cánh mũi
+            if (tau >= 0.04 && tau <= 0.45 && Math.abs(px) >= 0.0030 && Math.abs(px) <= alarWidth) {
+              const alarY = Math.sin(((tau - 0.04) / 0.41) * Math.PI);
+              const alarX = Math.sin(((Math.abs(px) - 0.0030) / (alarWidth - 0.0030)) * Math.PI);
+              pz += alarY * alarX * alarMax * frontFactor;
+            }
+          }
+
+          // 6. 3 Dáng Môi: 1. Môi Mỏng Tự Nhiên | 2. Môi Căng Mọng | 3. Môi Trề To Dày Cộp Nhô Hẳn Ra Trước
+          // Rãnh nhân trung
+          if (y >= -0.021 && y <= -0.013 && Math.abs(px) <= 0.0032) {
+            const philY = Math.sin(((y - (-0.021)) / 0.008) * Math.PI);
+            const philX = Math.cos((px / 0.0032) * Math.PI * 0.5);
+            pz -= philY * philX * 0.0006 * frontFactor;
+          }
+
+          // Môi trên (Upper Lip)
+          const uTop = isTreLip ? -0.0175 : (isPlumpLip ? -0.0185 : -0.0195);
+          const uBot = -0.025;
+          const uWidth = isTreLip ? 0.0165 : (isPlumpLip ? 0.0150 : 0.0135);
+          if (y >= uBot && y <= uTop && Math.abs(px) <= uWidth) {
+            const uY = Math.sin(((y - uBot) / (uTop - uBot)) * Math.PI);
+            const uX = Math.cos((px / uWidth) * Math.PI * 0.5);
+            const cupidDip = 1.0 - (isTreLip ? 0.05 : (isPlumpLip ? 0.12 : 0.18)) * Math.exp(-Math.pow(px / 0.0028, 2));
+            const uProtrude = isTreLip ? 0.0075 : (isPlumpLip ? 0.0048 : 0.0020);
+            pz += uY * uX * cupidDip * uProtrude * frontFactor;
+          }
+
+          // Rãnh miệng (Mouth Fissure)
+          const fissureWidth = isTreLip ? 0.0175 : (isPlumpLip ? 0.0155 : 0.0140);
+          if (Math.abs(y - (-0.025)) <= 0.0020 && Math.abs(px) <= fissureWidth) {
+            const fY = Math.cos(((y - (-0.025)) / 0.0020) * Math.PI * 0.5);
+            const fX = Math.cos((px / fissureWidth) * Math.PI * 0.5);
+            pz -= fY * fX * (isTreLip ? 0.0004 : 0.0008) * frontFactor;
+          }
+
+          // Môi dưới (Lower Lip - Dáng Môi Trề nhô hẳn 1.25cm ra phía trước và trễ xuống)
+          const lTop = -0.025;
+          const lBot = isTreLip ? -0.0350 : (isPlumpLip ? -0.0330 : -0.0315);
+          const lWidth = isTreLip ? 0.0185 : (isPlumpLip ? 0.0150 : 0.0135);
+          if (y >= lBot && y <= lTop && Math.abs(px) <= lWidth) {
+            const lY = Math.sin(((y - lBot) / (lTop - lBot)) * Math.PI);
+            const lX = Math.cos((px / lWidth) * Math.PI * 0.5);
+            // Môi trề nhô mạnh 0.0125m, môi mọng 0.0062m, môi mỏng 0.0026m
+            const lProtrude = isTreLip ? 0.0125 : (isPlumpLip ? 0.0062 : 0.0026);
+            pz += lY * lX * lProtrude * frontFactor;
+          }
+
+          // Hõm dưới môi (Mentolabial Sulcus - chuyển tiếp êm dịu, không bị gãy gập)
+          const sTop = isTreLip ? -0.0350 : (isPlumpLip ? -0.0330 : -0.0315);
+          const sBot = isTreLip ? -0.0410 : -0.0385;
+          if (y >= sBot && y <= sTop && Math.abs(px) <= 0.015) {
+            const lmY = Math.sin(((y - sBot) / (sTop - sBot)) * Math.PI);
+            const lmX = Math.cos((px / 0.015) * Math.PI * 0.5);
+            pz -= lmY * lmX * 0.0010 * frontFactor;
+          }
+
+          // 7. Harmonious V-Line Chin (Cằm V-Line tự nhiên, liền khối 100%, không gờ, không ghẻ)
+          if (y >= -0.048 && y <= -0.036 && Math.abs(px) <= 0.016) {
+            const chinY = Math.sin(((y - (-0.048)) / 0.012) * Math.PI);
+            const chinWidth = isMasculineJaw ? 0.018 : 0.015;
+            const chinX = Math.cos((px / chinWidth) * Math.PI * 0.5);
+            pz += chinY * chinX * 0.0024 * frontFactor;
           }
         }
 
-        // 4. GÒ MÁ (Zygomatic Arches)
-        if (y >= -0.004 && y <= 0.022 && Math.abs(px) >= 0.028 && Math.abs(px) <= 0.052) {
-          const cy = Math.sin(((y - (-0.004)) / 0.026) * Math.PI);
-          const cx = Math.sin(((Math.abs(px) - 0.028) / 0.024) * Math.PI);
-          pz += cy * cx * 0.0028;
-        }
-
-        // 5. RÃNH NHÂN TRUNG (Philtrum)
-        if (y >= -0.010 && y <= 0.001 && Math.abs(px) < 0.0038) {
-          pz -= 0.0014 * Math.cos((px / 0.0038) * Math.PI * 0.5);
-        }
-
-        // 6. MÔI TRÊN & MÔI DƯỚI (Harmonious Lips - Cân bằng tuyệt đối với mũi)
-        // Môi trên cong nhẹ hình cánh cung Cupid
-        if (y >= -0.016 && y <= -0.007 && Math.abs(px) < 0.018) {
-          const uy = Math.sin(((y - (-0.016)) / 0.009) * Math.PI);
-          const ux = Math.cos((px / 0.018) * Math.PI * 0.5);
-          pz += uy * ux * 0.0050;
-        }
-        // Rãnh khóe miệng
-        if (Math.abs(y - (-0.0165)) < 0.0015 && Math.abs(px) < 0.018) {
-          pz -= 0.0018 * Math.cos((px / 0.018) * Math.PI * 0.5);
-        }
-        // Môi dưới mềm đệm
-        if (y >= -0.026 && y <= -0.017 && Math.abs(px) < 0.017) {
-          const ly = Math.sin(((y - (-0.026)) / 0.009) * Math.PI);
-          const lx = Math.cos((px / 0.017) * Math.PI * 0.5);
-          pz += ly * lx * 0.0052;
-        }
-        // Hõm dưới môi (Labiomental Groove)
-        if (y >= -0.034 && y <= -0.025 && Math.abs(px) < 0.020) {
-          const gy = Math.sin(((y - (-0.034)) / 0.009) * Math.PI);
-          const gx = Math.cos((px / 0.020) * Math.PI * 0.5);
-          pz -= gy * gx * 0.0028;
-        }
-
-        // 7. CẰM CHỮ ĐIỀN NAM TÍNH (Square Chin - Nhô ra trước ngang hàng với môi)
-        if (y >= -0.048 && y <= -0.030 && Math.abs(px) < 0.024) {
-          const chinY = Math.sin(((y - (-0.048)) / 0.018) * Math.PI);
-          const chinX = Math.cos((px / 0.024) * Math.PI * 0.5);
-          pz += chinY * chinX * 0.0070;
-          px *= 1.0 + chinY * 0.05;
-        }
-
-        // 8. GÓC HÀM V-LINE (Mandibular Arch)
-        if (y < 0.005) {
-          const jawProg = Math.min(1.0, (0.005 - y) / 0.050);
-          px *= 1.0 - Math.pow(jawProg, 1.1) * 0.35;
-        }
-      } else {
-        // =====================================================================
-        // BACK OF HEAD & NAPE (Gáy sau và chân cổ)
-        // =====================================================================
-        if (y < 0.005) {
-          const napeProg = Math.min(1.0, (0.005 - y) / 0.050);
-          const napeDepth = rZBack - Math.pow(napeProg, 1.1) * 0.028; // 0.072 -> 0.044m
-          const napeWidth = rXBase - Math.pow(napeProg, 1.1) * 0.015; // 0.057 -> 0.042m
-          pz = z0 * napeDepth;
-          px = x0 * napeWidth;
-          if (z0 < -0.75) {
-            pz += Math.sin(napeProg * Math.PI) * 0.0022;
-          }
-        }
+        positions.push(px, y, pz);
+        uvs.push(uFrac, vFrac);
       }
-
-      pos.setXYZ(k, px, y, pz);
     }
 
+    for (let v = 0; v < V; v++) {
+      for (let u = 0; u < U; u++) {
+        const i0 = v * (U + 1) + u;
+        const i1 = i0 + 1;
+        const i2 = (v + 1) * (U + 1) + u;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
     geo.computeVertexNormals();
     return geo;
   }
 
   // ===========================================================================
-  // 2. NECK: Proportional Stem & Muscular Contour (Cổ lực lưỡng, tỉ lệ chuẩn người thật)
+  // 2. NECK: Anatomically Sculpted Athletic Neck (Cổ Điêu Khắc Cao Ráo, Thanh Lịch)
   // ===========================================================================
   private buildNeck() {
+    // 1. Khớp cầu đỉnh cổ lồng vào đáy sọ (Top Ball Joint at Y = 0.082m)
     const neckTopBallGeo = new THREE.SphereGeometry(0.024, 24, 20);
     const neckTopBall = new THREE.Mesh(neckTopBallGeo, this.jointMaterial);
-    neckTopBall.position.set(0, 0.050, 0);
+    neckTopBall.position.set(0, 0.082, 0);
     neckTopBall.castShadow = true;
     this.neckBone.add(neckTopBall);
 
-    // Cổ cơ bắp thể thao ngắn gọn (cao 5.5cm, không còn bị dài như hươu)
-    const neckStemGeo = new THREE.CylinderGeometry(0.041, 0.049, 0.055, 32);
-    neckStemGeo.scale(0.96, 1.0, 1.12);
+    // 2. Thân cổ điêu khắc giải phẫu học cao ráo, cắm sâu 1.8cm vào lòng ngực (triệt tiêu hoàn toàn khe hở)
+    const neckStemGeo = this.createSculptedNeckGeometry();
     const neckStem = new THREE.Mesh(neckStemGeo, this.bodyMaterial);
-    neckStem.position.set(0, 0.024, -0.003);
-    neckStem.rotation.x = 0.04;
+    neckStem.position.set(0, 0, 0);
     neckStem.castShadow = true;
     neckStem.receiveShadow = true;
     this.neckBone.add(neckStem);
 
-    const neckBaseBallGeo = new THREE.SphereGeometry(0.028, 24, 18);
+    // 3. Khớp cầu đáy cổ lồng sâu vào cổ ngực (Base Ball Joint)
+    const neckBaseBallGeo = new THREE.SphereGeometry(0.027, 24, 18);
     const neckBaseBall = new THREE.Mesh(neckBaseBallGeo, this.jointMaterial);
     neckBaseBall.position.set(0, 0, 0);
     this.neckBone.add(neckBaseBall);
+  }
+
+  /**
+   * Generates an anatomically sculpted neck geometry with SCM muscle flow,
+   * subtle thyroid cartilage (Adam's apple), posterior nuchal groove, and deep collar socket integration.
+   * Starts from yBottom = -0.018m (deep inside chest) to yTop = 0.082m for a tall, elegant posture.
+   */
+  private createSculptedNeckGeometry(): THREE.BufferGeometry {
+    const V = 36;
+    const U = 36;
+    const positions: number[] = [];
+    const uvs: number[] = [];
+    const indices: number[] = [];
+
+    const yBottom = -0.018;
+    const yTop = 0.082;
+    const yTotal = yTop - yBottom;
+
+    for (let v = 0; v <= V; v++) {
+      const vFrac = v / V;
+      const y = yBottom + vFrac * yTotal;
+      // Normalized height fraction t from 0 (at collar level y=0) to 1 (at skull socket y=yTop)
+      const t = Math.max(0, Math.min(1, y / yTop));
+
+      // Slight natural forward tilt angle
+      const zCenter = -0.004 + t * 0.004;
+
+      // Proportional radius:
+      // Base (embedded in chest socket): width 7.6cm (rx = 0.038m), depth 7.8cm (rz = 0.039m)
+      // Top (under skull): width 5.8cm (rx = 0.029m), depth 6.2cm (rz = 0.031m)
+      let rX: number;
+      let rZ_ant: number;
+      let rZ_pos: number;
+
+      if (y <= 0) {
+        const subT = -y / (-yBottom);
+        rX = 0.038 + subT * 0.001;
+        rZ_ant = 0.037 + subT * 0.001;
+        rZ_pos = 0.039 + subT * 0.001;
+      } else {
+        rX = 0.038 - t * 0.009;
+        rZ_ant = 0.037 - t * 0.007;
+        rZ_pos = 0.039 - t * 0.008;
+      }
+
+      for (let u = 0; u <= U; u++) {
+        const uFrac = u / U;
+        const theta = uFrac * Math.PI * 2;
+        const cosT = Math.cos(theta); // > 0 front, < 0 back
+        const sinT = Math.sin(theta); // left / right
+        const absSin = Math.abs(sinT);
+
+        let px = sinT * rX;
+        let pz = zCenter + (cosT >= 0 ? cosT * rZ_ant : cosT * rZ_pos);
+
+        // 1. Sternocleidomastoid (SCM) Muscle Bands (Dải cơ ức đòn chũm 2 bên)
+        if (y >= 0) {
+          const scmThetaTarget = 0.32 + t * 0.88;
+          const scmDist = Math.abs(absSin - Math.sin(scmThetaTarget));
+          if (scmDist < 0.28 && cosT > -0.2) {
+            const scmBell = Math.cos((scmDist / 0.28) * Math.PI * 0.5);
+            const scmHeight = 0.0024 * (0.6 + 0.4 * Math.sin(t * Math.PI));
+            pz += scmBell * scmHeight * (cosT > 0 ? cosT : 0.4);
+            px += (sinT > 0 ? 1 : -1) * scmBell * scmHeight * 0.6;
+          }
+
+          // 2. Adam's Apple (Thyroid Cartilage) (Yết hầu nam tính tinh tế)
+          if (cosT > 0.65 && t >= 0.35 && t <= 0.75) {
+            const adT = Math.sin(((t - 0.35) / 0.40) * Math.PI);
+            const adX = Math.cos(((1.0 - cosT) / 0.35) * Math.PI * 0.5);
+            pz += adT * adX * 0.0032;
+          }
+
+          // 3. Posterior Nuchal Groove (Rãnh gáy sau cổ)
+          if (cosT < -0.75) {
+            const nuchT = Math.cos((Math.abs(sinT) / Math.sin(Math.PI * 0.25)) * Math.PI * 0.5);
+            pz += nuchT * 0.0016;
+          }
+        }
+
+        positions.push(px, y, pz);
+        uvs.push(uFrac, vFrac);
+      }
+    }
+
+    for (let v = 0; v < V; v++) {
+      for (let u = 0; u < U; u++) {
+        const i0 = v * (U + 1) + u;
+        const i1 = i0 + 1;
+        const i2 = (v + 1) * (U + 1) + u;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
   }
 
   // ===========================================================================
   // 3. TORSO: Seamless Trapezius Slope & Heroic Pectorals (Cổ vuốt xuống vai liền mạch)
   // ===========================================================================
   private buildTorso() {
-    // Collar Rim
-    const collarRimGeo = new THREE.TorusGeometry(0.046, 0.005, 12, 32);
-    collarRimGeo.rotateX(Math.PI / 2);
-    collarRimGeo.scale(0.96, 1.04, 1.0);
-    const collarRim = new THREE.Mesh(collarRimGeo, this.jointMaterial);
-    collarRim.position.set(0, 0.170, 0);
-    this.chestBone.add(collarRim);
-
-    // Seamless Anatomical Chest Shell
+    // Seamless Anatomical Chest Shell (includes collar socket and clavicles)
     const chestShellGeo = this.createSeamlessAthleticChestGeometry();
     const chestShell = new THREE.Mesh(chestShellGeo, this.bodyMaterial);
     chestShell.castShadow = true;
     chestShell.receiveShadow = true;
     this.chestBone.add(chestShell);
 
-    // Sculpted Athletic Male Abdomen (Lồng sâu vào ngực và khung chậu, cơ bụng 6 múi chìm tự nhiên, không vòng lơ lửng)
+    // Sculpted Athletic Male Abdomen
     const abdomenGeo = this.createSculptedAbdomenGeometry();
     const abdomenMesh = new THREE.Mesh(abdomenGeo, this.bodyMaterial);
     abdomenMesh.castShadow = true;
@@ -490,11 +1007,12 @@ export class ArticulatedMannequin implements IHumanCharacter {
   }
 
   /**
-   * Generates a sleek, athletic male abdomen with subtle anatomical 6-pack tone.
-   * Completely eliminates floating rings and glued box bricks.
+   * Generates a sleek, athletic male abdomen with subtle anatomical tone.
+   * Designed as a true internal floating core that inserts seamlessly inside
+   * the chest shell at top and pelvis socket at bottom without ever protruding through the back.
    */
   private createSculptedAbdomenGeometry(): THREE.BufferGeometry {
-    const V = 20;
+    const V = 24;
     const U = 36;
     const positions: number[] = [];
     const indices: number[] = [];
@@ -512,31 +1030,43 @@ export class ArticulatedMannequin implements IHumanCharacter {
         const sinT = Math.sin(theta);
         const absSin = Math.abs(sinT);
 
-        // Athletic V-taper waist contour
-        let rX = 0.092;
-        let rZ = 0.070;
+        let rX: number;
+        let rZ_ant: number;
+        let rZ_pos: number;
 
-        if (y > 0.060) {
-          const topT = (y - 0.060) / 0.100;
-          rX = 0.092 + topT * 0.018; // 0.092 -> 0.110 (widening into ribcage)
-          rZ = 0.070 + topT * 0.012; // 0.070 -> 0.082
+        if (y < 0.030) {
+          // 1. Lower Core inserting into pelvis socket (y from 0.000 to 0.030)
+          const botT = y / 0.030;
+          rX = 0.076 + botT * 0.006;       // 0.076 -> 0.082
+          rZ_ant = 0.054 + botT * 0.006;   // 0.054 -> 0.060
+          rZ_pos = 0.050 + botT * 0.006;   // 0.050 -> 0.056
+        } else if (y <= 0.075) {
+          // 2. Visible Waist & 6-Pack Midriff (y from 0.030 to 0.075)
+          const midT = (y - 0.030) / 0.045;
+          rX = 0.082 + midT * 0.002;       // 0.082 -> 0.084
+          rZ_ant = 0.060 + midT * 0.002;   // 0.060 -> 0.062
+          rZ_pos = 0.056 + midT * 0.002;   // 0.056 -> 0.058 (concave lumbar back curve)
         } else {
-          const botT = (0.060 - y) / 0.060;
-          rX = 0.092 + botT * 0.004; // 0.092 -> 0.096 (fitting pelvis)
-          rZ = 0.070 + botT * 0.006; // 0.070 -> 0.076
+          // 3. Upper Dome inserting deep into chest socket (y from 0.075 to 0.160)
+          // Taper smoothly inward so it stays 100% inside chest shell (rz_pos = 0.063m)
+          const topT = (y - 0.075) / 0.085;
+          const dome = topT * topT;
+          rX = 0.084 - dome * 0.014;       // 0.084 -> 0.070
+          rZ_ant = 0.062 - dome * 0.014;   // 0.062 -> 0.048
+          rZ_pos = 0.058 - dome * 0.012;   // 0.058 -> 0.046 (NO step, NO back protrusion!)
         }
 
         let px = sinT * rX;
-        let pz = cosT * rZ;
+        let pz = cosT >= 0 ? cosT * rZ_ant : cosT * rZ_pos;
 
         // Subtle sculpted male 6-pack abs on anterior wall
-        if (cosT > 0 && y >= 0.025 && y <= 0.145 && absSin <= 0.55) {
+        if (cosT > 0 && y >= 0.025 && y <= 0.085 && absSin <= 0.55) {
           // Central linea alba groove
           const centerGroove = Math.min(1.0, absSin / 0.05);
           // 3 tiers of abdominal packs
-          const absTier = Math.sin(((y - 0.025) / 0.120) * Math.PI * 3);
+          const absTier = Math.sin(((y - 0.025) / 0.060) * Math.PI * 3);
           const absPack = Math.max(0, absTier) * Math.sin((absSin / 0.55) * Math.PI);
-          pz += centerGroove * absPack * 0.004;
+          pz += centerGroove * absPack * 0.0035;
         }
 
         positions.push(px, y, pz);
@@ -565,19 +1095,24 @@ export class ArticulatedMannequin implements IHumanCharacter {
   }
 
   /**
-   * Generates a seamless athletic chest with a natural, gentle trapezius slope.
-   * Flows smoothly from the neck collar down to the shoulder sockets.
-   * Eliminates pagoda tenting, creates heroic clavicle & pectoral contours.
+   * Generates a sleek, athletic, beautifully proportioned chest with gentle clavicles (xương quai xanh)
+   * and smooth organic trapezius slope connecting directly into shoulder sockets.
+   * Acromion shelf reaches X = ±0.125m at Y = 0.114m, seamlessly capping the shoulder joint.
    */
   private createSeamlessAthleticChestGeometry(): THREE.BufferGeometry {
-    const V = 36;
+    const V = 44;
     const U = 48;
     const positions: number[] = [];
     const indices: number[] = [];
     const uvs: number[] = [];
 
+    const yBottom = -0.035;
+    const yTop = 0.165;
+    const yTotal = yTop - yBottom;
+
     for (let v = 0; v <= V; v++) {
-      const vFrac = v / V;
+      const vFrac = v / V; // 0 at bottom of chest, 1 at neck collar
+      const py = yBottom + vFrac * yTotal;
 
       for (let u = 0; u <= U; u++) {
         const uFrac = u / U;
@@ -586,87 +1121,72 @@ export class ArticulatedMannequin implements IHumanCharacter {
         const sinT = Math.sin(theta); // <0 left, >0 right
         const absSin = Math.abs(sinT);
 
-        let px: number;
-        let py: number;
-        let pz: number;
+        let rx: number;
+        let rz_ant: number;
+        let rz_pos: number;
 
-        if (vFrac <= 0.55) {
-          // ===================================================================
-          // ZONE 1: Lower to Mid Torso (Thân ngực chữ V thuôn mượt, đáy cuộn êm)
-          // ===================================================================
-          const t1 = vFrac / 0.55; // 0 -> 1
-          py = -0.025 + t1 * 0.140; // -0.025 -> 0.115
+        if (py <= 0.114) {
+          // Ribcage & Athletic Pectoral span up to acromion shoulder shelf (py from -0.035 to 0.114)
+          const t1 = (py - yBottom) / (0.114 - yBottom);
+          const sCurve = Math.sin(t1 * (Math.PI / 2));
+          rx = 0.088 + sCurve * 0.037;     // 0.088 -> 0.125 (reaches full shoulder shelf smoothly)
+          rz_ant = 0.068 + sCurve * 0.003; // 0.068 -> 0.071
+          rz_pos = 0.063 + sCurve * 0.001; // 0.063 -> 0.064 (smooth back latissimus contour)
 
-          let rX: number;
-          let rZ: number;
-
-          if (t1 < 0.18) {
-            // Mép đáy bo tròn cuộn vào trong ôm khít lấy bụng
-            const rimT = t1 / 0.18;
-            const s = Math.sin((rimT * Math.PI) / 2);
-            rX = 0.099 + s * 0.007; // 0.099 -> 0.106
-            rZ = 0.073 + s * 0.005; // 0.073 -> 0.078
-          } else {
-            // V-taper nở rộng dần lên trên mượt mà
-            const wT = (t1 - 0.18) / 0.82;
-            const curve = Math.sin((wT * Math.PI) / 2);
-            rX = 0.106 + curve * 0.031; // 0.106 -> 0.137
-            rZ = 0.078 + curve * 0.011; // 0.078 -> 0.089
+          // Latissimus dorsi (cơ xô thon gọn thể thao)
+          if (absSin > 0.40 && t1 > 0.20 && t1 < 0.85) {
+            const latFlare = Math.sin(((t1 - 0.20) / 0.65) * Math.PI) * (absSin - 0.40) * 0.005;
+            rx += latFlare;
           }
-
-          // Cơ xô (Latissimus Dorsi) xòe nhẹ sang hai bên
-          if (t1 > 0.30 && absSin > 0.35) {
-            const latT = (t1 - 0.30) / 0.70;
-            const latFlare = Math.sin(latT * Math.PI) * (absSin - 0.35) * 0.008;
-            rX += latFlare;
-          }
-
-          px = sinT * rX;
-          pz = cosT * rZ;
-
-          // Cơ ngực mềm mại, mài mòn phẳng mịn, không nếp gờ (Ultra-soft, organic)
-          if (cosT > 0 && py >= 0.030 && py <= 0.115 && absSin >= 0.05 && absSin <= 0.80) {
-            const normX = (absSin - 0.05) / 0.75;
-            const sternum = Math.sin(Math.min(1.0, normX / 0.15) * Math.PI * 0.5);
-            const normY = (py - 0.030) / 0.085;
-            const pecBulge = Math.sin(normY * Math.PI) * Math.sin(normX * Math.PI);
-            pz += sternum * pecBulge * 0.0035; // Rất êm ái, chỉ 3.5mm nâng nhẹ tự nhiên
-          }
-        } else if (vFrac <= 0.75) {
-          // ===================================================================
-          // ZONE 2: Rounded Shoulder Dome / Fillet (Bo tròn vai ngực mềm mại)
-          // XÓA BỎ HOÀN TOÀN GỜ ĐĨA PHẲNG 90 ĐỘ CŨ
-          // ===================================================================
-          const t2 = (vFrac - 0.55) / 0.20; // 0 -> 1
-          const alpha = t2 * (Math.PI / 2); // 0 -> PI/2
-          const sinA = Math.sin(alpha);
-          const cosA = Math.cos(alpha);
-
-          // Vòm cong bo tròn liên tục góc 90 độ (fillet) nối thẳng thân ngực lên quai xanh
-          py = 0.115 + sinA * 0.028; // 0.115 -> 0.143
-          const curRX = 0.137 - (1.0 - cosA) * 0.026; // 0.137 -> 0.111
-          const curRZ = 0.089 - (1.0 - cosA) * 0.017; // 0.089 -> 0.072
-
-          px = sinT * curRX;
-          pz = cosT * curRZ;
         } else {
-          // ===================================================================
-          // ZONE 3: Trapezius Slope to Neck Collar (Cổ xuôi tự nhiên)
-          // ===================================================================
-          const t3 = (vFrac - 0.75) / 0.25; // 0 -> 1
-          const smoothT = t3 * t3 * (3 - 2 * t3);
+          // Trapezius Slope from Acromion up to Neck Collar (py from 0.114 to 0.165)
+          // Smooth continuous S-curve transition from 0.125m into neck base (0.038m x 0.039m)
+          const t2 = (py - 0.114) / (0.165 - 0.114);
+          const smoothT = t2 * t2 * (3 - 2 * t2);
+          rx = 0.125 - smoothT * (0.125 - 0.038);
+          rz_ant = 0.071 - smoothT * (0.071 - 0.037);
+          rz_pos = 0.064 - smoothT * (0.064 - 0.039);
+        }
 
-          const curRX = 0.111 - smoothT * 0.065; // 0.111 -> 0.046
-          const curRZ = 0.072 - smoothT * 0.024; // 0.072 -> 0.048
+        let px = sinT * rx;
+        let pz = cosT >= 0 ? cosT * rz_ant : cosT * rz_pos;
 
-          px = sinT * curRX;
-          pz = cosT * curRZ;
+        // Trapezius height profile: dip at front jugular notch, rise at back trapezius
+        if (vFrac > 0.70) {
+          const trapT = (vFrac - 0.70) / 0.30;
+          if (cosT > 0) {
+            // Hõm ức cổ (Jugular Notch)
+            pz -= cosT * (1.0 - absSin) * 0.0035 * trapT;
+          } else {
+            // Cơ thang gáy sau (Trapezius muscle rise)
+            pz += -cosT * 0.0030 * trapT;
+          }
+        }
 
-          const baseHeight = 0.143 + smoothT * 0.027; // 0.143 -> 0.170
-          const frontDip = (cosT > 0 ? cosT * (1 - absSin) * 0.005 : 0) * smoothT;
-          const backRise = (cosT < 0 ? -cosT * 0.004 : 0) * smoothT;
+        // =====================================================================
+        // 1. NATURAL PECTORALIS MAJOR (Cơ ngực tự nhiên, mềm mại, thon gọn)
+        // =====================================================================
+        if (cosT > 0.20 && py >= 0.025 && py <= 0.108 && absSin >= 0.04 && absSin <= 0.75) {
+          const pecX = (absSin - 0.04) / 0.71;
+          const sternumSplit = Math.sin(Math.min(1.0, pecX / 0.25) * Math.PI * 0.5);
+          const pecY = (py - 0.025) / 0.083;
+          const pecBulge = Math.sin(pecY * Math.PI) * Math.sin(pecX * Math.PI);
+          pz += sternumSplit * pecBulge * 0.0038 * (cosT > 0 ? cosT : 0.5);
+        }
 
-          py = baseHeight - frontDip + backRise;
+        // =====================================================================
+        // 2. GENTLE ELEGANT CLAVICLES (Xương quai xanh nhẹ nhàng, uốn lượn chữ S)
+        // =====================================================================
+        if (cosT > 0.20 && py >= 0.110 && py <= 0.146 && absSin >= 0.04 && absSin <= 0.92) {
+          const clavNormX = (absSin - 0.04) / 0.88; // 0 at sternum, 1 at acromion
+          const clavCenterY = 0.134 - 0.010 * Math.pow(clavNormX, 1.3);
+          const clavDistY = Math.abs(py - clavCenterY) / 0.012;
+          if (clavDistY < 1.0) {
+            const clavYBell = Math.cos(clavDistY * Math.PI * 0.5);
+            const clavXBell = Math.sin(clavNormX * Math.PI);
+            // Xương quai xanh nổi nhẹ nhàng thanh tú (~2.0mm)
+            pz += clavYBell * clavXBell * 0.0020 * cosT;
+          }
         }
 
         positions.push(px, py, pz);
@@ -696,23 +1216,21 @@ export class ArticulatedMannequin implements IHumanCharacter {
 
   /**
    * Generates a single, continuous, anatomically sculpted upper arm geometry.
-   * Features:
-   * 1. Deltoid muscle cap that is streamlined and athletic (less round, no sharp horns).
-   * 2. 100% seamless transition from deltoid down into bicep and tricep (zero gaps/cuts).
-   * 3. Perfectly flush with the shoulder socket and trapezius slope.
+   * Connects seamlessly into the underside of the ellipsoid shoulder ball joint.
+   * Features trimmed medial profile for natural armpit clearance and smooth cupped elbow socket.
    */
   private createSculptedUpperArmGeometry(dir: number): THREE.BufferGeometry {
-    const NY = 28;
+    const NY = 32;
     const NU = 32;
     const positions: number[] = [];
     const indices: number[] = [];
     const uvs: number[] = [];
 
-    const yTop = 0.008;
+    const yTop = 0.000;
     const yBottom = -0.220;
 
     for (let i = 0; i <= NY; i++) {
-      const t = i / NY;
+      const t = i / NY; // 0 at upper arm top socket, 1 at elbow bottom
       const y = yTop - t * (yTop - yBottom);
 
       let rX_lat: number;
@@ -720,37 +1238,28 @@ export class ArticulatedMannequin implements IHumanCharacter {
       let rZ_ant: number;
       let rZ_pos: number;
 
-      if (t <= 0.15) {
-        // 1. Shoulder Deltoid Crown (y from +0.008 to -0.026)
-        const capT = t / 0.15;
-        const s = Math.sin((capT * Math.PI) / 2);
-        rX_lat = Math.max(0.002, s * 0.038);
-        rX_med = Math.max(0.002, s * 0.028);
-        rZ_ant = Math.max(0.002, s * 0.033);
-        rZ_pos = Math.max(0.002, s * 0.033);
-      } else if (t <= 0.40) {
-        // 2. Deltoid Muscle Belly (y from -0.026 to -0.083)
-        const deltT = (t - 0.15) / 0.25;
-        const bulge = Math.sin(deltT * Math.PI);
-        rX_lat = 0.038 + bulge * 0.002 - deltT * 0.006;
-        rX_med = 0.028 - deltT * 0.002;
-        rZ_ant = 0.033 - deltT * 0.002;
-        rZ_pos = 0.033 - deltT * 0.002;
-      } else if (t <= 0.75) {
-        // 3. Seamless Transition into Bicep & Tricep (y from -0.083 to -0.163)
-        const armT = (t - 0.40) / 0.35;
-        rX_lat = 0.032 - armT * 0.006;
-        rX_med = 0.026 - armT * 0.002;
-        const bicepBulge = Math.sin(armT * Math.PI);
-        rZ_ant = 0.031 + bicepBulge * 0.003 - armT * 0.007;
-        rZ_pos = 0.031 + bicepBulge * 0.002 - armT * 0.007;
+      if (t <= 0.18) {
+        // 1. Upper Deltoid Insertion Socket (Ôm khít đáy khối cầu vai bầu dục, khớp nối liền khối)
+        const s = Math.sin((t / 0.18) * (Math.PI / 2));
+        rX_lat = 0.026 + s * 0.012; // 0.026 -> 0.038 (đường cong cơ delta ngoài)
+        rX_med = 0.017 + s * 0.003; // 0.017 -> 0.020 (mặt trong thon gọn triệt tiêu dính nách)
+        rZ_ant = 0.025 + s * 0.013; // 0.025 -> 0.038
+        rZ_pos = 0.025 + s * 0.011; // 0.025 -> 0.036
+      } else if (t <= 0.65) {
+        // 2. Bicep & Tricep Muscular Belly (y from -0.040 to -0.143) - BẮP TAY NỞ NANG KHỎE KHOẮN
+        const midT = (t - 0.18) / 0.47;
+        const bicepBulge = Math.sin(midT * Math.PI);
+        rX_lat = 0.038 - midT * 0.009; // 0.038 -> 0.029
+        rX_med = 0.020 - midT * 0.002; // 0.020 -> 0.018
+        rZ_ant = 0.038 + bicepBulge * 0.004 - midT * 0.013; // 0.038 -> 0.042 -> 0.025 (bắp trước)
+        rZ_pos = 0.036 + bicepBulge * 0.003 - midT * 0.011; // 0.036 -> 0.039 -> 0.025 (bắp sau)
       } else {
-        // 4. Supracondylar Taper down to Elbow (y from -0.163 to -0.220) - Bo tròn thu nhỏ ôm lấy cùi chỏ
-        const elbowT = (t - 0.75) / 0.25;
-        rX_lat = 0.026 - elbowT * 0.007; // 0.026 -> 0.019
-        rX_med = 0.024 - elbowT * 0.005; // 0.024 -> 0.019
-        rZ_ant = 0.024 - elbowT * 0.005; // 0.024 -> 0.019
-        rZ_pos = 0.024 - elbowT * 0.005; // 0.024 -> 0.019
+        // 3. Supracondylar Taper down to Elbow Socket (y from -0.143 to -0.220) - Bo tròn ôm khớp cùi chỏ
+        const lowT = (t - 0.65) / 0.35;
+        rX_lat = 0.029 - lowT * 0.007; // 0.029 -> 0.022
+        rX_med = 0.018 - lowT * 0.002; // 0.018 -> 0.016
+        rZ_ant = 0.025 - lowT * 0.004; // 0.025 -> 0.021
+        rZ_pos = 0.025 - lowT * 0.004; // 0.025 -> 0.021
       }
 
       for (let j = 0; j <= NU; j++) {
@@ -794,12 +1303,12 @@ export class ArticulatedMannequin implements IHumanCharacter {
   }
 
   /**
-   * Generates an anatomically sculpted forearm geometry with smooth inward-rounded elbow socket.
-   * Eliminates the sharp flat "gauntlet/boot" rim completely.
+   * Generates an anatomically sculpted forearm geometry with muscular brachioradialis tone.
+   * Smoothly cups the elbow hinge at the top and tapers seamlessly to an oval wrist socket at the bottom.
    */
   private createSculptedForearmGeometry(dir: number): THREE.BufferGeometry {
-    const NY = 24;
-    const NU = 24;
+    const NY = 28;
+    const NU = 28;
     const positions: number[] = [];
     const indices: number[] = [];
     const uvs: number[] = [];
@@ -817,36 +1326,35 @@ export class ArticulatedMannequin implements IHumanCharacter {
       let rZ_pos: number;
 
       if (t <= 0.15) {
-        // 1. Inward-rounded Elbow Rim (y from 0.000 down to -0.030)
-        // Bo tròn miệng khớp cùi chỏ vào trong ôm khít trục khớp, triệt tiêu gờ phẳng như vành ủng
+        // 1. Inward-rounded Elbow Rim (y from 0.000 down to -0.030) - Ôm khít khớp cùi chỏ
         const rimT = t / 0.15;
         const s = Math.sin((rimT * Math.PI) / 2);
-        rX_lat = 0.019 + s * 0.008; // 0.019 -> 0.027
-        rX_med = 0.019 + s * 0.007; // 0.019 -> 0.026
-        rZ_ant = 0.019 + s * 0.008; // 0.019 -> 0.027
-        rZ_pos = 0.019 + s * 0.008; // 0.019 -> 0.027
+        rX_lat = 0.022 + s * 0.012; // 0.022 -> 0.034
+        rX_med = 0.017 + s * 0.011; // 0.017 -> 0.028
+        rZ_ant = 0.022 + s * 0.012; // 0.022 -> 0.034
+        rZ_pos = 0.022 + s * 0.011; // 0.022 -> 0.033
       } else if (t <= 0.45) {
-        // 2. Forearm Belly & Brachioradialis (y from -0.030 to -0.090)
+        // 2. Forearm Belly & Brachioradialis (y from -0.030 to -0.090) - CẲNG TAY NỞ NANG KHỎE MẠNH
         const bellyT = (t - 0.15) / 0.30;
         const bulge = Math.sin(bellyT * Math.PI);
-        rX_lat = 0.027 + bulge * 0.002;
-        rX_med = 0.026;
-        rZ_ant = 0.027 + bulge * 0.003;
-        rZ_pos = 0.027;
-      } else if (t <= 0.80) {
-        // 3. Mid Forearm Taper (y from -0.090 to -0.160)
-        const midT = (t - 0.45) / 0.35;
-        rX_lat = 0.027 - midT * 0.007; // 0.027 -> 0.020
-        rX_med = 0.026 - midT * 0.007; // 0.026 -> 0.019
-        rZ_ant = 0.027 - midT * 0.008; // 0.027 -> 0.019
-        rZ_pos = 0.027 - midT * 0.008; // 0.027 -> 0.019
+        rX_lat = 0.034 + bulge * 0.003;
+        rX_med = 0.028;
+        rZ_ant = 0.034 + bulge * 0.004;
+        rZ_pos = 0.033 + bulge * 0.003;
+      } else if (t <= 0.75) {
+        // 3. Mid Forearm Taper (y from -0.090 to -0.150)
+        const midT = (t - 0.45) / 0.30;
+        rX_lat = 0.034 - midT * 0.014; // 0.034 -> 0.020
+        rX_med = 0.028 - midT * 0.012; // 0.028 -> 0.016
+        rZ_ant = 0.034 - midT * 0.012; // 0.034 -> 0.022
+        rZ_pos = 0.033 - midT * 0.011; // 0.033 -> 0.022
       } else {
-        // 4. Wrist Taper (y from -0.160 to -0.200)
-        const wrtT = (t - 0.80) / 0.20;
-        rX_lat = 0.020 - wrtT * 0.004; // 0.020 -> 0.016
-        rX_med = 0.019 - wrtT * 0.003; // 0.019 -> 0.016
-        rZ_ant = 0.019 - wrtT * 0.004; // 0.019 -> 0.015
-        rZ_pos = 0.019 - wrtT * 0.004; // 0.019 -> 0.015
+        // 4. Wrist Socket Taper (y from -0.150 to -0.200) - Ôm khít khớp cổ tay hình bầu dục
+        const wrtT = (t - 0.75) / 0.25;
+        rX_lat = 0.020 - wrtT * 0.007; // 0.020 -> 0.013
+        rX_med = 0.016 - wrtT * 0.004; // 0.016 -> 0.012
+        rZ_ant = 0.022 - wrtT * 0.005; // 0.022 -> 0.017
+        rZ_pos = 0.022 - wrtT * 0.005; // 0.022 -> 0.017
       }
 
       for (let j = 0; j <= NU; j++) {
@@ -890,7 +1398,7 @@ export class ArticulatedMannequin implements IHumanCharacter {
   }
 
   // ===========================================================================
-  // 4. ARMS: Seamless Sculpted Upper Arm (Liền mạch với tay, cơ vai thon gọn thể thao)
+  // 4. ARMS: Seamless Sculpted Upper Arm (Liền mạch với vai hình bầu dục)
   // ===========================================================================
   private buildArms() {
     [-1, 1].forEach((dir) => {
@@ -899,46 +1407,62 @@ export class ArticulatedMannequin implements IHumanCharacter {
       const forearmBone = dir < 0 ? this.leftForearm : this.rightForearm;
       const handGroup = dir < 0 ? this.leftHand : this.rightHand;
 
-      upperArmBone.rotation.z = dir * 0.08;
+      // Relaxed, natural athletic arm stance with clear armpit separation
+      upperArmBone.rotation.z = dir * 0.072;
       upperArmBone.rotation.x = 0.0;
 
-      // =======================================================================
-      // UNIFIED SCULPTED UPPER ARM (LIỀN MẠCH VỚI TAY, KHÔNG BỊ TRÒN QUÁ)
-      // =======================================================================
+      // 1. Khối vai hình bầu dục bo tròn mịn màng (Smooth Sculpted Deltoid Cap)
+      // Ôm khít dưới mỏm cùng vai acromion và nối liền vào bắp tay
+      const shoulderEllipsoidGeo = new THREE.SphereGeometry(0.024, 28, 22);
+      shoulderEllipsoidGeo.scale(1.05, 0.80, 1.02);
+      const shoulderEllipsoid = new THREE.Mesh(shoulderEllipsoidGeo, this.bodyMaterial);
+      shoulderEllipsoid.position.set(0, -0.004, 0);
+      shoulderEllipsoid.castShadow = true;
+      shoulderEllipsoid.receiveShadow = true;
+      upperArmBone.add(shoulderEllipsoid);
+
+      // Khớp xoay âm lồng khít bên trong hốc vai ngực
+      const shoulderJointCoreGeo = new THREE.SphereGeometry(0.018, 18, 14);
+      const shoulderJointCore = new THREE.Mesh(shoulderJointCoreGeo, this.jointMaterial);
+      shoulderJointCore.position.set(dir * -0.006, 0, 0);
+      upperArmBone.add(shoulderJointCore);
+
+      // 2. UNIFIED SCULPTED UPPER ARM (NỐI LIỀN DƯỚI KHỐI BẦU DỤC VAI)
       const upperArmGeo = this.createSculptedUpperArmGeometry(dir);
       const upperArmMesh = new THREE.Mesh(upperArmGeo, this.bodyMaterial);
       upperArmMesh.castShadow = true;
       upperArmMesh.receiveShadow = true;
       upperArmBone.add(upperArmMesh);
 
-      // Đĩa đáy bịt kín cùi chỏ (Elbow end cap - bo tròn vừa khít khớp)
-      const armEndCapGeo = new THREE.CircleGeometry(0.019, 20);
+      // Đĩa đáy bo tròn bịt kín khớp cùi chỏ
+      const armEndCapGeo = new THREE.CircleGeometry(0.021, 20);
       armEndCapGeo.rotateX(Math.PI / 2);
       const armEndCap = new THREE.Mesh(armEndCapGeo, this.jointMaterial);
       armEndCap.position.set(0, -0.220, 0);
       upperArmBone.add(armEndCap);
 
-      // Double-Joint Elbow
-      const hingeLinkGeo = new THREE.BoxGeometry(0.026, 0.028, 0.022);
-      const hingeLink = new THREE.Mesh(hingeLinkGeo, this.jointMaterial);
-      elbowGroup.add(hingeLink);
+      // 3. SLEEK ORGANIC ELBOW JOINT (Khớp cùi chỏ bo tròn mượt mà, ôm khít 2 đoạn tay)
+      const elbowLinkGeo = new THREE.CylinderGeometry(0.014, 0.014, 0.026, 22);
+      elbowLinkGeo.rotateZ(Math.PI / 2);
+      const elbowLink = new THREE.Mesh(elbowLinkGeo, this.jointMaterial);
+      elbowGroup.add(elbowLink);
 
-      [-0.011, 0.011].forEach((yPos) => {
+      [-0.010, 0.010].forEach((yPos) => {
         const discGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.030, 20);
         discGeo.rotateZ(Math.PI / 2);
         const disc = new THREE.Mesh(discGeo, this.jointMaterial);
         disc.position.set(0, yPos, 0);
         elbowGroup.add(disc);
 
-        const rivetGeo = new THREE.CylinderGeometry(0.006, 0.006, 0.033, 14);
+        const rivetGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.033, 14);
         rivetGeo.rotateZ(Math.PI / 2);
         const rivet = new THREE.Mesh(rivetGeo, this.accentMaterial);
         rivet.position.set(0, yPos, 0);
         elbowGroup.add(rivet);
       });
 
-      // Sculpted Forearm Block (Bo tròn miệng khớp cùi chỏ vào trong, không còn gờ phẳng như vành ủng)
-      forearmBone.rotation.x = 0.06;
+      // 4. SCULPTED FOREARM & WRIST ALIGNMENT
+      forearmBone.rotation.set(0.03, 0, 0);
 
       const forearmGeo = this.createSculptedForearmGeometry(dir);
       const forearmMesh = new THREE.Mesh(forearmGeo, this.bodyMaterial);
@@ -946,75 +1470,90 @@ export class ArticulatedMannequin implements IHumanCharacter {
       forearmMesh.receiveShadow = true;
       forearmBone.add(forearmMesh);
 
-      const forearmSeamGeo = new THREE.TorusGeometry(0.018, 0.0025, 10, 24);
+      const forearmSeamGeo = new THREE.TorusGeometry(0.018, 0.0022, 10, 24);
       forearmSeamGeo.rotateX(Math.PI / 2);
       const forearmSeam = new THREE.Mesh(forearmSeamGeo, this.jointMaterial);
       forearmSeam.position.set(0, -0.165, 0);
       forearmBone.add(forearmSeam);
 
+      // Khớp cầu cổ tay lồng khít vào hốc cẳng tay
       const wristBallGeo = new THREE.SphereGeometry(0.012, 20, 16);
       const wristBall = new THREE.Mesh(wristBallGeo, this.jointMaterial);
-      wristBall.position.set(0, -0.195, 0);
+      wristBall.position.set(0, -0.198, 0);
       wristBall.castShadow = true;
       forearmBone.add(wristBall);
 
-      // Hand
-      handGroup.rotation.y = dir * 0.30;
+      // 5. HAND: Natural Resting Stance (Lòng bàn tay úp vào trong đùi, mu bàn tay hướng ra ngoài, ngón cái phía trước)
+      handGroup.rotation.set(0, 0, 0);
 
-      const palmGeo = new THREE.BoxGeometry(0.034, 0.044, 0.015);
+      // Phần gốc cổ tay bo tròn khít khớp cầu (Carpal Base Cup)
+      const carpalBaseGeo = new THREE.SphereGeometry(0.012, 16, 12);
+      carpalBaseGeo.scale(0.85, 0.70, 1.10);
+      const carpalBase = new THREE.Mesh(carpalBaseGeo, this.bodyMaterial);
+      carpalBase.position.set(0, -0.004, 0);
+      carpalBase.castShadow = true;
+      handGroup.add(carpalBase);
+
+      // Palm Box (Dày theo trục X 1.3cm, cao theo Y 3.8cm, rộng từ trước ra sau theo Z 3.0cm)
+      const palmGeo = new THREE.BoxGeometry(0.013, 0.038, 0.030);
       const palm = new THREE.Mesh(palmGeo, this.bodyMaterial);
-      palm.position.set(0, -0.022, 0);
+      palm.position.set(0, -0.021, 0);
       palm.castShadow = true;
       handGroup.add(palm);
 
-      const thenarGeo = new THREE.SphereGeometry(0.014, 14, 12);
-      thenarGeo.scale(0.8, 1.1, 0.7);
+      // Gốc cơ ngón cái (Thenar eminence - ở mặt trong hướng vào đùi, góc trước +Z)
+      const thenarGeo = new THREE.SphereGeometry(0.012, 14, 12);
+      thenarGeo.scale(0.70, 1.10, 0.80);
       const thenar = new THREE.Mesh(thenarGeo, this.bodyMaterial);
-      thenar.position.set(dir * -0.013, -0.017, 0.007);
+      thenar.position.set(-dir * 0.005, -0.015, 0.009);
       thenar.castShadow = true;
       handGroup.add(thenar);
 
+      // Ngón cái (Thumb - ở phía trước +Z, hướng nhẹ vào trong)
       const thumbRoot = new THREE.Group();
-      thumbRoot.position.set(dir * -0.016, -0.014, 0.008);
-      thumbRoot.rotation.set(0.35, 0, dir * 0.55);
+      thumbRoot.position.set(-dir * 0.006, -0.013, 0.013);
+      thumbRoot.rotation.set(0.30, -dir * 0.30, -dir * 0.20);
 
-      const t1Geo = new THREE.CapsuleGeometry(0.0050, 0.013, 8, 12);
+      const t1Geo = new THREE.CapsuleGeometry(0.0045, 0.012, 8, 12);
       const t1 = new THREE.Mesh(t1Geo, this.bodyMaterial);
       t1.position.set(0, -0.006, 0);
       t1.castShadow = true;
       thumbRoot.add(t1);
 
-      const t2Geo = new THREE.CapsuleGeometry(0.0044, 0.011, 8, 12);
+      const t2Geo = new THREE.CapsuleGeometry(0.0039, 0.010, 8, 12);
       const t2 = new THREE.Mesh(t2Geo, this.bodyMaterial);
-      t2.position.set(0, -0.017, 0.003);
+      t2.position.set(0, -0.016, 0.003);
       t2.rotation.x = 0.25;
       t2.castShadow = true;
       thumbRoot.add(t2);
 
       handGroup.add(thumbRoot);
 
-      const fingerSpacings = [-0.011, -0.004, 0.004, 0.011];
-      const fingerLengths = [0.028, 0.032, 0.030, 0.024];
+      // 4 Ngón tay (Fingers: Trỏ -> Giữa -> Áp út -> Út phân bố từ trước +Z ra sau -Z)
+      const fingerSpacingsZ = [0.010, 0.0035, -0.0035, -0.010];
+      const fingerLengths = [0.026, 0.030, 0.028, 0.022];
 
-      fingerSpacings.forEach((fX, fIdx) => {
+      fingerSpacingsZ.forEach((fZ, fIdx) => {
         const totalLen = fingerLengths[fIdx];
         const seg1Len = totalLen * 0.55;
         const seg2Len = totalLen * 0.45;
 
         const fingerRoot = new THREE.Group();
-        fingerRoot.position.set(fX, -0.044, 0.003);
-        fingerRoot.rotation.x = 0.20 + fIdx * 0.03;
+        fingerRoot.position.set(0, -0.040, fZ);
+        // Ngón tay cong nhẹ tự nhiên vào trong
+        fingerRoot.rotation.set(0.08 + fIdx * 0.02, 0, -dir * 0.06);
 
-        const f1Geo = new THREE.CapsuleGeometry(0.0040, seg1Len, 8, 12);
+        const f1Geo = new THREE.CapsuleGeometry(0.0036, seg1Len, 8, 12);
         const f1 = new THREE.Mesh(f1Geo, this.bodyMaterial);
         f1.position.set(0, -seg1Len / 2, 0);
         f1.castShadow = true;
         fingerRoot.add(f1);
 
-        const f2Geo = new THREE.CapsuleGeometry(0.0034, seg2Len, 8, 12);
+        const f2Geo = new THREE.CapsuleGeometry(0.0030, seg2Len, 8, 12);
         const f2 = new THREE.Mesh(f2Geo, this.bodyMaterial);
-        f2.position.set(0, -seg1Len - seg2Len / 2, 0.003);
-        f2.rotation.x = 0.18;
+        f2.position.set(0, -seg1Len - seg2Len / 2, -0.001);
+        f2.rotation.x = 0.15;
+        f2.rotation.z = -dir * 0.05;
         f2.castShadow = true;
         fingerRoot.add(f2);
 
@@ -1024,7 +1563,7 @@ export class ArticulatedMannequin implements IHumanCharacter {
   }
 
   // ===========================================================================
-  // 5. HIPS & LEGS: Powerful Muscular Thighs (Đùi To Khỏe, Cơ Tứ Đầu Nở Nang)
+  // 5. HIPS & LEGS: Powerful Muscular Thighs (Đùi To Khỏe, Dáng Đứng Vững Chãi)
   // ===========================================================================
   private buildHipsAndLegs() {
     // Solid Anatomical Pelvis Shell
@@ -1034,15 +1573,15 @@ export class ArticulatedMannequin implements IHumanCharacter {
     pelvisMesh.receiveShadow = true;
     this.pelvisBone.add(pelvisMesh);
 
-    // Build Each Leg with SCULPTED SEAMLESS THIGHS & MASCULINE STANCE
+    // Build Each Leg with SCULPTED SEAMLESS THIGHS & NATURAL ATHLETIC STANCE
     [-1, 1].forEach((dir) => {
       const thighBone = dir < 0 ? this.leftThigh : this.rightThigh;
       const kneeGroup = dir < 0 ? this.leftKnee : this.rightKnee;
       const shinBone = dir < 0 ? this.leftShin : this.rightShin;
       const footGroup = dir < 0 ? this.leftFoot : this.rightFoot;
 
-      // Dáng đứng con trai dạng 2 chân ra (Heroic Athletic Stance: đùi nghiêng ra ngoài)
-      thighBone.rotation.z = dir * 0.075;
+      // Dáng đứng tự nhiên: 2 chân mở nhẹ ra ngoài bẹn chuẩn tỉ lệ
+      thighBone.rotation.z = dir * 0.035;
 
       // =======================================================================
       // UNIFIED SCULPTED THIGH (ĐÙI ĐÚC LIỀN NỞ NANG, TO HƠN TAY 20%+)
@@ -1054,70 +1593,71 @@ export class ArticulatedMannequin implements IHumanCharacter {
       thighBone.add(thighMesh);
 
       // Đĩa đáy bịt kín đầu gối (Knee end cap - bo tròn thu gọn)
-      const thighEndCapGeo = new THREE.CircleGeometry(0.028, 22);
+      const thighEndCapGeo = new THREE.CircleGeometry(0.024, 22);
       thighEndCapGeo.rotateX(Math.PI / 2);
       const thighEndCap = new THREE.Mesh(thighEndCapGeo, this.jointMaterial);
       thighEndCap.position.set(0, -0.300, 0);
       thighBone.add(thighEndCap);
 
-      // Double-Joint Knee
-      const kneeLinkGeo = new THREE.BoxGeometry(0.038, 0.032, 0.030);
+      // 3. SLEEK ORGANIC DOUBLE-JOINT KNEE (Khớp gối bo tròn mượt mà)
+      const kneeLinkGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.032, 22);
+      kneeLinkGeo.rotateZ(Math.PI / 2);
       const kneeLink = new THREE.Mesh(kneeLinkGeo, this.jointMaterial);
       kneeGroup.add(kneeLink);
 
-      [-0.012, 0.012].forEach((yPos) => {
-        const discGeo = new THREE.CylinderGeometry(0.019, 0.019, 0.040, 22);
+      [-0.010, 0.010].forEach((yPos) => {
+        const discGeo = new THREE.CylinderGeometry(0.016, 0.016, 0.036, 22);
         discGeo.rotateZ(Math.PI / 2);
         const disc = new THREE.Mesh(discGeo, this.jointMaterial);
         disc.position.set(0, yPos, 0);
         kneeGroup.add(disc);
 
-        const rivetGeo = new THREE.CylinderGeometry(0.007, 0.007, 0.044, 14);
+        const rivetGeo = new THREE.CylinderGeometry(0.0055, 0.0055, 0.039, 14);
         rivetGeo.rotateZ(Math.PI / 2);
         const rivet = new THREE.Mesh(rivetGeo, this.accentMaterial);
         rivet.position.set(0, yPos, 0);
         kneeGroup.add(rivet);
       });
 
-      // Floating Patella Shield
-      const patellaGeo = new THREE.BoxGeometry(0.032, 0.038, 0.014);
+      // Xương bánh chè giải phẫu học mượt mà (Sculpted Anatomical Patella Shield)
+      const patellaGeo = new THREE.CapsuleGeometry(0.011, 0.012, 14, 16);
+      patellaGeo.scale(1.15, 0.95, 0.60);
       const patella = new THREE.Mesh(patellaGeo, this.bodyMaterial);
-      patella.position.set(0, 0, 0.018);
+      patella.position.set(0, 0, 0.019);
       patella.castShadow = true;
       kneeGroup.add(patella);
 
-      // Sculpted Calf Block (Bo tròn miệng khớp gối vào trong, ôm khít đầu gối, triệt tiêu hoàn toàn vành ống ủng)
+      // Sculpted Calf Block
       const calfGeo = this.createSculptedCalfGeometry(dir);
       const calfMesh = new THREE.Mesh(calfGeo, this.bodyMaterial);
       calfMesh.castShadow = true;
       calfMesh.receiveShadow = true;
       shinBone.add(calfMesh);
 
-      const ankleBallGeo = new THREE.SphereGeometry(0.016, 22, 18);
+      const ankleBallGeo = new THREE.SphereGeometry(0.014, 22, 18);
       const ankleBall = new THREE.Mesh(ankleBallGeo, this.jointMaterial);
       ankleBall.position.set(0, -0.295, 0);
       ankleBall.castShadow = true;
       shinBone.add(ankleBall);
 
       [-1, 1].forEach((mDir) => {
-        const malleolusGeo = new THREE.SphereGeometry(0.009, 12, 10);
+        const malleolusGeo = new THREE.SphereGeometry(0.0075, 12, 10);
         malleolusGeo.scale(0.6, 0.9, 0.8);
         const malleolus = new THREE.Mesh(malleolusGeo, this.jointMaterial);
-        malleolus.position.set(mDir * 0.018, -0.295, 0);
+        malleolus.position.set(mDir * 0.016, -0.295, 0);
         shinBone.add(malleolus);
       });
 
       // Anatomical Foot & Ankle
-      // Đứng dáng tự tin: mũi chân xoay nhẹ ra ngoài (toe-out) và counter-rotate Z để lòng bàn chân phẳng sàn
-      footGroup.rotation.y = dir * 0.07;
-      footGroup.rotation.z = dir * -0.075;
+      footGroup.rotation.y = dir * 0.05;
+      footGroup.rotation.z = dir * -0.035;
 
-      const footSocketGeo = new THREE.CylinderGeometry(0.016, 0.018, 0.010, 20);
+      const footSocketGeo = new THREE.CylinderGeometry(0.014, 0.016, 0.010, 20);
       const footSocket = new THREE.Mesh(footSocketGeo, this.jointMaterial);
       footSocket.position.set(0, 0.005, 0);
       footGroup.add(footSocket);
 
-      // Sculpted Anatomical Foot (Gót tròn, mu xuôi, lòng bàn chân phẳng sàn, mũi chân tròn tự nhiên không bị nhọn mỏ vịt)
+      // Sculpted Anatomical Foot
       const footGeo = this.createSculptedFootGeometry(dir);
       const footMesh = new THREE.Mesh(footGeo, this.bodyMaterial);
       footMesh.castShadow = true;
@@ -1149,29 +1689,29 @@ export class ArticulatedMannequin implements IHumanCharacter {
         const sinT = Math.sin(theta);
         const absSin = Math.abs(sinT);
 
-        let rX = 0.100;
-        let rZ = 0.082;
+        let rX = 0.092;
+        let rZ = 0.078;
 
         if (y < 0.0) {
           // Lower Pelvis & Crotch Taper
           const crotchT = -y / 0.065;
-          rX = 0.100 - crotchT * 0.046; // 0.100 -> 0.054
-          rZ = 0.082 - crotchT * 0.038; // 0.082 -> 0.044
+          rX = 0.090 - crotchT * 0.044; // 0.090 -> 0.046
+          rZ = 0.076 - crotchT * 0.032; // 0.076 -> 0.044
         } else {
-          // Upper Pelvis towards Waist
+          // Upper Pelvis towards Waist (Smooth gluteal-to-lumbar contour)
           const waistT = y / 0.065;
-          rX = 0.100 - waistT * 0.005; // 0.100 -> 0.095
-          rZ = 0.082 - waistT * 0.004; // 0.082 -> 0.078
+          rX = 0.090 - waistT * 0.005; // 0.090 -> 0.085
+          rZ = 0.076 - waistT * 0.012; // 0.076 -> 0.064
         }
 
         let px = sinT * rX;
         let pz = cosT * rZ;
 
-        // Smooth anatomical bikini leg cut opening (groin crease)
-        if (y < 0.020 && absSin > 0.28) {
-          const cutT = (0.020 - y) / 0.085;
-          const latT = (absSin - 0.28) / 0.72;
-          const cutAmt = cutT * Math.sin(latT * Math.PI) * 0.020;
+        // Smooth anatomical bikini leg cut opening (groin crease - uốn lượn mềm mại ôm đầu đùi)
+        if (y < 0.025 && absSin > 0.22) {
+          const cutT = (0.025 - y) / 0.090;
+          const latT = (absSin - 0.22) / 0.78;
+          const cutAmt = cutT * Math.sin(latT * Math.PI) * 0.016;
           px -= (sinT > 0 ? 1 : -1) * cutAmt;
         }
 
@@ -1179,7 +1719,7 @@ export class ArticulatedMannequin implements IHumanCharacter {
         if (cosT < 0 && y > -0.045 && y < 0.045 && absSin > 0.15 && absSin < 0.85) {
           const gluteY = Math.sin(((y + 0.045) / 0.090) * Math.PI);
           const gluteX = Math.sin(((absSin - 0.15) / 0.70) * Math.PI);
-          pz -= gluteY * gluteX * 0.014;
+          pz -= gluteY * gluteX * 0.012;
         }
 
         positions.push(px, y, pz);
@@ -1198,7 +1738,6 @@ export class ArticulatedMannequin implements IHumanCharacter {
         indices.push(i1, i3, i2);
       }
     }
-
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
@@ -1213,7 +1752,7 @@ export class ArticulatedMannequin implements IHumanCharacter {
    * 1. Realistic S-curve: Tensor fasciae latae & vastus lateralis high on the outside.
    * 2. Prominent Vastus Medialis (cơ giọt nước) low on the inside right above the knee.
    * 3. Forward sweep of the Rectus Femoris.
-   * 4. Seamless insertion into the pelvis socket at the top.
+   * 4. Seamless insertion into the pelvis socket at the top and cupped knee socket at bottom.
    */
   private createSculptedThighGeometry(dir: number): THREE.BufferGeometry {
     const NY = 32;
@@ -1238,33 +1777,33 @@ export class ArticulatedMannequin implements IHumanCharacter {
         // 1. Convex Top Dome inserting deep into pelvis (y from +0.020 to -0.018)
         const capT = t / 0.12;
         const s = Math.sin((capT * Math.PI) / 2);
-        rX_lat = Math.max(0.002, s * 0.060);
-        rX_med = Math.max(0.002, s * 0.046);
-        rZ_ant = Math.max(0.002, s * 0.064);
-        rZ_pos = Math.max(0.002, s * 0.054);
+        rX_lat = Math.max(0.002, s * 0.058);
+        rX_med = Math.max(0.002, s * 0.044);
+        rZ_ant = Math.max(0.002, s * 0.062);
+        rZ_pos = Math.max(0.002, s * 0.052);
       } else if (t <= 0.45) {
         // 2. Upper Quadriceps & Vastus Lateralis Bulge (y from -0.018 to -0.124) - ĐÙI TO NỞ NANG HƠN TAY 20%+
         const qT = (t - 0.12) / 0.33;
         const latBulge = Math.sin(qT * Math.PI);
-        rX_lat = 0.060 + latBulge * 0.006 - qT * 0.005; // 0.060 -> 0.061
-        rX_med = 0.046 - qT * 0.005;                   // 0.046 -> 0.041
-        rZ_ant = 0.064 + latBulge * 0.006 - qT * 0.008; // 0.064 -> 0.062 (cơ tứ đầu đùi cuồn cuộn)
-        rZ_pos = 0.054 + latBulge * 0.003 - qT * 0.006; // 0.054 -> 0.051 (cơ gân khoeo đùi sau)
+        rX_lat = 0.058 + latBulge * 0.005 - qT * 0.005; // 0.058 -> 0.059
+        rX_med = 0.044 - qT * 0.004;                   // 0.044 -> 0.040
+        rZ_ant = 0.062 + latBulge * 0.005 - qT * 0.007; // 0.062 -> 0.060 (cơ tứ đầu đùi cuồn cuộn)
+        rZ_pos = 0.052 + latBulge * 0.003 - qT * 0.005; // 0.052 -> 0.050 (cơ gân khoeo đùi sau)
       } else if (t <= 0.82) {
         // 3. Mid to Lower Thigh with Vastus Medialis (cơ giọt nước) on the inner side (y from -0.124 to -0.242)
         const midT = (t - 0.45) / 0.37;
         const medTeardrop = Math.sin(Math.pow(midT, 1.4) * Math.PI);
-        rX_lat = 0.061 - midT * 0.018; // 0.061 -> 0.043
-        rX_med = 0.041 + medTeardrop * 0.007 - midT * 0.009; // Teardrop nở rõ ở mặt trong phía trên đầu gối
-        rZ_ant = 0.062 + medTeardrop * 0.004 - midT * 0.018; // 0.062 -> 0.044
-        rZ_pos = 0.051 - midT * 0.015; // 0.051 -> 0.036
+        rX_lat = 0.059 - midT * 0.019; // 0.059 -> 0.040
+        rX_med = 0.040 + medTeardrop * 0.006 - midT * 0.009; // Teardrop nở rõ ở mặt trong phía trên đầu gối
+        rZ_ant = 0.060 + medTeardrop * 0.004 - midT * 0.018; // 0.060 -> 0.042
+        rZ_pos = 0.050 - midT * 0.015; // 0.050 -> 0.035
       } else {
         // 4. Supracondylar Knee Region (y from -0.242 to -0.300) - Bo tròn thu nhỏ ôm khít khớp gối
         const kT = (t - 0.82) / 0.18;
-        rX_lat = 0.043 - kT * 0.014; // 0.043 -> 0.029
-        rX_med = 0.039 - kT * 0.011; // 0.039 -> 0.028
-        rZ_ant = 0.044 - kT * 0.015; // 0.044 -> 0.029
-        rZ_pos = 0.036 - kT * 0.008; // 0.036 -> 0.028
+        rX_lat = 0.040 - kT * 0.015; // 0.040 -> 0.025
+        rX_med = 0.037 - kT * 0.013; // 0.037 -> 0.024
+        rZ_ant = 0.042 - kT * 0.017; // 0.042 -> 0.025
+        rZ_pos = 0.035 - kT * 0.010; // 0.035 -> 0.025
       }
 
       for (let j = 0; j <= NU; j++) {
@@ -1335,32 +1874,32 @@ export class ArticulatedMannequin implements IHumanCharacter {
         // Bo tròn vào trong ôm khít khớp gối, xóa bỏ hoàn toàn vành ống ủng
         const rimT = t / 0.12;
         const s = Math.sin((rimT * Math.PI) / 2); // 0 -> 1 smoothly
-        rX_lat = 0.025 + s * 0.014; // 0.025 -> 0.039
-        rX_med = 0.025 + s * 0.013; // 0.025 -> 0.038
-        rZ_ant = 0.026 + s * 0.013; // 0.026 -> 0.039
-        rZ_pos = 0.025 + s * 0.013; // 0.025 -> 0.038
+        rX_lat = 0.023 + s * 0.014; // 0.023 -> 0.037
+        rX_med = 0.023 + s * 0.013; // 0.023 -> 0.036
+        rZ_ant = 0.024 + s * 0.013; // 0.024 -> 0.037
+        rZ_pos = 0.024 + s * 0.013; // 0.024 -> 0.037
       } else if (t <= 0.45) {
         // 2. Upper Calf & Gastrocnemius Belly (y from -0.036 to -0.135)
         const bellyT = (t - 0.12) / 0.33;
         const bulge = Math.sin(bellyT * Math.PI);
-        rX_lat = 0.039 + bulge * 0.003 - bellyT * 0.004; // 0.039 -> 0.038
-        rX_med = 0.038 + bulge * 0.002 - bellyT * 0.004; // 0.038 -> 0.036
-        rZ_ant = 0.039 - bellyT * 0.002;                 // Tibial crest (xương ống đồng)
-        rZ_pos = 0.038 + bulge * 0.006 - bellyT * 0.008; // Bắp chuối nở phía sau
+        rX_lat = 0.037 + bulge * 0.003 - bellyT * 0.004; // 0.037 -> 0.036
+        rX_med = 0.036 + bulge * 0.002 - bellyT * 0.004; // 0.036 -> 0.034
+        rZ_ant = 0.037 - bellyT * 0.002;                 // Tibial crest (xương ống đồng)
+        rZ_pos = 0.037 + bulge * 0.005 - bellyT * 0.007; // Bắp chuối nở phía sau
       } else if (t <= 0.80) {
         // 3. Mid to Lower Shin (y from -0.135 to -0.240)
         const midT = (t - 0.45) / 0.35;
-        rX_lat = 0.038 - midT * 0.012; // 0.038 -> 0.026
-        rX_med = 0.036 - midT * 0.011; // 0.036 -> 0.025
-        rZ_ant = 0.037 - midT * 0.011; // 0.037 -> 0.026
-        rZ_pos = 0.036 - midT * 0.013; // 0.036 -> 0.023
+        rX_lat = 0.036 - midT * 0.012; // 0.036 -> 0.024
+        rX_med = 0.034 - midT * 0.011; // 0.034 -> 0.023
+        rZ_ant = 0.035 - midT * 0.011; // 0.035 -> 0.024
+        rZ_pos = 0.035 - midT * 0.013; // 0.035 -> 0.022
       } else {
         // 4. Supramalleolar Ankle Taper (y from -0.240 to -0.300)
         const ankT = (t - 0.80) / 0.20;
-        rX_lat = 0.026 - ankT * 0.005; // 0.026 -> 0.021
-        rX_med = 0.025 - ankT * 0.005; // 0.025 -> 0.020
-        rZ_ant = 0.026 - ankT * 0.004; // 0.026 -> 0.022
-        rZ_pos = 0.023 - ankT * 0.003; // 0.023 -> 0.020
+        rX_lat = 0.024 - ankT * 0.005; // 0.024 -> 0.019
+        rX_med = 0.023 - ankT * 0.005; // 0.023 -> 0.018
+        rZ_ant = 0.024 - ankT * 0.004; // 0.024 -> 0.020
+        rZ_pos = 0.022 - ankT * 0.003; // 0.022 -> 0.019
       }
 
       for (let j = 0; j <= NU; j++) {
@@ -1526,7 +2065,7 @@ export class ArticulatedMannequin implements IHumanCharacter {
   }
 
   /**
-   * Cập nhật màu da / chất liệu toàn thân đồng bộ từ bảng màu customizer
+   * Cập nhật màu da / chất liệu toàn thân và ngũ quan đồng bộ từ bảng màu customizer
    */
   public updateOutfit(config?: RealisticAvatarConfig) {
     if (config?.skinTone) {
@@ -1543,18 +2082,256 @@ export class ArticulatedMannequin implements IHumanCharacter {
       this.jointMaterial.color.set('#9A5E3A');
       this.accentMaterial.color.set('#7C482A');
     }
+
+    // Cập nhật ngũ quan khuôn mặt khi config thay đổi
+    if (this.headMesh && config) {
+      const oldGeo = this.headMesh.geometry;
+      this.headMesh.geometry = this.createUnifiedSculptedHeadGeometry(config);
+      if (oldGeo) {
+        oldGeo.dispose();
+      }
+    }
+
+    // Cập nhật màu mắt & 4 dáng mắt 3D trong thời gian thực (mặc định option 1: Mắt Híp & Đen Tuyền)
+    const eyeColor = config?.eyeColor || '#151316';
+    const newTex = this.getOrCreateEyeTexture(eyeColor);
+    if (this.eyeMaterial) {
+      this.eyeMaterial.map = newTex;
+      this.eyeMaterial.needsUpdate = true;
+    }
+
+    const eyeShape = config?.eyeShapeId || 'eye_shape_narrow_slanted';
+    let eyeScaleX = 1.0;
+    let eyeScaleY = 0.85;
+    let eyeTiltZ = 0;
+
+    if (eyeShape === 'eye_shape_narrow_slanted') {
+      // 1. Mắt Híp / Một Mí: dẹt ngang hẹp dọc đặc trưng mắt cười/một mí
+      eyeScaleX = 1.30;
+      eyeScaleY = 0.36;
+      eyeTiltZ = 0;
+    } else if (eyeShape === 'eye_shape_natural_almond') {
+      // 2. Mắt Hạnh Nhân / Tự Nhiên: mở vừa vặn, chuẩn Á Đông cân đối
+      eyeScaleX = 1.00;
+      eyeScaleY = 0.85;
+      eyeTiltZ = 0;
+    } else if (eyeShape === 'eye_shape_phoenix') {
+      // 3. Mắt Phượng: xếch nhẹ thanh tú sắc sảo
+      eyeScaleX = 1.18;
+      eyeScaleY = 0.72;
+      eyeTiltZ = 0.18;
+    } else if (eyeShape === 'eye_shape_big_round') {
+      // 4. Mắt To Tròn: mở to tròn long lanh hai mí
+      eyeScaleX = 1.12;
+      eyeScaleY = 1.35;
+      eyeTiltZ = 0;
+    }
+
+    if (this.leftEyeGroup) {
+      this.leftEyeGroup.scale.set(eyeScaleX, eyeScaleY, 1.0);
+      this.leftEyeGroup.rotation.z = -eyeTiltZ;
+    }
+    if (this.rightEyeGroup) {
+      this.rightEyeGroup.scale.set(eyeScaleX, eyeScaleY, 1.0);
+      this.rightEyeGroup.rotation.z = eyeTiltZ;
+    }
+
+    // Cập nhật dáng chân mày (Cánh Cung mềm mại hoặc Chân Mày Kiếm sắc sảo - chìm sát mặt da trán)
+    const isSwordBrow = config?.eyebrowShapeId === 'brow_sword_bold';
+    [-1, 1].forEach((dir) => {
+      const browMesh = dir < 0 ? this.leftBrowMesh : this.rightBrowMesh;
+      if (browMesh) {
+        const peakY = isSwordBrow ? 0.0225 : 0.0212;
+        const tailY = isSwordBrow ? 0.0200 : 0.0175;
+        const pts = [
+          new THREE.Vector3(dir * 0.0075, 0.0188, 0.0436),
+          new THREE.Vector3(dir * 0.0185, peakY, 0.0402),
+          new THREE.Vector3(dir * 0.0305, tailY, 0.0322),
+        ];
+        const browCurve = new THREE.CatmullRomCurve3(pts);
+        const oldGeo = browMesh.geometry;
+        browMesh.geometry = new THREE.TubeGeometry(browCurve, 16, isSwordBrow ? 0.00048 : 0.00038, 8, false);
+        if (oldGeo) oldGeo.dispose();
+      }
+    });
+
+    if (config?.hairColor && this.browMaterial) {
+      this.browMaterial.color.set(config.hairColor);
+    }
+
+    // Cập nhật 3 dáng môi 3D (Mỏng Tự Nhiên, Căng Mọng, Môi Trề To Dày Cộp - Chìm Khớp Vào Khối Mặt)
+    const isTreLipMesh = config?.mouthShapeId === 'mouth_pouting_thick_tre';
+    const isPlumpLipMesh = config?.mouthShapeId === 'mouth_plump_full';
+
+    if (this.upperLipMesh) {
+      let upperLipPts: THREE.Vector3[];
+      let uRadius = 0.00055;
+
+      if (isTreLipMesh) {
+        // Môi trên dẩu nhô cao
+        upperLipPts = [
+          new THREE.Vector3(-0.0135, -0.0245, 0.0430),
+          new THREE.Vector3(-0.0055, -0.0210, 0.0480),
+          new THREE.Vector3(0.0000, -0.0220, 0.0476),
+          new THREE.Vector3(0.0055, -0.0210, 0.0480),
+          new THREE.Vector3(0.0135, -0.0245, 0.0430),
+        ];
+        uRadius = 0.00115;
+      } else if (isPlumpLipMesh) {
+        // Môi trên căng mọng
+        upperLipPts = [
+          new THREE.Vector3(-0.0125, -0.0245, 0.0425),
+          new THREE.Vector3(-0.0050, -0.0215, 0.0460),
+          new THREE.Vector3(0.0000, -0.0226, 0.0456),
+          new THREE.Vector3(0.0050, -0.0215, 0.0460),
+          new THREE.Vector3(0.0125, -0.0245, 0.0425),
+        ];
+        uRadius = 0.00085;
+      } else {
+        // Môi trên mỏng tự nhiên
+        upperLipPts = [
+          new THREE.Vector3(-0.0115, -0.0245, 0.0418),
+          new THREE.Vector3(-0.0045, -0.0220, 0.0442),
+          new THREE.Vector3(0.0000, -0.0232, 0.0438),
+          new THREE.Vector3(0.0045, -0.0220, 0.0442),
+          new THREE.Vector3(0.0115, -0.0245, 0.0418),
+        ];
+        uRadius = 0.00055;
+      }
+
+      const upperLipCurve = new THREE.CatmullRomCurve3(upperLipPts);
+      const oldUpperGeo = this.upperLipMesh.geometry;
+      this.upperLipMesh.geometry = new THREE.TubeGeometry(upperLipCurve, 20, uRadius, 8, false);
+      if (oldUpperGeo) oldUpperGeo.dispose();
+    }
+
+    if (this.lowerLipMesh) {
+      let lowerLipPts: THREE.Vector3[];
+      let lRadius = 0.00070;
+
+      if (isTreLipMesh) {
+        // Môi dưới trề hẳn ra phía trước và trễ xuống dày cộp
+        lowerLipPts = [
+          new THREE.Vector3(-0.0140, -0.0255, 0.0432),
+          new THREE.Vector3(0.0000, -0.0295, 0.0515),
+          new THREE.Vector3(0.0140, -0.0255, 0.0432),
+        ];
+        lRadius = 0.00150;
+      } else if (isPlumpLipMesh) {
+        // Môi dưới đầy đặn căng mọng
+        lowerLipPts = [
+          new THREE.Vector3(-0.0118, -0.0255, 0.0426),
+          new THREE.Vector3(0.0000, -0.0285, 0.0468),
+          new THREE.Vector3(0.0118, -0.0255, 0.0426),
+        ];
+        lRadius = 0.00105;
+      } else {
+        // Môi dưới mỏng thanh thoát
+        lowerLipPts = [
+          new THREE.Vector3(-0.0105, -0.0255, 0.0420),
+          new THREE.Vector3(0.0000, -0.0280, 0.0442),
+          new THREE.Vector3(0.0105, -0.0255, 0.0420),
+        ];
+        lRadius = 0.00070;
+      }
+
+      const lowerLipCurve = new THREE.CatmullRomCurve3(lowerLipPts);
+      const oldLowerGeo = this.lowerLipMesh.geometry;
+      this.lowerLipMesh.geometry = new THREE.TubeGeometry(lowerLipCurve, 18, lRadius, 8, false);
+      if (oldLowerGeo) oldLowerGeo.dispose();
+    }
+
+    if (config?.lipColor && this.lipMaterial) {
+      this.lipMaterial.color.set(config.lipColor);
+    }
+
+    // Cập nhật tỉ lệ cơ thể 3D (Chiều cao mầm non chuẩn WHO: 95cm - 115cm & Tỉ lệ dài chân)
+    if (config?.body) {
+      // 1. Chiều cao mầm non (chuẩn 105cm)
+      const heightCm = config.body.heightCm || 105;
+      const heightRatio = heightCm / 105;
+      this.spineRoot.scale.set(heightRatio, heightRatio, heightRatio);
+
+      // 2. Tỉ lệ chiều dài chân (Leg Length Ratio)
+      // Chỉ scale leftThigh và rightThigh, vì leftShin và leftFoot là con trong cây phân cấp
+      // nên đã tự động kế thừa scale Y. Giữ leftShin/rightShin scale (1,1,1) để tránh bị nhân đôi (legScale^2)
+      const legScale = config.body.legLengthScale || 1.0;
+      this.currentLegScale = legScale;
+      this.leftThigh.scale.set(1, legScale, 1);
+      this.rightThigh.scale.set(1, legScale, 1);
+      this.leftShin.scale.set(1, 1, 1);
+      this.rightShin.scale.set(1, 1, 1);
+    }
+  }
+
+  // ===========================================================================
+  // 5 DYNAMIC POSE PRESETS SYSTEM
+  // ===========================================================================
+  private currentPoseId: MannequinPoseId = 'relaxed';
+
+  /**
+   * Đặt tư thế cho nhân vật với chuyển động mượt mà (smooth blend)
+   */
+  public setPose(poseId: MannequinPoseId | string) {
+    if (poseId in MANNEQUIN_POSES) {
+      this.currentPoseId = poseId as MannequinPoseId;
+    }
   }
 
   /**
-   * Hoạt ảnh vi mô sống động (Breathing, Head-Tracking, Subtle Weight-Shift)
+   * Lấy tư thế hiện tại
+   */
+  public getPose(): MannequinPoseId {
+    return this.currentPoseId;
+  }
+
+  private smoothRotate(
+    group: THREE.Group,
+    target: [number, number, number] | undefined,
+    lerpSpeed: number,
+    extraX = 0,
+    extraY = 0,
+    extraZ = 0
+  ) {
+    if (!target) return;
+    const tx = target[0] + extraX;
+    const ty = target[1] + extraY;
+    const tz = target[2] + extraZ;
+    group.rotation.x += (tx - group.rotation.x) * lerpSpeed;
+    group.rotation.y += (ty - group.rotation.y) * lerpSpeed;
+    group.rotation.z += (tz - group.rotation.z) * lerpSpeed;
+  }
+
+  private smoothPosition(
+    group: THREE.Group,
+    target: [number, number, number] | undefined,
+    lerpSpeed: number,
+    extraX = 0,
+    extraY = 0,
+    extraZ = 0
+  ) {
+    if (!target) return;
+    const tx = target[0] + extraX;
+    const ty = target[1] + extraY;
+    const tz = target[2] + extraZ;
+    group.position.x += (tx - group.position.x) * lerpSpeed;
+    group.position.y += (ty - group.position.y) * lerpSpeed;
+    group.position.z += (tz - group.position.z) * lerpSpeed;
+  }
+
+  /**
+   * Hoạt ảnh vi mô sống động (Breathing, Head-Tracking, Subtle Weight-Shift, Wave & Martial Arts live physics)
    */
   public update(delta: number, time: number, mouseNormalized: { x: number; y: number }) {
-    // 1. Natural Diaphragmatic Idle Breathing
+    const lerpSpeed = Math.min(1.0, 10.0 * delta);
+    const pose = MANNEQUIN_POSES[this.currentPoseId] || MANNEQUIN_POSES.relaxed;
+
+    // 1. Natural Diaphragmatic Idle Breathing (Thở nhịp nhàng)
     const breath = Math.sin(time * 1.8);
     this.chestBone.position.y = 0.12 + breath * 0.004;
     this.chestBone.scale.y = 1.0 + breath * 0.008;
 
-    // 2. Damped Head & Neck Tracking
+    // 2. Damped Head & Neck Tracking (Đầu và cổ dõi mắt nhìn theo trỏ chuột)
     const targetHeadX = -mouseNormalized.y * 0.28;
     const targetHeadY = mouseNormalized.x * 0.42;
 
@@ -1564,11 +2341,64 @@ export class ArticulatedMannequin implements IHumanCharacter {
     this.headBone.rotation.y += (targetHeadY * 0.65 - this.headBone.rotation.y) * 0.12;
     this.headBone.rotation.x += (targetHeadX * 0.65 - this.headBone.rotation.x) * 0.12;
 
-    // 3. Subtle Living Weight Shift
-    this.weightShiftCycle += delta * 0.45;
-    const shift = Math.sin(this.weightShiftCycle);
-    this.pelvisBone.position.x = shift * 0.005;
-    this.pelvisBone.rotation.z = shift * 0.008;
+    // 3. Live Physics & Micro-motion theo từng Pose
+    let rightForearmWaveExtraZ = 0;
+    let combatBounceY = 0;
+    let livingShiftX = 0;
+    let livingShiftZ = 0;
+
+    if (this.currentPoseId === 'wave') {
+      // Hoạt ảnh vẫy tay nhịp nhàng sống động
+      rightForearmWaveExtraZ = Math.sin(time * 6.5) * 0.22;
+    } else if (this.currentPoseId === 'martial_arts') {
+      // Nhún nhịp nhàng theo thế tấn võ thuật
+      combatBounceY = Math.sin(time * 3.5) * 0.005;
+    } else {
+      this.weightShiftCycle += delta * 0.45;
+      const shift = Math.sin(this.weightShiftCycle);
+      livingShiftX = shift * 0.005;
+      livingShiftZ = shift * 0.008;
+    }
+
+    // 4. Smoothly Blend All Skeletal Joints into Selected Pose (có scale theo tỉ lệ chân)
+    const rawPelvisY = pose.pelvisPos ? pose.pelvisPos[1] : 0.662;
+    // 0.030m là khoảng cách cố định từ pelvisBone đến chỏm khớp háng (dropDownPeg).
+    // Chiều dài chân từ khớp háng đến đáy bàn chân là (rawPelvisY - 0.030)m, được co giãn tuyến tính theo currentLegScale.
+    const basePelvisY = 0.030 + (rawPelvisY - 0.030) * this.currentLegScale;
+    const adjustedPelvisPos: [number, number, number] = [
+      pose.pelvisPos ? pose.pelvisPos[0] : 0,
+      basePelvisY,
+      pose.pelvisPos ? pose.pelvisPos[2] : 0,
+    ];
+
+    this.smoothPosition(this.pelvisBone, adjustedPelvisPos, lerpSpeed, livingShiftX, combatBounceY, 0);
+    this.smoothRotate(this.pelvisBone, pose.pelvisRot, lerpSpeed, 0, 0, livingShiftZ);
+    this.smoothRotate(this.waistBone, pose.waistRot, lerpSpeed);
+    this.smoothRotate(this.chestBone, pose.chestRot, lerpSpeed);
+
+    this.smoothRotate(this.leftShoulder, pose.leftShoulderRot, lerpSpeed);
+    this.smoothRotate(this.rightShoulder, pose.rightShoulderRot, lerpSpeed);
+
+    this.smoothRotate(this.leftUpperArm, pose.leftUpperArmRot, lerpSpeed);
+    this.smoothRotate(this.rightUpperArm, pose.rightUpperArmRot, lerpSpeed);
+
+    this.smoothRotate(this.leftForearm, pose.leftForearmRot, lerpSpeed);
+    this.smoothRotate(this.rightForearm, pose.rightForearmRot, lerpSpeed, 0, 0, rightForearmWaveExtraZ);
+
+    this.smoothRotate(this.leftHand, pose.leftHandRot, lerpSpeed);
+    this.smoothRotate(this.rightHand, pose.rightHandRot, lerpSpeed, 0, 0, rightForearmWaveExtraZ * 0.6);
+
+    this.smoothRotate(this.leftThigh, pose.leftThighRot, lerpSpeed);
+    this.smoothRotate(this.rightThigh, pose.rightThighRot, lerpSpeed);
+
+    this.smoothRotate(this.leftKnee, pose.leftKneeRot, lerpSpeed);
+    this.smoothRotate(this.rightKnee, pose.rightKneeRot, lerpSpeed);
+
+    this.smoothRotate(this.leftShin, pose.leftShinRot, lerpSpeed);
+    this.smoothRotate(this.rightShin, pose.rightShinRot, lerpSpeed);
+
+    this.smoothRotate(this.leftFoot, pose.leftFootRot, lerpSpeed);
+    this.smoothRotate(this.rightFoot, pose.rightFootRot, lerpSpeed);
   }
 
   /**
@@ -1578,6 +2408,13 @@ export class ArticulatedMannequin implements IHumanCharacter {
     this.bodyMaterial.dispose();
     this.jointMaterial.dispose();
     this.accentMaterial.dispose();
+    if (this.eyeTexture) {
+      this.eyeTexture.dispose();
+      this.eyeTexture = null;
+    }
+    this.eyeMaterial.dispose();
+    this.pupilMaterial.dispose();
+    this.browMaterial.dispose();
 
     this.root.traverse((obj) => {
       if ((obj as THREE.Mesh).isMesh) {
@@ -1587,3 +2424,153 @@ export class ArticulatedMannequin implements IHumanCharacter {
     });
   }
 }
+
+// =============================================================================
+// POSE DEFINITIONS & CONFIGURATION
+// =============================================================================
+export type MannequinPoseId = 'relaxed' | 'cross_arms' | 'hands_on_hips' | 'wave' | 'martial_arts';
+
+interface JointTransforms {
+  pelvisRot?: [number, number, number];
+  pelvisPos?: [number, number, number];
+  waistRot?: [number, number, number];
+  chestRot?: [number, number, number];
+  leftShoulderRot?: [number, number, number];
+  rightShoulderRot?: [number, number, number];
+  leftUpperArmRot?: [number, number, number];
+  rightUpperArmRot?: [number, number, number];
+  leftForearmRot?: [number, number, number];
+  rightForearmRot?: [number, number, number];
+  leftHandRot?: [number, number, number];
+  rightHandRot?: [number, number, number];
+  leftThighRot?: [number, number, number];
+  rightThighRot?: [number, number, number];
+  leftKneeRot?: [number, number, number];
+  rightKneeRot?: [number, number, number];
+  leftShinRot?: [number, number, number];
+  rightShinRot?: [number, number, number];
+  leftFootRot?: [number, number, number];
+  rightFootRot?: [number, number, number];
+}
+
+export const MANNEQUIN_POSES: Record<MannequinPoseId, JointTransforms> = {
+  // 1. Dáng thư thái, tự nhiên (Mặc định)
+  relaxed: {
+    pelvisRot: [0, 0, 0],
+    pelvisPos: [0, 0.662, 0],
+    waistRot: [0, 0, 0],
+    chestRot: [0, 0, 0],
+    leftShoulderRot: [0, 0, 0],
+    rightShoulderRot: [0, 0, 0],
+    leftUpperArmRot: [-0.04, 0, -0.05],
+    rightUpperArmRot: [-0.04, 0, 0.05],
+    leftForearmRot: [-0.08, 0, -0.02],
+    rightForearmRot: [-0.08, 0, 0.02],
+    leftHandRot: [0, 0, 0],
+    rightHandRot: [0, 0, 0],
+    leftThighRot: [0, 0, -0.02],
+    rightThighRot: [0, 0, 0.02],
+    leftKneeRot: [0, 0, 0],
+    rightKneeRot: [0, 0, 0],
+    leftShinRot: [0, 0, 0],
+    rightShinRot: [0, 0, 0],
+    leftFootRot: [0, 0, 0],
+    rightFootRot: [0, 0, 0],
+  },
+
+  // 2. Khoanh tay ngầu, 2 tay khoanh chéo ôm ngang ngực
+  cross_arms: {
+    pelvisRot: [0, 0.04, 0],
+    pelvisPos: [0, 0.662, 0],
+    waistRot: [0, -0.02, 0],
+    chestRot: [-0.03, 0, 0],
+    leftShoulderRot: [-0.04, 0.08, 0.03],
+    rightShoulderRot: [-0.04, -0.08, -0.03],
+    leftUpperArmRot: [-0.45, 0.95, -0.25],
+    rightUpperArmRot: [-0.48, -0.90, 0.22],
+    leftForearmRot: [-1.75, -0.25, 0.45],
+    rightForearmRot: [-1.70, 0.25, -0.45],
+    leftHandRot: [-0.10, -0.30, -0.15],
+    rightHandRot: [-0.10, 0.30, 0.15],
+    leftThighRot: [0, -0.04, -0.04],
+    rightThighRot: [0, 0.06, 0.06],
+    leftKneeRot: [0, 0, 0],
+    rightKneeRot: [0, 0, 0],
+    leftShinRot: [0, 0, 0],
+    rightShinRot: [0, 0, 0],
+    leftFootRot: [0, 0, 0],
+    rightFootRot: [0, 0, 0],
+  },
+
+  // 3. Chống nạnh tự tin, 2 tay chống vững chãi ôm sát hai bên mào chậu eo
+  hands_on_hips: {
+    pelvisRot: [0, 0, 0],
+    pelvisPos: [0, 0.662, 0],
+    waistRot: [0, 0, 0],
+    chestRot: [0.06, 0, 0],
+    leftShoulderRot: [0, 0, 0.04],
+    rightShoulderRot: [0, 0, -0.04],
+    leftUpperArmRot: [0.45, 0.75, -0.75],
+    rightUpperArmRot: [0.45, -0.75, 0.75],
+    leftForearmRot: [-1.65, -0.20, 0.35],
+    rightForearmRot: [-1.65, 0.20, -0.35],
+    leftHandRot: [0.20, -0.40, -0.25],
+    rightHandRot: [0.20, 0.40, 0.25],
+    leftThighRot: [0, 0.04, -0.08],
+    rightThighRot: [0, -0.04, 0.08],
+    leftKneeRot: [0, 0, 0],
+    rightKneeRot: [0, 0, 0],
+    leftShinRot: [0, 0, 0.02],
+    rightShinRot: [0, 0, -0.02],
+    leftFootRot: [0, 0, 0],
+    rightFootRot: [0, 0, 0],
+  },
+
+  // 4. Vẫy tay chào thân thiện
+  wave: {
+    pelvisRot: [0, -0.04, -0.02],
+    pelvisPos: [0, 0.662, 0],
+    waistRot: [0, -0.04, 0.02],
+    chestRot: [0, -0.04, 0.02],
+    leftShoulderRot: [0, 0, 0],
+    rightShoulderRot: [0.06, -0.10, -0.15],
+    leftUpperArmRot: [-0.04, 0, -0.06],
+    rightUpperArmRot: [-1.45, -0.45, 0.90],
+    leftForearmRot: [-0.08, 0, -0.02],
+    rightForearmRot: [-1.35, 0.35, 0.30],
+    leftHandRot: [0, 0, 0],
+    rightHandRot: [0, 0, 0.20],
+    leftThighRot: [0, -0.04, -0.03],
+    rightThighRot: [0, 0.06, 0.05],
+    leftKneeRot: [0, 0, 0],
+    rightKneeRot: [0.08, 0, 0],
+    leftShinRot: [0, 0, 0],
+    rightShinRot: [0, 0, 0],
+    leftFootRot: [0, 0, 0],
+    rightFootRot: [0, 0, 0],
+  },
+
+  // 5. Thế võ Kungfu / Siêu anh hùng thủ thế phía trước
+  martial_arts: {
+    pelvisRot: [-0.04, 0.35, 0],
+    pelvisPos: [0.01, 0.650, 0],
+    waistRot: [0, -0.12, 0],
+    chestRot: [0.04, -0.15, 0],
+    leftShoulderRot: [-0.08, -0.06, -0.04],
+    rightShoulderRot: [0.06, 0.10, 0.04],
+    leftUpperArmRot: [-0.65, 0.25, -0.35],
+    rightUpperArmRot: [0.22, -0.30, 0.35],
+    leftForearmRot: [-1.45, 0.15, 0.20],
+    rightForearmRot: [-1.40, 0.15, -0.15],
+    leftHandRot: [-0.10, -0.15, 0],
+    rightHandRot: [0, 0, 0],
+    leftThighRot: [-0.28, 0, -0.12],
+    rightThighRot: [0.22, 0, 0.16],
+    leftKneeRot: [0.32, 0, 0],
+    rightKneeRot: [0.18, 0, 0],
+    leftShinRot: [0, 0, -0.02],
+    rightShinRot: [0, 0, 0.02],
+    leftFootRot: [-0.04, 0.10, 0],
+    rightFootRot: [-0.02, -0.12, 0],
+  },
+};

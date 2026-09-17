@@ -14,6 +14,16 @@ import {
 } from '../../../three/core/CharacterModelLoader';
 import { ArticulatedMannequin } from '../../../three/core/ArticulatedMannequin';
 
+export const CHARACTER_POSES = [
+  { id: 'relaxed', name: 'Tự Nhiên', icon: '🧍', desc: 'Đứng thư thái chuẩn studio' },
+  { id: 'cross_arms', name: 'Khoanh Tay', icon: '💪', desc: 'Điềm tĩnh & tự tin' },
+  { id: 'hands_on_hips', name: 'Thuyết trình', icon: '🦸', desc: 'Hiên ngang siêu anh hùng' },
+  { id: 'wave', name: 'Vẫy Tay', icon: '👋', desc: 'Chào đón thân thiện' },
+  { id: 'martial_arts', name: 'Thế Võ', icon: '🥋', desc: 'Thủ thế võ thuật sống động' },
+] as const;
+
+export type CharacterPoseId = (typeof CHARACTER_POSES)[number]['id'];
+
 interface Character3DViewerProps {
   config?: CharacterAvatarConfig | RealisticAvatarConfig | any;
   autoRotate?: boolean;
@@ -28,7 +38,8 @@ interface Character3DViewerProps {
   onCharacterClick?: () => void;
   customModelFile?: File | null;
   customModelUrl?: string | null;
-  focusTarget?: 'body' | 'face' | 'shoes' | 'hair';
+  focusTarget?: 'body' | 'face' | 'head' | 'torso' | 'legs' | 'shoes' | 'feet' | 'hair';
+  currentPose?: CharacterPoseId | string;
 }
 
 export const Character3DViewer: React.FC<Character3DViewerProps> = ({
@@ -41,23 +52,37 @@ export const Character3DViewer: React.FC<Character3DViewerProps> = ({
   showPodium = true,
   enableControls = true,
   cameraFov = 38,
-  cameraDistance = 2.7,
+  cameraDistance = 2.15,
   onCharacterClick,
   customModelFile,
   customModelUrl,
   focusTarget = 'body',
+  currentPose = 'relaxed',
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const rigRef = useRef<IHumanCharacter | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const mouseNormalizedRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const focusTargetRef = useRef<'body' | 'face' | 'shoes' | 'hair'>(focusTarget);
+  const focusTargetRef = useRef<string>(focusTarget);
+  const currentPoseRef = useRef<string>(currentPose);
+  const configRef = useRef<RealisticAvatarConfig>(config);
   const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    configRef.current = config;
+  }, [config]);
 
   useEffect(() => {
     focusTargetRef.current = focusTarget;
   }, [focusTarget]);
+
+  useEffect(() => {
+    currentPoseRef.current = currentPose;
+    if (rigRef.current && rigRef.current.setPose) {
+      rigRef.current.setPose(currentPose);
+    }
+  }, [currentPose]);
 
   // Khởi tạo Scene Three.js
   useEffect(() => {
@@ -72,17 +97,17 @@ export const Character3DViewer: React.FC<Character3DViewerProps> = ({
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
-    // 2. Camera
+    // 2. Camera - Căn chỉnh góc nhìn vào đúng trung tâm cơ thể người (chính giữa khung hình)
     const camera = new THREE.PerspectiveCamera(cameraFov, containerW / containerH, 0.1, 50);
-    const targetY = showPodium ? 1.15 : 0.95;
-    camera.position.set(0, showPodium ? 1.35 : 1.18, cameraDistance);
+    const targetY = showPodium ? 0.75 : 0.59;
+    camera.position.set(0, showPodium ? 0.75 : 0.59, cameraDistance);
 
     // 3. Renderer với khử răng cưa và bóng đổ mềm
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
     renderer.setSize(containerW, containerH);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
 
@@ -189,6 +214,7 @@ export const Character3DViewer: React.FC<Character3DViewerProps> = ({
       scene.add(mannequin.root);
       const normalizedConfig = normalizeToRealisticConfig(config);
       mannequin.updateOutfit(normalizedConfig);
+      mannequin.setPose(currentPoseRef.current);
       rigRef.current = mannequin;
       setIsLoaded(true);
     };
@@ -197,8 +223,8 @@ export const Character3DViewer: React.FC<Character3DViewerProps> = ({
       const loadPromise = customModelFile
         ? loader.loadFromFile(customModelFile)
         : activeModelUrl
-        ? loader.loadFromUrl(activeModelUrl)
-        : null;
+          ? loader.loadFromUrl(activeModelUrl)
+          : null;
 
       if (loadPromise) {
         loadPromise
@@ -235,19 +261,35 @@ export const Character3DViewer: React.FC<Character3DViewerProps> = ({
       const delta = clock.getDelta();
       const elapsedTime = clock.getElapsedTime();
 
-      // Nội suy mượt mà camera zoom vào khuôn mặt/ngũ quan hoặc toàn thân
-      const currentFocus = focusTargetRef.current;
-      const desiredY = currentFocus === 'face'
-        ? (showPodium ? 1.64 : 1.54)
-        : currentFocus === 'shoes'
-        ? (showPodium ? 0.35 : 0.20)
-        : (showPodium ? 1.15 : 0.95);
+      // Tính toán vị trí không gian 3D thực tế theo tỉ lệ Chiều cao (heightCm) & Chân (legScale)
+      const currentConfig = configRef.current;
+      const heightCm = currentConfig?.body?.heightCm || 105;
+      const heightRatio = heightCm / 105;
+      const legScale = currentConfig?.body?.legLengthScale || 1.0;
 
-      const desiredDist = currentFocus === 'face'
-        ? 0.82
-        : currentFocus === 'shoes'
-        ? 1.45
-        : cameraDistance;
+      const yBase = showPodium ? 0.16 : 0.0;
+      const pelvisHeight = (0.030 + 0.632 * legScale) * heightRatio;
+      const totalHeadCenter = pelvisHeight + 0.402 * heightRatio;
+      const totalBodyHeight = (0.030 + 0.632 * legScale + 0.470) * heightRatio;
+
+      // Nội suy mượt mà camera zoom vào từng bộ phận (Đầu/Ngũ quan, Thân/Áo, Chân/Quần, Bàn Chân/Giày)
+      const currentFocus = focusTargetRef.current;
+      let desiredY = yBase + totalBodyHeight * 0.50; // Tâm toàn thân
+      let desiredDist = cameraDistance; // Giữ cự ly chuẩn để thấy rõ nhân vật cao/thấp thực tế
+
+      if (currentFocus === 'face' || currentFocus === 'head' || currentFocus === 'hair') {
+        desiredY = yBase + totalHeadCenter;
+        desiredDist = 0.82;
+      } else if (currentFocus === 'torso') {
+        desiredY = yBase + pelvisHeight + 0.14 * heightRatio;
+        desiredDist = 1.30;
+      } else if (currentFocus === 'legs') {
+        desiredY = yBase + pelvisHeight * 0.50;
+        desiredDist = 1.40;
+      } else if (currentFocus === 'shoes' || currentFocus === 'feet') {
+        desiredY = yBase + 0.08;
+        desiredDist = 1.00;
+      }
 
       // Dịch chuyển tâm ngắm (target)
       controls.target.y += (desiredY - controls.target.y) * 0.08;

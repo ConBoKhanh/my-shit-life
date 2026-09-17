@@ -42,6 +42,7 @@ export interface RealisticAvatarConfig {
   skinTone: string;
   hairColor: string;
   eyeColor: string;
+  lipColor?: string;
   shirtColor: string;
   pantsColor: string;
   shoesColor: string;
@@ -98,27 +99,43 @@ export const REALISTIC_EXPRESSION_OPTIONS: RealisticAssetOption[] = [
   },
 ];
 
-// 2.1. Dáng Mắt (Eyes)
+// 2.1. Dáng Mắt (4 dạng từ mắt híp đến mắt to)
 export const REALISTIC_EYE_SHAPE_OPTIONS: RealisticAssetOption[] = [
   {
-    id: 'eye_shape_almond',
-    name: 'Mắt Hạnh Nhân Tự Nhiên',
+    id: 'eye_shape_narrow_slanted',
+    name: '1. Mắt Híp / Một Mí',
     category: 'face',
-    description: 'Dáng mắt hạnh nhân cân đối hài hòa, mí mắt cong tự nhiên, ánh nhìn ấm áp và trong sáng.',
+    description: 'Dáng mắt nhỏ hẹp ngang, một mí đáng yêu, nét duyên dáng hồn nhiên của trẻ thơ.',
+    materialType: 'silk',
+    badge: '★ Mắt Híp',
+  },
+  {
+    id: 'eye_shape_natural_almond',
+    name: '2. Mắt Hạnh Nhân Vừa Vặn',
+    category: 'face',
+    description: 'Dáng mắt cân đối hài hòa, mí mắt cong tự nhiên, chuẩn nét đẹp Á Đông thanh lịch.',
     materialType: 'silk',
     badge: '★ Tự Nhiên',
   },
   {
     id: 'eye_shape_phoenix',
-    name: 'Mắt Phượng Sắc Sảo',
+    name: '3. Mắt Phượng Sắc Nét',
     category: 'face',
-    description: 'Đuôi mắt hơi xếch nhẹ thanh tú, hốc mắt sâu cuốn hút, ánh nhìn kiên định đầy thần thái.',
+    description: 'Đuôi mắt cong nhẹ thanh tú, ánh nhìn tinh anh, thông minh và sắc sảo.',
     materialType: 'silk',
-    badge: '★ Sắc Sảo',
+    badge: '★ Tinh Anh',
+  },
+  {
+    id: 'eye_shape_big_round',
+    name: '4. Mắt To Tròn Long Lanh',
+    category: 'face',
+    description: 'Dáng mắt to tròn hai mí rõ rệt, ngây thơ, nổi bật và bừng sáng gương mặt.',
+    materialType: 'silk',
+    badge: '★ To Tròn',
   },
 ];
 
-// 2.2. Dáng Mũi (Nose)
+// 2.2. Dáng Mũi (Nose Morphology)
 export const REALISTIC_NOSE_SHAPE_OPTIONS: RealisticAssetOption[] = [
   {
     id: 'nose_natural_soft',
@@ -136,25 +153,49 @@ export const REALISTIC_NOSE_SHAPE_OPTIONS: RealisticAssetOption[] = [
     materialType: 'silk',
     badge: '★ Cao Tây',
   },
-];
-
-// 2.3. Dáng Môi & Miệng (Mouth & Lips)
-export const REALISTIC_MOUTH_SHAPE_OPTIONS: RealisticAssetOption[] = [
   {
-    id: 'mouth_cupid_bow',
-    name: 'Môi Cánh Cung Cupid',
+    id: 'nose_witch_hooked',
+    name: 'Mũi Phù Thủy Khoằm To',
     category: 'face',
-    description: 'Vành môi trên uốn lượn trái tim sắc nét, khóe miệng hé cười duyên, rãnh nhân trung rõ nét.',
+    description: 'Sống mũi gồ to khoằm xuống như mỏ đại bàng, chóp mũi dài nhọn độc lạ và hài hước.',
     materialType: 'silk',
-    badge: '★ Quyến Rũ',
+    badge: '★ Phù Thủy 🧙‍♀️',
   },
   {
-    id: 'mouth_gentle_natural',
-    name: 'Môi Căng Mọng Thư Thái',
+    id: 'nose_cute_button_snub',
+    name: 'Mũi Hếch Hạt Mít Baby',
     category: 'face',
-    description: 'Môi dưới đầy đặn tự nhiên, viền môi mềm mại, khóe miệng bằng phẳng tự tin.',
+    description: 'Sống mũi nhỏ xinh, chóp mũi hếch tròn xoe đáng yêu chuẩn nét trẻ thơ.',
     materialType: 'silk',
-    badge: '★ Tự Nhiên',
+    badge: '★ Đáng Yêu',
+  },
+];
+
+// 2.3. Dáng Môi & Miệng (3 Dáng Môi từ mỏng tự nhiên, căng mọng đến môi trề to dày cộp hài hước)
+export const REALISTIC_MOUTH_SHAPE_OPTIONS: RealisticAssetOption[] = [
+  {
+    id: 'mouth_natural_thin',
+    name: '1. Môi Mỏng Tự Nhiên',
+    category: 'face',
+    description: 'Vành môi mỏng nhẹ thanh tú, viền môi tự nhiên, nét đẹp thư thái chuẩn Á Đông.',
+    materialType: 'silk',
+    badge: '★ Mỏng Nhẹ',
+  },
+  {
+    id: 'mouth_plump_full',
+    name: '2. Môi Căng Mọng Dày Dặn',
+    category: 'face',
+    description: 'Môi trên cánh cung rõ nét, môi dưới đầy đặn căng tràn sức sống, quyến rũ và rạng rỡ.',
+    materialType: 'silk',
+    badge: '★ Căng Mọng',
+  },
+  {
+    id: 'mouth_pouting_thick_tre',
+    name: '3. Môi Trề Dày Cộp Hài Hước',
+    category: 'face',
+    description: 'Môi dưới trề ra to dày cộp nhô hẳn về phía trước, viền môi dẩu hài hước và siêu độc lạ.',
+    materialType: 'silk',
+    badge: '★ Môi Trề 👄',
   },
 ];
 
@@ -331,12 +372,32 @@ export const REALISTIC_HAIR_COLORS = [
   { id: 'silver_slate', name: 'Bạc Khói (Silver Slate)', hex: '#94a3b8' },
 ];
 
-// 9. Bảng màu mắt
+// 9. Bảng màu mắt (Gồm các tông màu chuẩn và màu ngầu/cyber/fantasy)
 export const REALISTIC_EYE_COLORS = [
-  { id: 'deep_brown', name: 'Nâu Đen Châu Á', hex: '#261710' },
-  { id: 'hazel_amber', name: 'Nâu Hổ Phách', hex: '#4d3319' },
-  { id: 'oceanic_blue', name: 'Xanh Biển Sâu', hex: '#1e3a5f' },
-  { id: 'emerald_green', name: 'Xanh Ngọc Lục Bảo', hex: '#1e3f2b' },
+  { id: 'deep_black', name: 'Đen Tuyền', hex: '#151316' },
+  { id: 'deep_brown', name: 'Nâu Đen Á Đông', hex: '#2b1810' },
+  { id: 'amber_gold', name: 'Hoàng Kim Hổ Phách', hex: '#c47d2b' },
+  { id: 'crimson_ruby', name: 'Đỏ Ruby Ma Thuật', hex: '#a8182b' },
+  { id: 'cyber_neon_blue', name: 'Xanh Băng Cyber', hex: '#0ea5e9' },
+  { id: 'deep_ocean', name: 'Xanh Biển Sâu', hex: '#1d4ed8' },
+  { id: 'emerald_green', name: 'Ngọc Lục Bảo', hex: '#059669' },
+  { id: 'amethyst_mystic', name: 'Tím Thạch Anh Huyền Bí', hex: '#7c3aed' },
+  { id: 'silver_slate', name: 'Bạc Ánh Kim / Khói', hex: '#94a3b8' },
+  { id: 'blazing_fire', name: 'Cam Lửa Rực Cháy', hex: '#ea580c' },
+];
+
+// 10. Bảng màu môi tự nhiên & tươi tắn (Lip Colors)
+export const REALISTIC_LIP_COLORS = [
+  { id: 'natural_pink', name: 'Hồng Tự Nhiên', hex: '#DE7E8A' },
+  { id: 'coral_peach', name: 'Đào San Hô', hex: '#E88674' },
+  { id: 'baby_blossom', name: 'Hồng Baby Ngọt Ngào', hex: '#EA99B2' },
+  { id: 'nude_peach', name: 'Hồng Cam Nude', hex: '#D68A78' },
+  { id: 'cherry_red', name: 'Đỏ Cherry Tươi', hex: '#B83B46' },
+  { id: 'warm_terracotta', name: 'Hồng Đất Thanh Lịch', hex: '#C27367' },
+  { id: 'berry_wine', name: 'Đỏ Rượu Dâu', hex: '#9E3246' },
+  { id: 'vibrant_coral', name: 'Hồng Cam Rạng Rỡ', hex: '#F06C59' },
+  { id: 'bright_apricot', name: 'Cam San Hô', hex: '#EE8055' },
+  { id: 'plum_velvet', name: 'Đỏ Mận Quý Phái', hex: '#8A293E' },
 ];
 
 // Cấu hình mặc định: Chuẩn Human Base Mesh giải phẫu (Ảnh 2 Reference)
@@ -348,24 +409,25 @@ export const DEFAULT_REALISTIC_CONFIG: RealisticAvatarConfig = {
   shoesId: 'shoes_barefoot',
   accessoryId: '',
 
-  // Ngũ Quan mặc định
-  eyeShapeId: 'eye_shape_almond',
+  // Ngũ Quan mặc định (luôn chọn option đầu tiên theo yêu cầu)
+  eyeShapeId: 'eye_shape_narrow_slanted',
   noseShapeId: 'nose_natural_soft',
-  mouthShapeId: 'mouth_cupid_bow',
+  mouthShapeId: 'mouth_natural_thin',
   eyebrowShapeId: 'brow_soft_arch',
   jawlineShapeId: 'jaw_sharp_v_line',
 
   skinTone: '#E8BA9A',
   hairColor: '#16161a',
-  eyeColor: '#261710',
+  eyeColor: '#151316',
+  lipColor: '#DE7E8A',
   shirtColor: '#ffffff',
   pantsColor: '#1e293b',
   shoesColor: '#f8fafc',
 
   body: {
-    heightCm: 176,
-    weightKg: 68,
-    musclePct: 50,
+    heightCm: 105, // Default cho giai đoạn mầm non theo WHO: 105cm (Khoảng 95cm - 115cm)
+    weightKg: 24,
+    musclePct: 20,
     shoulderWidthScale: 1.0,
     legLengthScale: 1.0,
   },
@@ -374,13 +436,79 @@ export const DEFAULT_REALISTIC_CONFIG: RealisticAvatarConfig = {
 export function normalizeToRealisticConfig(input?: any): RealisticAvatarConfig {
   if (!input) return DEFAULT_REALISTIC_CONFIG;
 
+  // 1. Ưu tiên lấy giá trị từ input.body (state từ thanh trượt customizer)
+  let parsedHeight = DEFAULT_REALISTIC_CONFIG.body.heightCm; // 105
+  let parsedLegScale = DEFAULT_REALISTIC_CONFIG.body.legLengthScale; // 1.0
+
+  if (input.body) {
+    if (typeof input.body.heightCm === 'number') {
+      // Giới hạn chiều cao giai đoạn mầm non theo chuẩn WHO: [95cm, 115cm], mặc định 105cm
+      if (input.body.heightCm > 115 || input.body.heightCm < 95) {
+        parsedHeight = 105;
+      } else {
+        parsedHeight = input.body.heightCm;
+      }
+    }
+    if (typeof input.body.legLengthScale === 'number') {
+      parsedLegScale = Math.max(0.85, Math.min(1.15, input.body.legLengthScale));
+    }
+  } else {
+    // Fallback nếu truyền từ định dạng 2D avatar cũ (ví dụ heightScale: 1.0)
+    if (typeof input.heightScale === 'number' && input.heightScale > 0) {
+      const rawH = Math.round(input.heightScale * 105);
+      parsedHeight = rawH > 115 || rawH < 95 ? 105 : rawH;
+    }
+    if (typeof input.legScale === 'number' && input.legScale > 0) {
+      parsedLegScale = Math.max(0.85, Math.min(1.15, input.legScale));
+    }
+  }
+
+  // Tách bỏ các thuộc tính heightScale / legScale ở root để tránh ghi đè body
+  const { heightScale: _hs, legScale: _ls, ...cleanInput } = input;
+
+  // Lọc dáng mắt: kiểm tra hợp lệ
+  const validEyeShapes = REALISTIC_EYE_SHAPE_OPTIONS.map((o) => o.id);
+  let resolvedEyeShape = cleanInput.eyeShapeId;
+  if (!resolvedEyeShape || !validEyeShapes.includes(resolvedEyeShape)) {
+    resolvedEyeShape = REALISTIC_EYE_SHAPE_OPTIONS[0].id;
+  }
+
+  let resolvedEyeColor = cleanInput.eyeColor;
+  if (!resolvedEyeColor || resolvedEyeColor === '#261710') {
+    resolvedEyeColor = REALISTIC_EYE_COLORS[0].hex;
+  }
+
+  let resolvedLipColor = cleanInput.lipColor;
+  if (!resolvedLipColor) {
+    resolvedLipColor = REALISTIC_LIP_COLORS[0].hex;
+  }
+
+  const validNoseShapes = REALISTIC_NOSE_SHAPE_OPTIONS.map((o) => o.id);
+  let resolvedNoseShape = cleanInput.noseShapeId;
+  if (!resolvedNoseShape || !validNoseShapes.includes(resolvedNoseShape)) {
+    resolvedNoseShape = REALISTIC_NOSE_SHAPE_OPTIONS[0].id;
+  }
+
+  const validMouthShapes = REALISTIC_MOUTH_SHAPE_OPTIONS.map((o) => o.id);
+  let resolvedMouthShape = cleanInput.mouthShapeId;
+  if (!resolvedMouthShape || !validMouthShapes.includes(resolvedMouthShape)) {
+    resolvedMouthShape = REALISTIC_MOUTH_SHAPE_OPTIONS[0].id;
+  }
+
   if (input.body && input.hairId) {
     return {
       ...DEFAULT_REALISTIC_CONFIG,
-      ...input,
+      ...cleanInput,
+      eyeShapeId: resolvedEyeShape,
+      eyeColor: resolvedEyeColor,
+      lipColor: resolvedLipColor,
+      noseShapeId: resolvedNoseShape,
+      mouthShapeId: resolvedMouthShape,
       body: {
         ...DEFAULT_REALISTIC_CONFIG.body,
         ...input.body,
+        heightCm: parsedHeight,
+        legLengthScale: parsedLegScale,
       },
     };
   }
@@ -398,29 +526,32 @@ export function normalizeToRealisticConfig(input?: any): RealisticAvatarConfig {
   const isShoesOxford = input.shoesId?.includes('leather') || input.shoesId?.includes('dress') || input.shoesId === 'shoes_polished_leather_oxford';
 
   return {
-    hairId: isHairBald ? 'hair_bald_natural' : (isHairSidePart ? 'hair_layered_side_part' : 'hair_modern_quiff'),
-    faceId: input.faceId?.includes('smile') ? 'face_warm_smile' : 'face_confident_natural',
-    shirtId: isShirtNone ? 'shirt_none' : (isShirtOxford ? 'shirt_oxford_button_down' : 'shirt_fitted_cotton_tee'),
-    pantsId: isPantsUnderwear ? 'pants_underwear_briefs' : (isPantsChino ? 'pants_tailored_chinos' : 'pants_classic_denim_jeans'),
-    shoesId: isShoesBarefoot ? 'shoes_barefoot' : (isShoesOxford ? 'shoes_polished_leather_oxford' : 'shoes_low_top_sneaker'),
+    ...DEFAULT_REALISTIC_CONFIG,
+    ...cleanInput,
+    hairId: isHairBald ? 'hair_bald_natural' : (isHairSidePart ? 'hair_layered_side_part' : (input.hairId || DEFAULT_REALISTIC_CONFIG.hairId)),
+    faceId: input.faceId?.includes('smile') ? 'face_warm_smile' : (input.faceId || DEFAULT_REALISTIC_CONFIG.faceId),
+    shirtId: isShirtNone ? 'shirt_none' : (isShirtOxford ? 'shirt_oxford_button_down' : (input.shirtId || DEFAULT_REALISTIC_CONFIG.shirtId)),
+    pantsId: isPantsUnderwear ? 'pants_underwear_briefs' : (isPantsChino ? 'pants_tailored_chinos' : (input.pantsId || DEFAULT_REALISTIC_CONFIG.pantsId)),
+    shoesId: isShoesBarefoot ? 'shoes_barefoot' : (isShoesOxford ? 'shoes_polished_leather_oxford' : (input.shoesId || DEFAULT_REALISTIC_CONFIG.shoesId)),
     accessoryId: input.accessoryId === '' || input.accessoryId === 'none' || !input.accessoryId ? '' : (input.accessoryId?.includes('watch') ? 'acc_minimalist_leather_watch' : 'acc_wireframe_glasses'),
-    eyeShapeId: input.eyeShapeId || DEFAULT_REALISTIC_CONFIG.eyeShapeId,
-    noseShapeId: input.noseShapeId || DEFAULT_REALISTIC_CONFIG.noseShapeId,
-    mouthShapeId: input.mouthShapeId || DEFAULT_REALISTIC_CONFIG.mouthShapeId,
+    eyeShapeId: resolvedEyeShape,
+    noseShapeId: resolvedNoseShape,
+    mouthShapeId: resolvedMouthShape,
     eyebrowShapeId: input.eyebrowShapeId || DEFAULT_REALISTIC_CONFIG.eyebrowShapeId,
     jawlineShapeId: input.jawlineShapeId || DEFAULT_REALISTIC_CONFIG.jawlineShapeId,
     skinTone: input.skinTone || DEFAULT_REALISTIC_CONFIG.skinTone,
     hairColor: input.hairColor || DEFAULT_REALISTIC_CONFIG.hairColor,
-    eyeColor: input.eyeColor || DEFAULT_REALISTIC_CONFIG.eyeColor,
+    eyeColor: resolvedEyeColor,
+    lipColor: resolvedLipColor,
     shirtColor: input.shirtColor || DEFAULT_REALISTIC_CONFIG.shirtColor,
     pantsColor: input.pantsColor || DEFAULT_REALISTIC_CONFIG.pantsColor,
     shoesColor: input.shoesColor || DEFAULT_REALISTIC_CONFIG.shoesColor,
     body: {
-      heightCm: input.heightScale ? Math.round(input.heightScale * 176) : (input.body?.heightCm || DEFAULT_REALISTIC_CONFIG.body.heightCm),
+      heightCm: parsedHeight,
       weightKg: input.body?.weightKg || DEFAULT_REALISTIC_CONFIG.body.weightKg,
       musclePct: input.body?.musclePct || DEFAULT_REALISTIC_CONFIG.body.musclePct,
       shoulderWidthScale: input.body?.shoulderWidthScale || 1.0,
-      legLengthScale: input.legScale || input.body?.legLengthScale || 1.0,
+      legLengthScale: parsedLegScale,
     },
   };
 }

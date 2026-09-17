@@ -1195,7 +1195,7 @@ export class RealisticHumanRig implements IHumanCharacter {
       this.hairMaterial.color.set(config.hairColor);
     }
 
-    // 2. Eye color texture
+    // 2. Eye color texture & 4 Eye shapes morphing
     if (config.eyeColor && config.eyeColor !== this.currentEyeColor) {
       this.currentEyeColor = config.eyeColor;
       const irisTex = getEyeIrisTexture(config.eyeColor);
@@ -1209,10 +1209,38 @@ export class RealisticHumanRig implements IHumanCharacter {
       }
     }
 
+    const eyeShape = config.eyeShapeId || 'eye_shape_natural_almond';
+    let irisScaleX = 1.0;
+    let irisScaleY = 0.82;
+    let irisTilt = 0;
+    if (eyeShape === 'eye_shape_narrow_slanted') {
+      irisScaleX = 1.25;
+      irisScaleY = 0.44;
+    } else if (eyeShape === 'eye_shape_natural_almond') {
+      irisScaleX = 1.00;
+      irisScaleY = 0.82;
+    } else if (eyeShape === 'eye_shape_phoenix') {
+      irisScaleX = 1.14;
+      irisScaleY = 0.76;
+      irisTilt = 0.14;
+    } else if (eyeShape === 'eye_shape_big_round') {
+      irisScaleX = 1.10;
+      irisScaleY = 1.30;
+    }
+
+    if (this.leftIrisMesh) {
+      this.leftIrisMesh.scale.set(irisScaleX, irisScaleY, 1.0);
+      this.leftIrisMesh.rotation.z = -irisTilt;
+    }
+    if (this.rightIrisMesh) {
+      this.rightIrisMesh.scale.set(irisScaleX, irisScaleY, 1.0);
+      this.rightIrisMesh.rotation.z = irisTilt;
+    }
+
     // 3. Body Morphology Customization (Without ugly mesh stretching!)
     const body = config.body || DEFAULT_REALISTIC_CONFIG.body;
-    const baseHeight = 176;
-    const heightRatio = Math.max(0.75, Math.min(1.25, body.heightCm / baseHeight));
+    const baseHeight = 105;
+    const heightRatio = Math.max(0.70, Math.min(1.30, (body.heightCm || 105) / baseHeight));
     const legRatio = Math.max(0.85, Math.min(1.2, body.legLengthScale));
     const shoulderRatio = Math.max(0.85, Math.min(1.25, body.shoulderWidthScale));
     const buildWeight = Math.max(0.8, Math.min(1.3, body.weightKg / 68));

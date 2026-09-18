@@ -625,15 +625,6 @@ export const REALISTIC_SHIRT_OPTIONS: RealisticAssetOption[] = [
     badge: '★ Năng Động',
     colorHex: '#18181b',
   },
-  {
-    id: 'shirt_none',
-    name: 'Cơ Thể Nguyên Bản (Không Mặc Áo)',
-    category: 'shirt',
-    description: 'Không mặc áo, phô diễn trọn vẹn giải phẫu cơ ngực, xương quai xanh, eo thon và cơ lưng.',
-    materialType: 'cotton',
-    badge: '★ Base Body',
-    colorHex: '#ffffff',
-  },
 ];
 
 // 4. Quần (Quần Dài Jeans, Quần Ống Loe, Quần Boi Phố Rách, Quần Âu, Quần Đùi, Quần Ngố) - Mặc định Quần Dài Jeans
@@ -694,34 +685,25 @@ export const REALISTIC_PANTS_OPTIONS: RealisticAssetOption[] = [
   },
 ];
 
-// 5. Giày (2 mẫu giày 3D đúng chuẩn footwear + Chân trần)
+// 5. Giày (Giày Da Loafer Khóa Kim Loại & Sneaker Thể Thao) - Mặc định Giày Da Quý Phái
 export const REALISTIC_SHOES_OPTIONS: RealisticAssetOption[] = [
   {
-    id: 'shoes_low_top_sneaker',
-    name: 'Low-Top Leather Sneaker',
-    category: 'shoes',
-    description: 'Đế cao su đúc có rãnh bám hình học, thân giày da mềm, lỗ xỏ kim loại và dây giày buộc thắt nơ 3D.',
-    materialType: 'leather',
-    badge: '★ Năng Động',
-    colorHex: '#f8fafc',
-  },
-  {
     id: 'shoes_polished_leather_oxford',
-    name: 'Polished Leather Dress Shoes',
+    name: 'Classic Horsebit Leather Loafers',
     category: 'shoes',
-    description: 'Giày da bóng mũi nhọn thanh thoát, đế gót gỗ nhiều lớp, đường viền welt khâu tay đẳng cấp quý ông.',
+    description: 'Giày da lười Loafer cao cấp chuẩn quý ông: đai da vắt ngang đính khóa kim loại móng ngựa mạ bạc sáng bóng, viền khâu chữ U Apron nổi bật, đế đúc và gót gỗ phân tầng vững chãi.',
     materialType: 'leather',
     badge: '★ Quý Phái',
     colorHex: '#1e1b18',
   },
   {
-    id: 'shoes_barefoot',
-    name: 'Bàn Chân Trần (Barefoot 5-Toes)',
+    id: 'shoes_low_top_sneaker',
+    name: 'Low-Top Leather Sneaker',
     category: 'shoes',
-    description: 'Bàn chân trần chuẩn giải phẫu với vòm chân (arch), gót (heel), mắt cá chân và 5 ngón chân tự nhiên.',
+    description: 'Đế cao su đúc dày dặn có rãnh bám hình học, thân giày da mềm, đệm cổ êm ái và dây giày buộc thắt nơ 3D.',
     materialType: 'leather',
-    badge: '★ Base Body',
-    colorHex: '#ffffff',
+    badge: '★ Năng Động',
+    colorHex: '#f8fafc',
   },
 ];
 
@@ -799,7 +781,7 @@ export const DEFAULT_REALISTIC_CONFIG: RealisticAvatarConfig = {
   faceId: 'face_confident_natural',
   shirtId: 'shirt_oxford_button_down',
   pantsId: 'pants_classic_denim_jeans',
-  shoesId: 'shoes_barefoot',
+  shoesId: 'shoes_polished_leather_oxford',
   accessoryId: '',
 
   // Ngũ Quan mặc định (luôn chọn option đầu tiên theo yêu cầu)
@@ -816,7 +798,7 @@ export const DEFAULT_REALISTIC_CONFIG: RealisticAvatarConfig = {
   lipColor: '#DE7E8A',
   shirtColor: '#ffffff',
   pantsColor: '#1e293b',
-  shoesColor: '#f8fafc',
+  shoesColor: '#1e1b18',
 
   body: {
     heightCm: 95, // Default cho giai đoạn mầm non / mẫu giáo: 95cm (Min: 95cm, Max: 115cm)
@@ -944,19 +926,15 @@ export function normalizeToRealisticConfig(input?: any): RealisticAvatarConfig {
     };
   }
 
-  const isShirtNone = input.shirtId === 'shirt_none' || input.shirtId === 'none' || input.shirtId === '';
   const validShirtIds = [
     'shirt_oxford_button_down',
     'shirt_oxford_long_sleeve',
     'shirt_oxford_rolled_sleeve',
     'shirt_knit_sweater',
     'shirt_fitted_cotton_tee',
-    'shirt_none',
   ];
   let resolvedShirtId = DEFAULT_REALISTIC_CONFIG.shirtId;
-  if (isShirtNone) {
-    resolvedShirtId = 'shirt_none';
-  } else if (input.shirtId && validShirtIds.includes(input.shirtId)) {
+  if (input.shirtId && validShirtIds.includes(input.shirtId)) {
     resolvedShirtId = input.shirtId;
   } else if (input.shirtId?.includes('sweater') || input.shirtId?.includes('hoodie') || input.shirtId?.includes('knit')) {
     resolvedShirtId = 'shirt_knit_sweater';
@@ -966,7 +944,7 @@ export function normalizeToRealisticConfig(input?: any): RealisticAvatarConfig {
     resolvedShirtId = 'shirt_oxford_long_sleeve';
   } else if (input.shirtId?.includes('tee') || input.shirtId?.includes('tanktop')) {
     resolvedShirtId = 'shirt_fitted_cotton_tee';
-  } else if (input.shirtId?.includes('polo') || input.shirtId?.includes('oxford')) {
+  } else {
     resolvedShirtId = 'shirt_oxford_button_down';
   }
   
@@ -991,8 +969,8 @@ export function normalizeToRealisticConfig(input?: any): RealisticAvatarConfig {
     resolvedPantsId = 'pants_classic_denim_jeans';
   }
 
-  const isShoesBarefoot = input.shoesId === 'shoes_barefoot' || input.shoesId === 'none' || input.shoesId === '';
-  const isShoesOxford = input.shoesId?.includes('leather') || input.shoesId?.includes('dress') || input.shoesId === 'shoes_polished_leather_oxford';
+  const isSneaker = input.shoesId === 'shoes_low_top_sneaker' || input.shoesId?.includes('sneak');
+  const resolvedShoesId = isSneaker ? 'shoes_low_top_sneaker' : 'shoes_polished_leather_oxford';
 
   return {
     ...DEFAULT_REALISTIC_CONFIG,
@@ -1001,7 +979,7 @@ export function normalizeToRealisticConfig(input?: any): RealisticAvatarConfig {
     faceId: input.faceId?.includes('smile') ? 'face_warm_smile' : (input.faceId || DEFAULT_REALISTIC_CONFIG.faceId),
     shirtId: resolvedShirtId,
     pantsId: resolvedPantsId,
-    shoesId: isShoesBarefoot ? 'shoes_barefoot' : (isShoesOxford ? 'shoes_polished_leather_oxford' : (input.shoesId || DEFAULT_REALISTIC_CONFIG.shoesId)),
+    shoesId: resolvedShoesId,
     accessoryId: input.accessoryId === '' || input.accessoryId === 'none' || !input.accessoryId ? '' : (input.accessoryId?.includes('watch') ? 'acc_minimalist_leather_watch' : 'acc_wireframe_glasses'),
     eyeShapeId: resolvedEyeShape,
     noseShapeId: resolvedNoseShape,

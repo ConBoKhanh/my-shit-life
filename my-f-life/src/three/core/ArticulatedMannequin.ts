@@ -1,7 +1,11 @@
 import * as THREE from 'three';
 import type { RealisticAvatarConfig } from '../character/RealisticAssetsCatalog';
 import type { IHumanCharacter } from './CharacterModelLoader';
-import { getDenimTwillTexture } from './ProceduralTextures';
+import {
+  getDenimTwillTexture,
+  getLeatherGrainTexture,
+  getSoleTreadTexture,
+} from './ProceduralTextures';
 
 /**
  * ArticulatedMannequin.ts
@@ -108,7 +112,7 @@ export class ArticulatedMannequin implements IHumanCharacter {
   public shirtMaterial: THREE.MeshPhysicalMaterial;
   public shirtButtonMaterial: THREE.MeshPhysicalMaterial;
   public shirtAccentMaterial: THREE.MeshStandardMaterial;
-  public currentShirtId: string = 'shirt_none';
+  public currentShirtId: string = 'shirt_oxford_button_down';
   public currentShirtColor: string = '#ffffff';
 
   // Clothing System (Pants & Underwear System)
@@ -126,6 +130,20 @@ export class ArticulatedMannequin implements IHumanCharacter {
   public metalChainMaterial: THREE.MeshStandardMaterial;
   public currentPantsId: string = 'pants_classic_denim_jeans';
   public currentPantsColor: string = '#1e293b';
+
+  // Footwear System (Giày da Oxford & Sneaker 3D)
+  public leftShoeGroup: THREE.Group;
+  public rightShoeGroup: THREE.Group;
+  public leftFootMesh: THREE.Mesh | null = null;
+  public rightFootMesh: THREE.Mesh | null = null;
+  public shoeLeatherMaterial: THREE.MeshPhysicalMaterial;
+  public shoeSoleMaterial: THREE.MeshPhysicalMaterial;
+  public shoeHeelMaterial: THREE.MeshStandardMaterial;
+  public shoeWeltMaterial: THREE.MeshStandardMaterial;
+  public shoeLaceMaterial: THREE.MeshStandardMaterial;
+  public shoeAccentMaterial: THREE.MeshStandardMaterial;
+  public currentShoesId: string = 'shoes_polished_leather_oxford';
+  public currentShoesColor: string = '#1e1b18';
 
   // Lower Limbs & 4-Stage Drop-Down Hip System
   public dropDownPegL: THREE.Group;
@@ -294,6 +312,54 @@ export class ArticulatedMannequin implements IHumanCharacter {
       metalness: 0.92,
     });
 
+    // Shoe Materials (Giày da Oxford Ý đánh xi bóng & Sneaker 3D)
+    this.shoeLeatherMaterial = new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color('#1e1b18'),
+      roughness: 0.22,
+      metalness: 0.05,
+      clearcoat: 0.88,
+      clearcoatRoughness: 0.12,
+      normalMap: getLeatherGrainTexture(),
+      normalScale: new THREE.Vector2(0.25, 0.25),
+      side: THREE.DoubleSide,
+    });
+
+    this.shoeSoleMaterial = new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color('#0f0d0b'),
+      roughness: 0.45,
+      metalness: 0.02,
+      clearcoat: 0.20,
+      clearcoatRoughness: 0.30,
+      normalMap: getSoleTreadTexture(),
+      normalScale: new THREE.Vector2(0.25, 0.25),
+      side: THREE.DoubleSide,
+    });
+
+    this.shoeHeelMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color('#16100c'),
+      roughness: 0.38,
+      metalness: 0.08,
+      side: THREE.DoubleSide,
+    });
+
+    this.shoeWeltMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color('#9a633a'),
+      roughness: 0.45,
+      metalness: 0.05,
+    });
+
+    this.shoeLaceMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color('#12100e'),
+      roughness: 0.70,
+      metalness: 0.02,
+    });
+
+    this.shoeAccentMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color('#c59b27'),
+      roughness: 0.25,
+      metalness: 0.85,
+    });
+
     // 2. Harmonious Proportional Skeletal Hierarchy
     this.spineRoot = new THREE.Group();
     this.spineRoot.name = 'Spine_Root';
@@ -455,9 +521,19 @@ export class ArticulatedMannequin implements IHumanCharacter {
     this.rightFoot.position.set(0, -0.30, 0);
     this.rightShin.add(this.rightFoot);
 
+    this.leftShoeGroup = new THREE.Group();
+    this.leftShoeGroup.name = 'Mannequin_LeftShoeGroup';
+    this.leftFoot.add(this.leftShoeGroup);
+
+    this.rightShoeGroup = new THREE.Group();
+    this.rightShoeGroup.name = 'Mannequin_RightShoeGroup';
+    this.rightFoot.add(this.rightShoeGroup);
+
     // 3. Build Detailed Geometry
     this.buildMannequin();
+    this.rebuildShirt(this.currentShirtId, this.currentShirtColor);
     this.rebuildPants(this.currentPantsId, this.currentPantsColor);
+    this.rebuildShoes(this.currentShoesId, this.currentShoesColor);
   }
 
   // ===========================================================================
@@ -2049,6 +2125,11 @@ export class ArticulatedMannequin implements IHumanCharacter {
       footMesh.castShadow = true;
       footMesh.receiveShadow = true;
       footGroup.add(footMesh);
+      if (dir < 0) {
+        this.leftFootMesh = footMesh;
+      } else {
+        this.rightFootMesh = footMesh;
+      }
     });
   }
 
@@ -5008,8 +5089,9 @@ export class ArticulatedMannequin implements IHumanCharacter {
   /**
    * Tái tạo áo 3D với 5 kiểu trang phục đa dạng và áp dụng màu sắc tùy biến PBR
    */
-  private rebuildShirt(shirtId: string, colorHex: string = '#ffffff') {
-    this.currentShirtId = shirtId;
+  private rebuildShirt(shirtId: string = 'shirt_oxford_button_down', colorHex: string = '#ffffff') {
+    const resolvedShirtId = (shirtId && shirtId !== 'shirt_none' && shirtId !== 'none') ? shirtId : 'shirt_oxford_button_down';
+    this.currentShirtId = resolvedShirtId;
     this.currentShirtColor = colorHex;
 
     this.clearGroup(this.chestShirtGroup);
@@ -5020,10 +5102,6 @@ export class ArticulatedMannequin implements IHumanCharacter {
     this.clearGroup(this.rightForearmSleeveGroup);
     this.clearGroup(this.aoDaiFlapGroup);
 
-    if (shirtId === 'shirt_none' || shirtId === 'none' || !shirtId) {
-      return;
-    }
-
     // Cập nhật màu vải áo
     this.shirtMaterial.color.set(colorHex);
 
@@ -5031,7 +5109,7 @@ export class ArticulatedMannequin implements IHumanCharacter {
     const isDark = new THREE.Color(colorHex).getHSL({ h: 0, s: 0, l: 0 }).l < 0.35;
     this.shirtButtonMaterial.color.set(isDark ? '#e2e8f0' : '#f8fafc');
 
-    if (shirtId === 'shirt_oxford_button_down') {
+    if (resolvedShirtId === 'shirt_oxford_button_down') {
       // 1. ÁO SƠ MI CỘC TAY OXFORD
       const chestGeo = this.createOxfordShirtChestGeometry();
       const chestMesh = new THREE.Mesh(chestGeo, this.shirtMaterial);
@@ -5079,7 +5157,7 @@ export class ArticulatedMannequin implements IHumanCharacter {
       cuffR.position.set(0, -0.113, 0);
       this.rightSleeveGroup.add(cuffR);
 
-    } else if (shirtId === 'shirt_oxford_long_sleeve') {
+    } else if (resolvedShirtId === 'shirt_oxford_long_sleeve') {
       // 2. ÁO SƠ MI DÀI TAY CÔNG SỞ (LONG-SLEEVE OXFORD) - LIỀN MẠCH MƯỢT MÀ
       const chestGeo = this.createOxfordShirtChestGeometry();
       const chestMesh = new THREE.Mesh(chestGeo, this.shirtMaterial);
@@ -5151,7 +5229,7 @@ export class ArticulatedMannequin implements IHumanCharacter {
         targetGroup.add(cuffBtn);
       });
 
-    } else if (shirtId === 'shirt_oxford_rolled_sleeve') {
+    } else if (resolvedShirtId === 'shirt_oxford_rolled_sleeve') {
       // 3. ÁO SƠ MI XẮN TAY (ROLLED-UP SLEEVE) - GẤU XẮN 3D ĐÚC LIỀN
       const chestGeo = this.createOxfordShirtChestGeometry();
       const chestMesh = new THREE.Mesh(chestGeo, this.shirtMaterial);
@@ -5187,7 +5265,7 @@ export class ArticulatedMannequin implements IHumanCharacter {
       rolledRMesh.receiveShadow = true;
       this.rightSleeveGroup.add(rolledRMesh);
 
-    } else if (shirtId === 'shirt_knit_sweater') {
+    } else if (resolvedShirtId === 'shirt_knit_sweater') {
       // 4. ÁO LEN DỆT KIM (COZY KNIT SWEATER) - TÍCH HỢP BO GẤU & BO CỔ TAY ĐÚC LIỀN (CHE PHỦ 100% THÂN NGỰC EO)
       const knitChestGeo = this.createKnitSweaterChestGeometry();
       const knitChestMesh = new THREE.Mesh(knitChestGeo, this.shirtMaterial);
@@ -6401,6 +6479,631 @@ export class ArticulatedMannequin implements IHumanCharacter {
     }
   }
 
+  // ===========================================================================
+  // 3D PROCEDURAL FOOTWEAR SYSTEM (Giày Da Thủ Công Oxford & Sneaker)
+  // ===========================================================================
+
+  /**
+   * Điêu khắc thân giày da Loafer cao cấp (Bespoke Italian Horsebit Leather Loafers)
+   * - Phom giày chuẩn Dress Shoes (Chiseled Moc-Toe Last):
+   *   + Thân giày ôm khít bàn chân, mu vồng cao thanh thoát vững chãi.
+   *   + Mũi giày bo tròn bầu bĩnh hình bán cầu elip (Elliptical Toe Dome) tự nhiên, KHÔNG BỊ NHỌN MŨI.
+   *   + Medial Arch Waist Cinch: Thắt eo vòm trong thon gọn chuẩn quý ông Ý.
+   */
+  /**
+   * Điêu khắc thân giày da Loafer cao cấp (Bespoke Italian Horsebit Leather Loafers)
+   * - Phom giày chuẩn Dress Shoes (Chiseled Moc-Toe Last):
+   *   + Gót sau bo tròn 3D hình bán cầu mượt mà, KHÔNG BỊ NHỌN HAY THỪA GÓC.
+   *   + Thân giày ôm khít bàn chân, mu vồng cao thanh thoát vững chãi.
+   *   + Mũi giày bo tròn bầu bĩnh hình bán cầu elip (Elliptical Toe Dome) tự nhiên, KHÔNG BỊ NHỌN MŨI.
+   *   + Medial Arch Waist Cinch: Thắt eo vòm trong thon gọn chuẩn quý ông Ý.
+   */
+  private createLeatherOxfordUpperGeometry(dir: number): THREE.BufferGeometry {
+    const NZ = 36;
+    const NU = 32;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    const medialDir = dir > 0 ? -1 : 1;
+
+    for (let k = 0; k <= NZ; k++) {
+      const zFrac = k / NZ;
+
+      let z: number;
+      let rX_lat: number;
+      let rX_med: number;
+      let yTop: number;
+      let yBot: number = -0.024; // Đáy thân giày gắn khít trên bề mặt đế welt
+      let rearDomeScale: number = 1.0;
+
+      if (zFrac <= 0.20) {
+        // 1. Gót sau bo tròn 3D mượt mà ôm gân gót Achilles (z: -0.048 -> -0.015)
+        const hT = zFrac / 0.20;
+        const theta = (1 - hT) * (Math.PI / 2);
+        z = -0.015 - Math.sin(theta) * 0.033;
+        const rScale = Math.cos(theta);
+        rX_lat = Math.max(0.002, 0.027 * rScale);
+        rX_med = Math.max(0.002, 0.027 * rScale);
+        rearDomeScale = 0.35 + 0.65 * rScale;
+        yTop = 0.014 - hT * 0.003; // 0.014 -> 0.011
+      } else if (zFrac <= 0.65) {
+        // 2. Thân giữa & Mu giày vồng cao thanh thoát (z: -0.015 -> +0.055)
+        const midT = (zFrac - 0.20) / 0.45;
+        z = -0.015 + midT * 0.070;
+        const waist = Math.sin(midT * Math.PI) * 0.003;
+        rX_lat = 0.027 + midT * 0.007; // 0.027 -> 0.034 (nở rộng ở ức bàn chân)
+        rX_med = 0.027 + midT * 0.007 - waist;
+        const instepBulge = Math.sin(midT * Math.PI) * 0.005;
+        yTop = 0.011 + instepBulge - midT * 0.011; // 0.011 -> đỉnh 0.016 -> 0.000
+      } else {
+        // 3. Mũi tròn bầu bĩnh hình bán cầu elip (z: +0.055 -> +0.098) - KHÔNG BỊ NHỌN MŨI
+        const toeT = (zFrac - 0.65) / 0.35;
+        const toeTheta = toeT * (Math.PI / 2);
+        const toeArc = Math.sin(toeTheta);
+        z = 0.055 + toeArc * 0.043;
+
+        const domeScale = Math.cos(toeTheta);
+        rX_lat = Math.max(0.004, 0.034 * domeScale);
+        rX_med = Math.max(0.004, 0.034 * domeScale);
+
+        const spring = Math.pow(toeT, 2.0) * 0.0028;
+        yBot = -0.024 + spring;
+        yTop = 0.000 - toeArc * 0.008 + spring;
+      }
+
+      for (let j = 0; j <= NU; j++) {
+        const uFrac = j / NU;
+        const phi = uFrac * Math.PI * 2;
+        const cosP = Math.cos(phi);
+        const sinP = Math.sin(phi);
+
+        const isMedial = sinP * medialDir >= 0;
+        const curRX = isMedial ? rX_med : rX_lat;
+        const px = sinP * curRX;
+
+        const yCenter = (yTop + yBot) * 0.5;
+        const yHalf = (yTop - yBot) * 0.5 * rearDomeScale;
+        let py = yCenter + cosP * yHalf;
+
+        // Vát nhẹ hõm vòm trong bàn chân (Medial Longitudinal Arch)
+        if (cosP < -0.1 && zFrac >= 0.22 && zFrac <= 0.60 && isMedial) {
+          const archLift = Math.sin(((zFrac - 0.22) / 0.38) * Math.PI) * 0.004 * -cosP;
+          py += archLift;
+        }
+
+        positions.push(px, py, z);
+        uvs.push(uFrac, zFrac);
+      }
+    }
+
+    for (let k = 0; k < NZ; k++) {
+      for (let j = 0; j < NU; j++) {
+        const i0 = k * (NU + 1) + j;
+        const i1 = i0 + 1;
+        const i2 = (k + 1) * (NU + 1) + j;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * Tạo đế giày da khâu viền Welt đúc nguyên khối (Goodyear Welted Outsole)
+   * - Bo tròn đều móng ngựa ở gót sau ôm khít thân giày, không thừa góc vuông.
+   * - Đặt sát mặt sàn vững chãi: Y từ -0.023m xuống -0.032m (độ dày 9mm chuẩn quốc tế).
+   */
+  private createLeatherOxfordSoleGeometry(dir: number): THREE.BufferGeometry {
+    const NZ = 32;
+    const NU = 28;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    const medialDir = dir > 0 ? -1 : 1;
+
+    for (let k = 0; k <= NZ; k++) {
+      const zFrac = k / NZ;
+
+      let z: number;
+      let rX_lat: number;
+      let rX_med: number;
+      let yTop: number = -0.023;
+      let yBot: number = -0.032; // Đặt vững vàng trên mặt sàn Y = -0.032
+      let rearDomeScale: number = 1.0;
+
+      if (zFrac <= 0.20) {
+        // Gót sau bo tròn móng ngựa ôm sát gót
+        const hT = zFrac / 0.20;
+        const theta = (1 - hT) * (Math.PI / 2);
+        z = -0.015 - Math.sin(theta) * 0.034;
+        const rScale = Math.cos(theta);
+        rX_lat = Math.max(0.003, 0.028 * rScale);
+        rX_med = Math.max(0.003, 0.028 * rScale);
+        rearDomeScale = 0.4 + 0.6 * rScale;
+      } else if (zFrac <= 0.65) {
+        const midT = (zFrac - 0.20) / 0.45;
+        z = -0.015 + midT * 0.070;
+        const waist = Math.sin(midT * Math.PI) * 0.003;
+        rX_lat = 0.028 + midT * 0.007;
+        rX_med = 0.028 + midT * 0.007 - waist;
+      } else {
+        const toeT = (zFrac - 0.65) / 0.35;
+        const toeTheta = toeT * (Math.PI / 2);
+        const toeArc = Math.sin(toeTheta);
+        z = 0.055 + toeArc * 0.044; // z max = 0.099m
+
+        const domeScale = Math.cos(toeTheta);
+        rX_lat = Math.max(0.005, 0.035 * domeScale);
+        rX_med = Math.max(0.005, 0.035 * domeScale);
+
+        const spring = Math.pow(toeT, 2.0) * 0.0028;
+        yTop += spring;
+        yBot += spring;
+      }
+
+      for (let j = 0; j <= NU; j++) {
+        const uFrac = j / NU;
+        const phi = uFrac * Math.PI * 2;
+        const cosP = Math.cos(phi);
+        const sinP = Math.sin(phi);
+
+        const isMedial = sinP * medialDir >= 0;
+        const curRX = isMedial ? rX_med : rX_lat;
+        const px = sinP * curRX;
+
+        const yCenter = (yTop + yBot) * 0.5;
+        const yHalf = (yTop - yBot) * 0.5 * rearDomeScale;
+        const py = yCenter + cosP * yHalf;
+
+        positions.push(px, py, z);
+        uvs.push(uFrac, zFrac);
+      }
+    }
+
+    for (let k = 0; k < NZ; k++) {
+      for (let j = 0; j < NU; j++) {
+        const i0 = k * (NU + 1) + j;
+        const i1 = i0 + 1;
+        const i2 = (k + 1) * (NU + 1) + j;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * Tạo gót gỗ phân tầng bo tròn móng ngựa (Horseshoe Stacked Heel Block)
+   * - Bo tròn đều phía sau ôm khít đường cong gót giày, KHÔNG CÒN GÓC VUÔNG THỪA.
+   * - Chiều cao gót chuẩn 11mm (y từ -0.023m xuống -0.034m)
+   */
+  private createLeatherOxfordHeelGeometry(_dir: number): THREE.BufferGeometry {
+    const NZ = 16;
+    const NU = 24;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    const yTop = -0.023;
+    const yBot = -0.034; // Gót nâng vững vàng trên sàn
+
+    for (let k = 0; k <= NZ; k++) {
+      const zFrac = k / NZ;
+
+      // Khối gót bo tròn hình chữ U / móng ngựa ôm từ z = -0.048 đến -0.010m
+      let z: number;
+      let rX: number;
+      let rearDomeScale = 1.0;
+
+      if (zFrac <= 0.70) {
+        // Vòng cung gót sau bo tròn
+        const arcT = zFrac / 0.70;
+        const theta = (1 - arcT) * (Math.PI / 2);
+        z = -0.015 - Math.sin(theta) * 0.033;
+        const rScale = Math.cos(theta);
+        rX = Math.max(0.003, 0.027 * rScale);
+        rearDomeScale = 0.4 + 0.6 * rScale;
+      } else {
+        // Mặt trước gót (heel breast)
+        const frontT = (zFrac - 0.70) / 0.30;
+        z = -0.015 + frontT * 0.005;
+        rX = 0.027;
+      }
+
+      for (let j = 0; j <= NU; j++) {
+        const uFrac = j / NU;
+        const phi = uFrac * Math.PI * 2;
+        const cosP = Math.cos(phi);
+        const sinP = Math.sin(phi);
+
+        const px = sinP * rX;
+
+        const yCenter = (yTop + yBot) * 0.5;
+        const yHalf = (yTop - yBot) * 0.5 * rearDomeScale;
+        const py = yCenter + cosP * yHalf;
+
+        positions.push(px, py, z);
+        uvs.push(uFrac, zFrac);
+      }
+    }
+
+    for (let k = 0; k < NZ; k++) {
+      for (let j = 0; j < NU; j++) {
+        const i0 = k * (NU + 1) + j;
+        const i1 = i0 + 1;
+        const i2 = (k + 1) * (NU + 1) + j;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * Tạo các chi tiết phụ tinh xảo cho giày Loafer Khóa Móng Ngựa (Horsebit Leather Loafer):
+   * 1. Đai da ngang (Transverse Saddle Strap) vắt ngang mu chân
+   * 2. Khóa kim loại móng ngựa 3D mạ crom/vàng sang trọng (Horsebit Buckle: thanh ngang + 2 khuyên D-Ring)
+   * 3. Miếng táp đai da 2 bên (Saddle Keeper Tabs)
+   */
+  private buildOxfordDetails(targetGroup: THREE.Group) {
+    // 1. Đai da ngang vắt qua mu chân (Transverse Saddle Strap) bám khít trên mu giày ở z = 0.020m
+    const strapGeo = new THREE.BoxGeometry(0.040, 0.0022, 0.012);
+    const strapMesh = new THREE.Mesh(strapGeo, this.shoeLeatherMaterial);
+    strapMesh.position.set(0, 0.015, 0.020);
+    strapMesh.rotation.x = -0.12;
+    targetGroup.add(strapMesh);
+
+    // Táp da giữ đai ở 2 bên mép giày
+    [-1, 1].forEach((side) => {
+      const keeperGeo = new THREE.BoxGeometry(0.004, 0.003, 0.014);
+      const keeper = new THREE.Mesh(keeperGeo, this.shoeLeatherMaterial);
+      keeper.position.set(side * 0.019, 0.0135, 0.020);
+      keeper.rotation.z = side * -0.15;
+      targetGroup.add(keeper);
+    });
+
+    // 2. Khóa kim loại móng ngựa 3D (Horsebit Metal Buckle) đặt khít trên đai da
+    // 2.1 Thanh ngang kim loại ở giữa (Central Horsebit Bar)
+    const centerBarGeo = new THREE.CylinderGeometry(0.0011, 0.0011, 0.012, 10);
+    centerBarGeo.rotateZ(Math.PI / 2);
+    const centerBar = new THREE.Mesh(centerBarGeo, this.shoeAccentMaterial);
+    centerBar.position.set(0, 0.0168, 0.0205);
+    targetGroup.add(centerBar);
+
+    // Khớp gài trung tâm (Center Link Ring)
+    const linkRingGeo = new THREE.CylinderGeometry(0.0016, 0.0016, 0.0030, 10);
+    linkRingGeo.rotateZ(Math.PI / 2);
+    const linkRing = new THREE.Mesh(linkRingGeo, this.shoeAccentMaterial);
+    linkRing.position.set(0, 0.0168, 0.0205);
+    targetGroup.add(linkRing);
+
+    // 2.2 Hai khuyên kim loại móng ngựa / D-Ring ở hai bên
+    [-1, 1].forEach((ringSide) => {
+      const ringGeo = new THREE.TorusGeometry(0.0036, 0.0009, 8, 16);
+      const ringMesh = new THREE.Mesh(ringGeo, this.shoeAccentMaterial);
+      ringMesh.position.set(ringSide * 0.0088, 0.0168, 0.0205);
+      ringMesh.rotation.set(0.12, ringSide * 0.15, ringSide * -0.1);
+      targetGroup.add(ringMesh);
+    });
+  }
+
+  /**
+   * Điêu khắc thân giày thể thao Sneaker da mềm (Low-Top Leather Sneaker)
+   */
+  private createSneakerUpperGeometry(dir: number): THREE.BufferGeometry {
+    const NZ = 32;
+    const NU = 28;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    const medialDir = dir > 0 ? -1 : 1;
+
+    for (let k = 0; k <= NZ; k++) {
+      const zFrac = k / NZ;
+
+      let zBase: number;
+      let rX_lat: number;
+      let rX_med: number;
+      let yTop: number;
+      let yBot: number = -0.024;
+
+      if (zFrac <= 0.20) {
+        // Gót sneaker đệm êm ôm khít gót chân
+        const heelT = zFrac / 0.20;
+        const theta = (1 - heelT) * (Math.PI / 2);
+        zBase = -0.015 - Math.sin(theta) * 0.033;
+        const rScale = Math.cos(theta);
+        rX_lat = Math.max(0.004, rScale * 0.027);
+        rX_med = Math.max(0.004, rScale * 0.027);
+        yTop = 0.006 + (1 - heelT) * 0.012;
+      } else if (zFrac <= 0.60) {
+        // Thân giữa và mu giày thể thao
+        const midT = (zFrac - 0.20) / 0.40;
+        zBase = -0.015 + midT * 0.072;
+        rX_lat = 0.027 + midT * 0.006;
+        rX_med = 0.027 + midT * 0.007;
+        yTop = 0.014 - midT * 0.010;
+      } else if (zFrac <= 0.80) {
+        // Ức bàn chân
+        const ballT = (zFrac - 0.60) / 0.20;
+        zBase = 0.057 + ballT * 0.034;
+        rX_lat = 0.033 - ballT * 0.001;
+        rX_med = 0.034 - ballT * 0.001;
+        yTop = 0.004 - ballT * 0.008;
+      } else {
+        // Mũi tròn sneaker
+        const toeT = (zFrac - 0.80) / 0.20;
+        const toeTheta = toeT * (Math.PI / 2);
+        const toeArc = Math.sin(toeTheta);
+        zBase = 0.091 + toeArc * 0.024;
+
+        const domeScale = Math.cos(toeTheta);
+        rX_lat = Math.max(0.003, 0.032 * domeScale);
+        rX_med = Math.max(0.003, 0.033 * domeScale);
+
+        const spring = Math.pow(toeT, 2.0) * 0.0025;
+        yBot = -0.024 + spring;
+        yTop = -0.004 - toeArc * 0.006 + spring;
+      }
+
+      for (let j = 0; j <= NU; j++) {
+        const uFrac = j / NU;
+        const phi = uFrac * Math.PI * 2;
+        const cosP = Math.cos(phi);
+        const sinP = Math.sin(phi);
+
+        const isMedial = sinP * medialDir >= 0;
+        const curRX = isMedial ? rX_med : rX_lat;
+        const px = sinP * curRX;
+
+        const yCenter = (yTop + yBot) * 0.5;
+        const yHalf = (yTop - yBot) * 0.5;
+        const py = yCenter + cosP * yHalf;
+
+        positions.push(px, py, zBase);
+        uvs.push(uFrac, zFrac);
+      }
+    }
+
+    for (let k = 0; k < NZ; k++) {
+      for (let j = 0; j < NU; j++) {
+        const i0 = k * (NU + 1) + j;
+        const i1 = i0 + 1;
+        const i2 = (k + 1) * (NU + 1) + j;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * Tạo đế đúc cao su thể thao (Rubber Cupsole) cho sneaker
+   */
+  private createSneakerSoleGeometry(dir: number): THREE.BufferGeometry {
+    const NZ = 28;
+    const NU = 24;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    const medialDir = dir > 0 ? -1 : 1;
+    const yTop = -0.023;
+    const yBot = -0.032; // Đặt vững vàng trên sàn Y = -0.032
+
+    for (let k = 0; k <= NZ; k++) {
+      const zFrac = k / NZ;
+
+      let zBase: number;
+      let rX_lat: number;
+      let rX_med: number;
+
+      if (zFrac <= 0.20) {
+        const heelT = zFrac / 0.20;
+        const theta = (1 - heelT) * (Math.PI / 2);
+        zBase = -0.015 - Math.sin(theta) * 0.036;
+        const rScale = Math.cos(theta);
+        rX_lat = Math.max(0.006, rScale * 0.029);
+        rX_med = Math.max(0.006, rScale * 0.029);
+      } else if (zFrac <= 0.60) {
+        const midT = (zFrac - 0.20) / 0.40;
+        zBase = -0.015 + midT * 0.072;
+        rX_lat = 0.029 + midT * 0.006;
+        rX_med = 0.029 + midT * 0.007;
+      } else if (zFrac <= 0.80) {
+        const ballT = (zFrac - 0.60) / 0.20;
+        zBase = 0.057 + ballT * 0.034;
+        rX_lat = 0.035 - ballT * 0.001;
+        rX_med = 0.036 - ballT * 0.001;
+      } else {
+        const toeT = (zFrac - 0.80) / 0.20;
+        const toeTheta = toeT * (Math.PI / 2);
+        const toeArc = Math.sin(toeTheta);
+        zBase = 0.091 + toeArc * 0.026;
+
+        const domeScale = Math.cos(toeTheta);
+        rX_lat = Math.max(0.004, 0.034 * domeScale);
+        rX_med = Math.max(0.004, 0.035 * domeScale);
+      }
+
+      for (let j = 0; j <= NU; j++) {
+        const uFrac = j / NU;
+        const phi = uFrac * Math.PI * 2;
+        const cosP = Math.cos(phi);
+        const sinP = Math.sin(phi);
+
+        const isMedial = sinP * medialDir >= 0;
+        const curRX = isMedial ? rX_med : rX_lat;
+        const px = sinP * curRX;
+
+        const yCenter = (yTop + yBot) * 0.5;
+        const yHalf = (yTop - yBot) * 0.5;
+        const py = yCenter + cosP * yHalf;
+
+        positions.push(px, py, zBase);
+        uvs.push(uFrac, zFrac);
+      }
+    }
+
+    for (let k = 0; k < NZ; k++) {
+      for (let j = 0; j < NU; j++) {
+        const i0 = k * (NU + 1) + j;
+        const i1 = i0 + 1;
+        const i2 = (k + 1) * (NU + 1) + j;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * Tạo chi tiết cho Sneaker: Lưỡi gà, đệm cổ giày, 4 hàng dây đan chéo và nơ buộc 3D
+   */
+  private buildSneakerDetails(targetGroup: THREE.Group) {
+    // 1. Lưỡi gà giày thể thao (Shoe Tongue)
+    const tongueGeo = new THREE.BoxGeometry(0.026, 0.032, 0.003);
+    tongueGeo.rotateX(-0.35);
+    const tongue = new THREE.Mesh(tongueGeo, this.shoeLeatherMaterial);
+    tongue.position.set(0, 0.012, 0.026);
+    targetGroup.add(tongue);
+
+    // 2. Dây giày đan chéo 3D (Criss-cross shoelaces)
+    const laceYPositions = [0.005, 0.009, 0.013, 0.017];
+    const laceZPositions = [0.050, 0.040, 0.030, 0.020];
+
+    for (let r = 0; r < 4; r++) {
+      const yP = laceYPositions[r];
+      const zP = laceZPositions[r];
+      const laceRowGeo = new THREE.BoxGeometry(0.020, 0.0022, 0.005);
+      const laceRow = new THREE.Mesh(laceRowGeo, this.shoeLaceMaterial);
+      laceRow.position.set(0, yP, zP);
+      laceRow.rotation.x = -0.22;
+      targetGroup.add(laceRow);
+    }
+
+    // 3. Nơ buộc thắt sneaker
+    const knotGeo = new THREE.TorusGeometry(0.005, 0.0014, 8, 16);
+    const knot = new THREE.Mesh(knotGeo, this.shoeLaceMaterial);
+    knot.position.set(0, 0.020, 0.018);
+    knot.rotation.x = 0.35;
+    targetGroup.add(knot);
+  }
+
+  /**
+   * Rebuild footwear dynamically based on selected shoesId and shoesColor
+   */
+  public rebuildShoes(shoesId: string = 'shoes_polished_leather_oxford', colorHex: string = '#1e1b18') {
+    this.currentShoesId = shoesId;
+    this.currentShoesColor = colorHex;
+
+    // Xóa bỏ mesh giày cũ ở cả 2 chân
+    this.clearGroup(this.leftShoeGroup);
+    this.clearGroup(this.rightShoeGroup);
+
+    if (shoesId === 'shoes_barefoot' || shoesId === 'none') {
+      // Hiện bàn chân trần giải phẫu học nếu có
+      if (this.leftFootMesh) this.leftFootMesh.visible = true;
+      if (this.rightFootMesh) this.rightFootMesh.visible = true;
+      return;
+    }
+
+    // Luôn đi giày: ẩn bàn chân trần để không bị xuyên thấu / z-fighting
+    if (this.leftFootMesh) this.leftFootMesh.visible = false;
+    if (this.rightFootMesh) this.rightFootMesh.visible = false;
+
+    // Cập nhật màu da giày
+    this.shoeLeatherMaterial.color.set(colorHex);
+
+    [-1, 1].forEach((dir) => {
+      const targetGroup = dir < 0 ? this.leftShoeGroup : this.rightShoeGroup;
+
+      if (shoesId === 'shoes_polished_leather_oxford') {
+        // 1. Thân giày da Loafer cao cấp Ý
+        const upperGeo = this.createLeatherOxfordUpperGeometry(dir);
+        const upperMesh = new THREE.Mesh(upperGeo, this.shoeLeatherMaterial);
+        upperMesh.castShadow = true;
+        upperMesh.receiveShadow = true;
+        targetGroup.add(upperMesh);
+
+        // 2. Đế viền welt đúc vững chắc chạm sàn
+        const soleGeo = this.createLeatherOxfordSoleGeometry(dir);
+        const soleMesh = new THREE.Mesh(soleGeo, this.shoeSoleMaterial);
+        soleMesh.castShadow = true;
+        soleMesh.receiveShadow = true;
+        targetGroup.add(soleMesh);
+
+        // 3. Gót gỗ phân tầng
+        const heelGeo = this.createLeatherOxfordHeelGeometry(dir);
+        const heelMesh = new THREE.Mesh(heelGeo, this.shoeHeelMaterial);
+        heelMesh.castShadow = true;
+        heelMesh.receiveShadow = true;
+        targetGroup.add(heelMesh);
+
+        // 4. Chi tiết đai da, khóa kim loại móng ngựa 3D và gờ viền khâu moc-toe
+        this.buildOxfordDetails(targetGroup);
+      } else if (shoesId === 'shoes_low_top_sneaker') {
+        // Giày Sneaker
+        const upperGeo = this.createSneakerUpperGeometry(dir);
+        const upperMesh = new THREE.Mesh(upperGeo, this.shoeLeatherMaterial);
+        upperMesh.castShadow = true;
+        upperMesh.receiveShadow = true;
+        targetGroup.add(upperMesh);
+
+        const soleGeo = this.createSneakerSoleGeometry(dir);
+        const soleMesh = new THREE.Mesh(soleGeo, this.shoeSoleMaterial);
+        soleMesh.castShadow = true;
+        soleMesh.receiveShadow = true;
+        targetGroup.add(soleMesh);
+
+        this.buildSneakerDetails(targetGroup);
+      }
+    });
+  }
+
   /**
    * Cập nhật màu da / chất liệu toàn thân, ngũ quan và kiểu tóc đồng bộ từ bảng màu customizer
    */
@@ -6435,6 +7138,11 @@ export class ArticulatedMannequin implements IHumanCharacter {
     const pantsId = config?.pantsId || 'pants_classic_denim_jeans';
     const pantsColor = config?.pantsColor || '#1e293b';
     this.rebuildPants(pantsId, pantsColor);
+
+    // Cập nhật giày 3D & màu sắc giày (Oxford Leather / Sneaker / Barefoot)
+    const shoesId = config?.shoesId || 'shoes_polished_leather_oxford';
+    const shoesColor = config?.shoesColor || '#1e1b18';
+    this.rebuildShoes(shoesId, shoesColor);
 
     // Cập nhật ngũ quan khuôn mặt khi config thay đổi
     if (this.headMesh && config) {

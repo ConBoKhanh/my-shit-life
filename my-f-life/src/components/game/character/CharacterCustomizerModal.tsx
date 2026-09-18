@@ -2118,87 +2118,85 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
                   </div>
 
                   {/* Bảng màu áo */}
-                  {config.shirtId !== 'shirt_none' && (
-                    <div style={{ padding: '14px 16px', backgroundColor: '#FFFFFF', borderRadius: '14px', border: '1px solid rgba(108, 92, 231, 0.15)' }}>
-                      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-main)', marginBottom: '10px' }}>
-                        🎨 Bảng Màu Áo (Shirt Color Palette):
-                      </div>
-                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                        {SHIRT_COLORS.map((sc) => {
-                          const isColorSelected = config.shirtColor?.toLowerCase() === sc.hex.toLowerCase();
-                          return (
-                            <button
-                              key={sc.id}
-                              onClick={() => setConfig((prev) => ({ ...prev, shirtColor: sc.hex }))}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '6px 14px',
-                                borderRadius: '20px',
-                                border: isColorSelected ? '2px solid #6C5CE7' : '1px solid rgba(0,0,0,0.12)',
-                                backgroundColor: isColorSelected ? 'rgba(108, 92, 231, 0.1)' : '#FAF9FE',
-                                cursor: 'pointer',
-                                fontSize: '12px',
-                                fontWeight: isColorSelected ? 700 : 500,
-                              }}
-                            >
-                              <span style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: sc.hex, border: '1px solid rgba(0,0,0,0.2)', display: 'inline-block' }} />
-                              <span>{sc.name}</span>
-                            </button>
-                          );
-                        })}
-
-                        {/* Nút Tự Chọn Màu Áo Custom */}
-                        {(() => {
-                          const isPreset = SHIRT_COLORS.some((c) => c.hex.toLowerCase() === (config.shirtColor || '').toLowerCase());
-                          return (
-                            <label
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '6px 14px',
-                                borderRadius: '20px',
-                                border: !isPreset ? '2px solid #6C5CE7' : '1.5px dashed rgba(108, 92, 231, 0.4)',
-                                backgroundColor: !isPreset ? 'rgba(108, 92, 231, 0.1)' : '#FFFFFF',
-                                cursor: 'pointer',
-                                fontSize: '12px',
-                                fontWeight: !isPreset ? 700 : 500,
-                                position: 'relative',
-                                transition: 'all 0.15s ease',
-                              }}
-                            >
-                              <input
-                                type="color"
-                                value={config.shirtColor || '#ffffff'}
-                                onChange={(e) => setConfig((prev) => ({ ...prev, shirtColor: e.target.value }))}
-                                style={{
-                                  position: 'absolute',
-                                  top: 0,
-                                  left: 0,
-                                  width: '100%',
-                                  height: '100%',
-                                  opacity: 0,
-                                  cursor: 'pointer',
-                                }}
-                              />
-                              <span
-                                style={{
-                                  width: '16px',
-                                  height: '16px',
-                                  borderRadius: '50%',
-                                  background: 'conic-gradient(from 0deg, red, yellow, lime, aqua, blue, magenta, red)',
-                                  display: 'inline-block',
-                                }}
-                              />
-                              <span style={{ color: '#6C5CE7' }}>🎨 Tự Chọn ({config.shirtColor})</span>
-                            </label>
-                          );
-                        })()}
-                      </div>
+                  <div style={{ padding: '14px 16px', backgroundColor: '#FFFFFF', borderRadius: '14px', border: '1px solid rgba(108, 92, 231, 0.15)' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-main)', marginBottom: '10px' }}>
+                      🎨 Bảng Màu Áo (Shirt Color Palette):
                     </div>
-                  )}
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      {SHIRT_COLORS.map((sc) => {
+                        const isColorSelected = config.shirtColor?.toLowerCase() === sc.hex.toLowerCase();
+                        return (
+                          <button
+                            key={sc.id}
+                            onClick={() => setConfig((prev) => ({ ...prev, shirtColor: sc.hex }))}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '6px 14px',
+                              borderRadius: '20px',
+                              border: isColorSelected ? '2px solid #6C5CE7' : '1px solid rgba(0,0,0,0.12)',
+                              backgroundColor: isColorSelected ? 'rgba(108, 92, 231, 0.1)' : '#FAF9FE',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: isColorSelected ? 700 : 500,
+                            }}
+                          >
+                            <span style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: sc.hex, border: '1px solid rgba(0,0,0,0.2)', display: 'inline-block' }} />
+                            <span>{sc.name}</span>
+                          </button>
+                        );
+                      })}
+
+                      {/* Nút Tự Chọn Màu Áo Custom */}
+                      {(() => {
+                        const isPreset = SHIRT_COLORS.some((c) => c.hex.toLowerCase() === (config.shirtColor || '').toLowerCase());
+                        return (
+                          <label
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '6px 14px',
+                              borderRadius: '20px',
+                              border: !isPreset ? '2px solid #6C5CE7' : '1.5px dashed rgba(108, 92, 231, 0.4)',
+                              backgroundColor: !isPreset ? 'rgba(108, 92, 231, 0.1)' : '#FFFFFF',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: !isPreset ? 700 : 500,
+                              position: 'relative',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <input
+                              type="color"
+                              value={config.shirtColor || '#ffffff'}
+                              onChange={(e) => setConfig((prev) => ({ ...prev, shirtColor: e.target.value }))}
+                              style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: '100%',
+                                opacity: 0,
+                                cursor: 'pointer',
+                              }}
+                            />
+                            <span
+                              style={{
+                                width: '16px',
+                                height: '16px',
+                                borderRadius: '50%',
+                                background: 'conic-gradient(from 0deg, red, yellow, lime, aqua, blue, magenta, red)',
+                                display: 'inline-block',
+                              }}
+                            />
+                            <span style={{ color: '#6C5CE7' }}>🎨 Tự Chọn ({config.shirtColor})</span>
+                          </label>
+                        );
+                      })()}
+                    </div>
+                  </div>
                 </motion.div>
               )}
 
@@ -2436,87 +2434,85 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
                   </div>
 
                   {/* Bảng màu giày */}
-                  {config.shoesId !== 'shoes_barefoot' && (
-                    <div style={{ padding: '14px 16px', backgroundColor: '#FFFFFF', borderRadius: '14px', border: '1px solid rgba(108, 92, 231, 0.15)' }}>
-                      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-main)', marginBottom: '10px' }}>
-                        🎨 Bảng Màu Giày (Shoes Color Palette):
-                      </div>
-                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                        {SHOES_COLORS.map((shc) => {
-                          const isColorSelected = config.shoesColor?.toLowerCase() === shc.hex.toLowerCase();
-                          return (
-                            <button
-                              key={shc.id}
-                              onClick={() => setConfig((prev) => ({ ...prev, shoesColor: shc.hex }))}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '6px 14px',
-                                borderRadius: '20px',
-                                border: isColorSelected ? '2px solid #6C5CE7' : '1px solid rgba(0,0,0,0.12)',
-                                backgroundColor: isColorSelected ? 'rgba(108, 92, 231, 0.1)' : '#FAF9FE',
-                                cursor: 'pointer',
-                                fontSize: '12px',
-                                fontWeight: isColorSelected ? 700 : 500,
-                              }}
-                            >
-                              <span style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: shc.hex, border: '1px solid rgba(0,0,0,0.2)', display: 'inline-block' }} />
-                              <span>{shc.name}</span>
-                            </button>
-                          );
-                        })}
-
-                        {/* Nút Tự Chọn Màu Giày Custom */}
-                        {(() => {
-                          const isPreset = SHOES_COLORS.some((c) => c.hex.toLowerCase() === (config.shoesColor || '').toLowerCase());
-                          return (
-                            <label
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '6px 14px',
-                                borderRadius: '20px',
-                                border: !isPreset ? '2px solid #6C5CE7' : '1.5px dashed rgba(108, 92, 231, 0.4)',
-                                backgroundColor: !isPreset ? 'rgba(108, 92, 231, 0.1)' : '#FFFFFF',
-                                cursor: 'pointer',
-                                fontSize: '12px',
-                                fontWeight: !isPreset ? 700 : 500,
-                                position: 'relative',
-                                transition: 'all 0.15s ease',
-                              }}
-                            >
-                              <input
-                                type="color"
-                                value={config.shoesColor || '#f8fafc'}
-                                onChange={(e) => setConfig((prev) => ({ ...prev, shoesColor: e.target.value }))}
-                                style={{
-                                  position: 'absolute',
-                                  top: 0,
-                                  left: 0,
-                                  width: '100%',
-                                  height: '100%',
-                                  opacity: 0,
-                                  cursor: 'pointer',
-                                }}
-                              />
-                              <span
-                                style={{
-                                  width: '16px',
-                                  height: '16px',
-                                  borderRadius: '50%',
-                                  background: 'conic-gradient(from 0deg, red, yellow, lime, aqua, blue, magenta, red)',
-                                  display: 'inline-block',
-                                }}
-                              />
-                              <span style={{ color: '#6C5CE7' }}>🎨 Tự Chọn ({config.shoesColor})</span>
-                            </label>
-                          );
-                        })()}
-                      </div>
+                  <div style={{ padding: '14px 16px', backgroundColor: '#FFFFFF', borderRadius: '14px', border: '1px solid rgba(108, 92, 231, 0.15)' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-main)', marginBottom: '10px' }}>
+                      🎨 Bảng Màu Giày (Shoes Color Palette):
                     </div>
-                  )}
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      {SHOES_COLORS.map((shc) => {
+                        const isColorSelected = config.shoesColor?.toLowerCase() === shc.hex.toLowerCase();
+                        return (
+                          <button
+                            key={shc.id}
+                            onClick={() => setConfig((prev) => ({ ...prev, shoesColor: shc.hex }))}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '6px 14px',
+                              borderRadius: '20px',
+                              border: isColorSelected ? '2px solid #6C5CE7' : '1px solid rgba(0,0,0,0.12)',
+                              backgroundColor: isColorSelected ? 'rgba(108, 92, 231, 0.1)' : '#FAF9FE',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: isColorSelected ? 700 : 500,
+                            }}
+                          >
+                            <span style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: shc.hex, border: '1px solid rgba(0,0,0,0.2)', display: 'inline-block' }} />
+                            <span>{shc.name}</span>
+                          </button>
+                        );
+                      })}
+
+                      {/* Nút Tự Chọn Màu Giày Custom */}
+                      {(() => {
+                        const isPreset = SHOES_COLORS.some((c) => c.hex.toLowerCase() === (config.shoesColor || '').toLowerCase());
+                        return (
+                          <label
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              padding: '6px 14px',
+                              borderRadius: '20px',
+                              border: !isPreset ? '2px solid #6C5CE7' : '1.5px dashed rgba(108, 92, 231, 0.4)',
+                              backgroundColor: !isPreset ? 'rgba(108, 92, 231, 0.1)' : '#FFFFFF',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: !isPreset ? 700 : 500,
+                              position: 'relative',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <input
+                              type="color"
+                              value={config.shoesColor || '#1e1b18'}
+                              onChange={(e) => setConfig((prev) => ({ ...prev, shoesColor: e.target.value }))}
+                              style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: '100%',
+                                opacity: 0,
+                                cursor: 'pointer',
+                              }}
+                            />
+                            <span
+                              style={{
+                                width: '16px',
+                                height: '16px',
+                                borderRadius: '50%',
+                                background: 'conic-gradient(from 0deg, red, yellow, lime, aqua, blue, magenta, red)',
+                                display: 'inline-block',
+                              }}
+                            />
+                            <span style={{ color: '#6C5CE7' }}>🎨 Tự Chọn ({config.shoesColor})</span>
+                          </label>
+                        );
+                      })()}
+                    </div>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>

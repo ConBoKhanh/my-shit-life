@@ -92,14 +92,18 @@ const EXPANDED_SKIN_TONES = [
   { id: 'white_porcelain', name: 'Sứ Trắng Studio', hex: '#F4F7FA', badge: '★ Điêu Khắc' },
 ];
 
-// Bảng màu trang phục áo
+// Bảng màu trang phục áo (Oxford & Casual)
 const SHIRT_COLORS = [
-  { id: 'pure_white', name: 'Trắng Tinh', hex: '#FFFFFF' },
+  { id: 'pure_white', name: 'Trắng Oxford', hex: '#FFFFFF' },
+  { id: 'baby_blue', name: 'Xanh Baby', hex: '#BFDBFE' },
+  { id: 'sky_blue', name: 'Xanh Dương Nhạt', hex: '#60A5FA' },
   { id: 'navy_blue', name: 'Xanh Navy', hex: '#1E293B' },
   { id: 'obsidian_black', name: 'Đen Obsidian', hex: '#18181B' },
-  { id: 'burgundy_red', name: 'Đỏ Burgundy', hex: '#881337' },
+  { id: 'pastel_pink', name: 'Hồng Pastel', hex: '#FBCFE8' },
+  { id: 'beige_sand', name: 'Kaki Be', hex: '#E2D4C3' },
+  { id: 'slate_grey', name: 'Xám Khói', hex: '#94A3B8' },
   { id: 'forest_green', name: 'Xanh Rêu', hex: '#14532D' },
-  { id: 'heather_grey', name: 'Xám Heather', hex: '#64748B' },
+  { id: 'burgundy_red', name: 'Đỏ Burgundy', hex: '#881337' },
 ];
 
 // Bảng màu trang phục quần
@@ -161,8 +165,14 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
       body: {
         ...normalized.body,
         heightCm: (!normalized.body?.heightCm || normalized.body.heightCm < 95 || normalized.body.heightCm > 115) 
-          ? 105 
+          ? 95 
           : normalized.body.heightCm,
+        legLengthScale: (!normalized.body?.legLengthScale || normalized.body.legLengthScale < 0.85 || normalized.body.legLengthScale > 1.15)
+          ? 0.85
+          : normalized.body.legLengthScale,
+        armLengthScale: (!normalized.body?.armLengthScale || normalized.body.armLengthScale < 0.85 || normalized.body.armLengthScale > 1.15)
+          ? 1.0
+          : normalized.body.armLengthScale,
       },
     };
   });
@@ -334,21 +344,24 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
       skinTone: '#B57850',
       lipColor: REALISTIC_LIP_COLORS[0].hex,
       body: {
-        heightCm: 105,
+        heightCm: 95,
         weightKg: 24,
         musclePct: 20,
         shoulderWidthScale: 1.0,
-        legLengthScale: 1.0,
+        legLengthScale: 0.85,
+        armLengthScale: 1.0,
       },
     });
   };
 
   // Xác nhận lưu nhân vật
   const handleConfirm = () => {
+    const armScale = typeof config.body.armLengthScale === 'number' ? config.body.armLengthScale : 1.0;
     const mergedConfig = {
       ...config,
-      heightScale: config.body.heightCm / 105,
+      heightScale: config.body.heightCm / 95,
       legScale: config.body.legLengthScale,
+      armScale,
       headScale: 1.0,
     };
     onConfirm(mergedConfig);
@@ -895,19 +908,19 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
                         </span>
                       </div>
                       <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: 0 }}>
-                        Tùy chỉnh chiều cao và tỉ lệ dài chân phù hợp cho nhân vật giai đoạn mầm non (chuẩn WHO: 95cm - 115cm, mặc định: 105cm).
+                        Tùy chỉnh chiều cao (95cm - 115cm, mặc định: 95cm) và tỉ lệ dài chân (85% - 115%, mặc định: 85%) phù hợp cho nhân vật giai đoạn mầm non.
                       </p>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                      {/* 1. Chiều cao (Mầm non chuẩn WHO: 95cm - 115cm, Default: 105cm) */}
+                      {/* 1. Chiều cao (Mầm non: Min 95cm, Max 115cm, Default: 95cm) */}
                       <div style={{ padding: '14px 16px', background: '#F8F7FC', borderRadius: '12px', border: '1px solid rgba(108, 92, 231, 0.10)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-main)' }}>Chiều cao nhân vật:</span>
-                            {config.body.heightCm === 105 && (
+                            {config.body.heightCm === 95 && (
                               <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.15)', color: '#059669' }}>
-                                ⭐ Chuẩn WHO mầm non (105cm)
+                                ⭐ Mặc định mầm non (95cm)
                               </span>
                             )}
                           </div>
@@ -931,16 +944,16 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
                           style={{ width: '100%', accentColor: '#6C5CE7', cursor: 'pointer', height: '6px' }}
                         />
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '6px' }}>
-                          <span>95 cm (3 tuổi)</span>
-                          <span style={{ color: config.body.heightCm === 105 ? '#6C5CE7' : 'inherit', fontWeight: config.body.heightCm === 105 ? 700 : 400 }}>105 cm (Mặc định)</span>
+                          <span style={{ color: config.body.heightCm === 95 ? '#6C5CE7' : 'inherit', fontWeight: config.body.heightCm === 95 ? 700 : 400 }}>95 cm (Mặc định / 3 tuổi)</span>
+                          <span style={{ color: config.body.heightCm === 105 ? '#6C5CE7' : 'inherit', fontWeight: config.body.heightCm === 105 ? 700 : 400 }}>105 cm (Trung bình)</span>
                           <span>115 cm (Tối đa / 6 tuổi)</span>
                         </div>
                         {/* Quick Presets */}
                         <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
                           {[
-                            { label: '95 cm', value: 95 },
+                            { label: '95 cm (Mặc định)', value: 95 },
                             { label: '100 cm', value: 100 },
-                            { label: '105 cm (Chuẩn)', value: 105 },
+                            { label: '105 cm', value: 105 },
                             { label: '110 cm', value: 110 },
                             { label: '115 cm (Max)', value: 115 },
                           ].map((p) => {
@@ -969,14 +982,14 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
                         </div>
                       </div>
 
-                      {/* 2. Tỉ lệ chiều dài chân (85% - 115%, Default: 100%) */}
+                      {/* 2. Tỉ lệ chiều dài chân (Min 85% - Max 115%, Default: 85%) */}
                       <div style={{ padding: '14px 16px', background: '#F8F7FC', borderRadius: '12px', border: '1px solid rgba(108, 92, 231, 0.10)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-main)' }}>Tỉ lệ chiều dài chân:</span>
-                            {Math.round(config.body.legLengthScale * 100) === 100 && (
+                            {Math.round(config.body.legLengthScale * 100) === 85 && (
                               <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.15)', color: '#059669' }}>
-                                ⭐ Cân đối chuẩn (100%)
+                                ⭐ Mặc định mầm non (85%)
                               </span>
                             )}
                           </div>
@@ -994,20 +1007,23 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
                             const val = Number(e.target.value);
                             setConfig((prev) => ({
                               ...prev,
-                              body: { ...prev.body, legLengthScale: val },
+                              body: { 
+                                ...prev.body, 
+                                legLengthScale: val,
+                              },
                             }));
                           }}
                           style={{ width: '100%', accentColor: '#6C5CE7', cursor: 'pointer', height: '6px' }}
                         />
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '6px' }}>
-                          <span>85% (Chân ngắn/Đáng yêu)</span>
+                          <span style={{ color: Math.round(config.body.legLengthScale * 100) === 85 ? '#6C5CE7' : 'inherit', fontWeight: Math.round(config.body.legLengthScale * 100) === 85 ? 700 : 400 }}>85% (Mặc định / Bé mầm non)</span>
                           <span style={{ color: Math.round(config.body.legLengthScale * 100) === 100 ? '#6C5CE7' : 'inherit', fontWeight: Math.round(config.body.legLengthScale * 100) === 100 ? 700 : 400 }}>100% (Chuẩn)</span>
                           <span>115% (Chân dài/Nhanh nhẹn)</span>
                         </div>
                         {/* Quick Presets */}
                         <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
                           {[
-                            { label: '85% (Ngắn)', value: 0.85 },
+                            { label: '85% (Mặc định)', value: 0.85 },
                             { label: '92% (Vừa)', value: 0.92 },
                             { label: '100% (Chuẩn)', value: 1.0 },
                             { label: '108% (Dài)', value: 1.08 },
@@ -1017,7 +1033,83 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
                             return (
                               <button
                                 key={p.value}
-                                onClick={() => setConfig((prev) => ({ ...prev, body: { ...prev.body, legLengthScale: p.value } }))}
+                                onClick={() => setConfig((prev) => ({ 
+                                  ...prev, 
+                                  body: { 
+                                    ...prev.body, 
+                                    legLengthScale: p.value,
+                                  } 
+                                }))}
+                                style={{
+                                  flex: 1,
+                                  padding: '5px 0',
+                                  fontSize: '11px',
+                                  fontWeight: isCur ? 700 : 500,
+                                  borderRadius: '8px',
+                                  border: isCur ? '1.5px solid #6C5CE7' : '1px solid rgba(108, 92, 231, 0.20)',
+                                  background: isCur ? '#6C5CE7' : '#FFFFFF',
+                                  color: isCur ? '#FFFFFF' : 'var(--color-text-main)',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease',
+                                }}
+                              >
+                                {p.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* 3. Tỉ lệ chiều dài tay (Min 85% - Max 115%, Default: 100%) */}
+                      <div style={{ padding: '14px 16px', background: '#F8F7FC', borderRadius: '12px', border: '1px solid rgba(108, 92, 231, 0.10)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-main)' }}>Tỉ lệ chiều dài cánh tay:</span>
+                            {Math.round((config.body.armLengthScale ?? 1.0) * 100) === 100 && (
+                              <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.15)', color: '#059669' }}>
+                                ⭐ Mặc định (100%)
+                              </span>
+                            )}
+                          </div>
+                          <span style={{ fontSize: '15px', fontWeight: 800, color: '#6C5CE7' }}>
+                            {Math.round((config.body.armLengthScale ?? 1.0) * 100)}%
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={0.85}
+                          max={1.15}
+                          step={0.01}
+                          value={config.body.armLengthScale ?? 1.0}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            setConfig((prev) => ({
+                              ...prev,
+                              body: { ...prev.body, armLengthScale: val },
+                            }));
+                          }}
+                          style={{ width: '100%', accentColor: '#6C5CE7', cursor: 'pointer', height: '6px' }}
+                        />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '6px' }}>
+                          <span style={{ color: Math.round((config.body.armLengthScale ?? 1.0) * 100) === 85 ? '#6C5CE7' : 'inherit', fontWeight: Math.round((config.body.armLengthScale ?? 1.0) * 100) === 85 ? 700 : 400 }}>85% (Ngắn)</span>
+                          <span style={{ color: Math.round((config.body.armLengthScale ?? 1.0) * 100) === 100 ? '#6C5CE7' : 'inherit', fontWeight: Math.round((config.body.armLengthScale ?? 1.0) * 100) === 100 ? 700 : 400 }}>100% (Mặc định / Chuẩn)</span>
+                          <span>115% (Tay dài)</span>
+                        </div>
+                        {/* Quick Presets */}
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                          {[
+                            { label: '85% (Ngắn)', value: 0.85 },
+                            { label: '92% (Vừa)', value: 0.92 },
+                            { label: '100% (Mặc định)', value: 1.0 },
+                            { label: '108% (Dài)', value: 1.08 },
+                            { label: '115% (Thon dài)', value: 1.15 },
+                          ].map((p) => {
+                            const curArm = config.body.armLengthScale ?? 1.0;
+                            const isCur = Math.round(curArm * 100) === Math.round(p.value * 100);
+                            return (
+                              <button
+                                key={p.value}
+                                onClick={() => setConfig((prev) => ({ ...prev, body: { ...prev.body, armLengthScale: p.value } }))}
                                 style={{
                                   flex: 1,
                                   padding: '5px 0',
@@ -2186,8 +2278,7 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
                   </div>
 
                   {/* Bảng màu quần */}
-                  {config.pantsId !== 'pants_underwear_briefs' && (
-                    <div style={{ padding: '14px 16px', backgroundColor: '#FFFFFF', borderRadius: '14px', border: '1px solid rgba(108, 92, 231, 0.15)' }}>
+                  <div style={{ padding: '14px 16px', backgroundColor: '#FFFFFF', borderRadius: '14px', border: '1px solid rgba(108, 92, 231, 0.15)' }}>
                       <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--color-text-main)', marginBottom: '10px' }}>
                         🎨 Bảng Màu Quần (Pants Color Palette):
                       </div>
@@ -2264,9 +2355,8 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
                             </label>
                           );
                         })()}
-                      </div>
                     </div>
-                  )}
+                  </div>
                 </motion.div>
               )}
 

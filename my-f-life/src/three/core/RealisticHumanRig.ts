@@ -1239,11 +1239,11 @@ export class RealisticHumanRig implements IHumanCharacter {
 
     // 3. Body Morphology Customization (Without ugly mesh stretching!)
     const body = config.body || DEFAULT_REALISTIC_CONFIG.body;
-    const baseHeight = 105;
-    const heightRatio = Math.max(0.70, Math.min(1.30, (body.heightCm || 105) / baseHeight));
-    const legRatio = Math.max(0.85, Math.min(1.2, body.legLengthScale));
+    const baseHeight = 95;
+    const heightRatio = Math.max(0.70, Math.min(1.30, (body.heightCm || 95) / baseHeight));
+    const legRatio = Math.max(0.85, Math.min(1.2, typeof body.legLengthScale === 'number' ? body.legLengthScale : 0.85));
     const shoulderRatio = Math.max(0.85, Math.min(1.25, body.shoulderWidthScale));
-    const buildWeight = Math.max(0.8, Math.min(1.3, body.weightKg / 68));
+    const buildWeight = Math.max(0.8, Math.min(1.3, body.weightKg / 24));
 
     // Bone length adjustment
     this.spine.position.y = 0.12 * heightRatio;
@@ -1563,26 +1563,8 @@ export class RealisticHumanRig implements IHumanCharacter {
   private rebuildPants(pantsId: string, colorHex: string = '#2563eb') {
     this.clearGroup(this.pantsGroup);
 
-    if (pantsId === 'pants_underwear_briefs' || pantsId === 'none') {
-      const briefMat = new THREE.MeshStandardMaterial({
-        color: colorHex || 0x1e293b,
-        roughness: 0.65,
-        metalness: 0.02,
-      });
-      const briefGeo = new THREE.CylinderGeometry(0.158, 0.142, 0.14, 32);
-      briefGeo.scale(1.26, 1.0, 0.90);
-      const briefMesh = new THREE.Mesh(briefGeo, briefMat);
-      briefMesh.position.y = 0.02;
-      briefMesh.castShadow = true;
-      this.pantsGroup.add(briefMesh);
-
-      const bandGeo = new THREE.TorusGeometry(0.156, 0.008, 12, 36);
-      bandGeo.rotateX(Math.PI / 2);
-      bandGeo.scale(1.26, 0.90, 1.0);
-      const band = new THREE.Mesh(bandGeo, briefMat);
-      band.position.y = 0.09;
-      this.pantsGroup.add(band);
-      return;
+    if (!pantsId || pantsId === 'pants_underwear_briefs' || pantsId === 'none') {
+      pantsId = 'pants_classic_denim_jeans';
     }
 
     if (pantsId === 'pants_classic_denim_jeans') {

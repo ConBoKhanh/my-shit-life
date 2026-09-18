@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { RealisticAvatarConfig } from '../character/RealisticAssetsCatalog';
 import type { IHumanCharacter } from './CharacterModelLoader';
+import { getDenimTwillTexture } from './ProceduralTextures';
 
 /**
  * ArticulatedMannequin.ts
@@ -71,6 +72,61 @@ export class ArticulatedMannequin implements IHumanCharacter {
   public leftHand: THREE.Group;
   public rightHand: THREE.Group;
 
+  // Upper Limbs Meshes
+  public leftUpperArmMesh: THREE.Mesh | null = null;
+  public rightUpperArmMesh: THREE.Mesh | null = null;
+  public leftArmEndCap: THREE.Mesh | null = null;
+  public rightArmEndCap: THREE.Mesh | null = null;
+  public leftForearmMesh: THREE.Mesh | null = null;
+  public rightForearmMesh: THREE.Mesh | null = null;
+  public leftForearmSeam: THREE.Mesh | null = null;
+  public rightForearmSeam: THREE.Mesh | null = null;
+  public leftWristBall: THREE.Mesh | null = null;
+  public rightWristBall: THREE.Mesh | null = null;
+
+  // Lower Limbs Meshes
+  public pelvisMesh: THREE.Mesh | null = null;
+  public leftThighMesh: THREE.Mesh | null = null;
+  public rightThighMesh: THREE.Mesh | null = null;
+  public leftPatellaMesh: THREE.Mesh | null = null;
+  public rightPatellaMesh: THREE.Mesh | null = null;
+  public leftCalfMesh: THREE.Mesh | null = null;
+  public rightCalfMesh: THREE.Mesh | null = null;
+  private fullThighGeoLeft: THREE.BufferGeometry | null = null;
+  private fullThighGeoRight: THREE.BufferGeometry | null = null;
+  private shortsThighSkinGeoLeft: THREE.BufferGeometry | null = null;
+  private shortsThighSkinGeoRight: THREE.BufferGeometry | null = null;
+
+  // Clothing System (Shirt & Outfits)
+  public chestShirtGroup: THREE.Group;
+  public waistShirtGroup: THREE.Group;
+  public leftSleeveGroup: THREE.Group;
+  public rightSleeveGroup: THREE.Group;
+  public leftForearmSleeveGroup: THREE.Group;
+  public rightForearmSleeveGroup: THREE.Group;
+  public aoDaiFlapGroup: THREE.Group;
+  public shirtMaterial: THREE.MeshPhysicalMaterial;
+  public shirtButtonMaterial: THREE.MeshPhysicalMaterial;
+  public shirtAccentMaterial: THREE.MeshStandardMaterial;
+  public currentShirtId: string = 'shirt_none';
+  public currentShirtColor: string = '#ffffff';
+
+  // Clothing System (Pants & Underwear System)
+  public pantsGroup: THREE.Group;
+  public leftThighPantsGroup: THREE.Group;
+  public rightThighPantsGroup: THREE.Group;
+  public leftShinPantsGroup: THREE.Group;
+  public rightShinPantsGroup: THREE.Group;
+  public pantsMaterial: THREE.MeshPhysicalMaterial;
+  public pantsAccentMaterial: THREE.MeshStandardMaterial;
+  public denimRivetMaterial: THREE.MeshStandardMaterial;
+  public jeansLeatherPatchMaterial: THREE.MeshStandardMaterial;
+  public jeansGoldStitchMaterial: THREE.MeshStandardMaterial;
+  public frayedThreadMaterial: THREE.MeshStandardMaterial;
+  public metalChainMaterial: THREE.MeshStandardMaterial;
+  public currentPantsId: string = 'pants_classic_denim_jeans';
+  public currentPantsColor: string = '#1e293b';
+
   // Lower Limbs & 4-Stage Drop-Down Hip System
   public dropDownPegL: THREE.Group;
   public dropDownPegR: THREE.Group;
@@ -87,7 +143,8 @@ export class ArticulatedMannequin implements IHumanCharacter {
 
   // Animation cycle & Scale tracking
   private weightShiftCycle: number = 0;
-  private currentLegScale: number = 1.0;
+  public currentLegScale: number = 1.0;
+  public currentArmScale: number = 1.0;
 
   constructor(customColorHex: string = '#B57850') {
     this.root = new THREE.Group();
@@ -99,8 +156,8 @@ export class ArticulatedMannequin implements IHumanCharacter {
       color: baseColor,
       roughness: 0.36,
       metalness: 0.02,
-      clearcoat: 0.22,
-      clearcoatRoughness: 0.24,
+      clearcoat: 0.15,
+      clearcoatRoughness: 0.25,
       side: THREE.DoubleSide,
     });
 
@@ -114,11 +171,11 @@ export class ArticulatedMannequin implements IHumanCharacter {
       side: THREE.DoubleSide,
     });
 
-    const jointColor = baseColor.clone().multiplyScalar(0.85);
+    const jointColor = baseColor.clone().multiplyScalar(0.88);
     this.jointMaterial = new THREE.MeshPhysicalMaterial({
       color: jointColor,
-      roughness: 0.32,
-      metalness: 0.06,
+      roughness: 0.30,
+      metalness: 0.08,
       clearcoat: 0.28,
       clearcoatRoughness: 0.20,
       side: THREE.DoubleSide,
@@ -167,6 +224,76 @@ export class ArticulatedMannequin implements IHumanCharacter {
     this.hairGroup = new THREE.Group();
     this.hairGroup.name = 'Mannequin_HairGroup';
 
+    // Shirt Materials (Vải Cotton Oxford PBR Cao Cấp & Cúc Xà Cừ)
+    this.shirtMaterial = new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color('#ffffff'),
+      roughness: 0.76,
+      metalness: 0.01,
+      clearcoat: 0.04,
+      clearcoatRoughness: 0.35,
+      side: THREE.DoubleSide,
+    });
+
+    this.shirtButtonMaterial = new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color('#f8fafc'),
+      roughness: 0.20,
+      metalness: 0.08,
+      clearcoat: 0.90,
+      clearcoatRoughness: 0.10,
+    });
+
+    this.shirtAccentMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color('#cbd5e1'),
+      roughness: 0.40,
+      metalness: 0.05,
+    });
+
+    // Pants Materials (Vải Quần / Đồ Lót Nam Cao Cấp & Denim)
+    this.pantsMaterial = new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color('#1e293b'),
+      roughness: 0.65,
+      metalness: 0.04,
+      clearcoat: 0.05,
+      clearcoatRoughness: 0.40,
+      side: THREE.DoubleSide,
+    });
+
+    this.pantsAccentMaterial = new THREE.MeshStandardMaterial({
+      color: new THREE.Color('#334155'),
+      roughness: 0.55,
+      metalness: 0.10,
+    });
+
+    this.denimRivetMaterial = new THREE.MeshStandardMaterial({
+      color: 0xd97706,
+      metalness: 0.88,
+      roughness: 0.22,
+    });
+
+    this.jeansLeatherPatchMaterial = new THREE.MeshStandardMaterial({
+      color: 0x78350f,
+      roughness: 0.65,
+      metalness: 0.05,
+    });
+
+    this.jeansGoldStitchMaterial = new THREE.MeshStandardMaterial({
+      color: 0xeab308,
+      roughness: 0.40,
+      metalness: 0.10,
+    });
+
+    this.frayedThreadMaterial = new THREE.MeshStandardMaterial({
+      color: 0xf1f5f9,
+      roughness: 0.90,
+      metalness: 0.02,
+    });
+
+    this.metalChainMaterial = new THREE.MeshStandardMaterial({
+      color: 0xe2e8f0,
+      roughness: 0.15,
+      metalness: 0.92,
+    });
+
     // 2. Harmonious Proportional Skeletal Hierarchy
     this.spineRoot = new THREE.Group();
     this.spineRoot.name = 'Spine_Root';
@@ -187,6 +314,19 @@ export class ArticulatedMannequin implements IHumanCharacter {
     this.chestBone.position.set(0, 0.12, 0);
     this.waistBone.add(this.chestBone);
 
+    // Gắn các Group chứa trang phục áo vào đúng phân cấp xương
+    this.chestShirtGroup = new THREE.Group();
+    this.chestShirtGroup.name = 'Mannequin_ChestShirtGroup';
+    this.chestBone.add(this.chestShirtGroup);
+
+    this.waistShirtGroup = new THREE.Group();
+    this.waistShirtGroup.name = 'Mannequin_WaistShirtGroup';
+    this.waistBone.add(this.waistShirtGroup);
+
+    this.aoDaiFlapGroup = new THREE.Group();
+    this.aoDaiFlapGroup.name = 'Mannequin_AoDaiFlapGroup';
+    this.waistBone.add(this.aoDaiFlapGroup);
+
     // Neck (nested deep in chest collar at Y = 0.150m)
     this.neckBone = new THREE.Group();
     this.neckBone.position.set(0, 0.150, 0);
@@ -206,19 +346,27 @@ export class ArticulatedMannequin implements IHumanCharacter {
     this.rightShoulder.position.set(0.125, 0.114, 0);
     this.chestBone.add(this.rightShoulder);
 
-    // Upper Arms (Length: 0.22m)
+    // Upper Arms (Base Length: 0.160m)
     this.leftUpperArm = new THREE.Group();
     this.leftShoulder.add(this.leftUpperArm);
 
     this.rightUpperArm = new THREE.Group();
     this.rightShoulder.add(this.rightUpperArm);
 
+    this.leftSleeveGroup = new THREE.Group();
+    this.leftSleeveGroup.name = 'Mannequin_LeftSleeveGroup';
+    this.leftUpperArm.add(this.leftSleeveGroup);
+
+    this.rightSleeveGroup = new THREE.Group();
+    this.rightSleeveGroup.name = 'Mannequin_RightSleeveGroup';
+    this.rightUpperArm.add(this.rightSleeveGroup);
+
     this.leftElbow = new THREE.Group();
-    this.leftElbow.position.set(0, -0.22, 0);
+    this.leftElbow.position.set(0, -0.160, 0);
     this.leftUpperArm.add(this.leftElbow);
 
     this.rightElbow = new THREE.Group();
-    this.rightElbow.position.set(0, -0.22, 0);
+    this.rightElbow.position.set(0, -0.160, 0);
     this.rightUpperArm.add(this.rightElbow);
 
     this.leftForearm = new THREE.Group();
@@ -227,12 +375,20 @@ export class ArticulatedMannequin implements IHumanCharacter {
     this.rightForearm = new THREE.Group();
     this.rightElbow.add(this.rightForearm);
 
+    this.leftForearmSleeveGroup = new THREE.Group();
+    this.leftForearmSleeveGroup.name = 'Mannequin_LeftForearmSleeveGroup';
+    this.leftForearm.add(this.leftForearmSleeveGroup);
+
+    this.rightForearmSleeveGroup = new THREE.Group();
+    this.rightForearmSleeveGroup.name = 'Mannequin_RightForearmSleeveGroup';
+    this.rightForearm.add(this.rightForearmSleeveGroup);
+
     this.leftHand = new THREE.Group();
-    this.leftHand.position.set(0, -0.20, 0);
+    this.leftHand.position.set(0, -0.145, 0);
     this.leftForearm.add(this.leftHand);
 
     this.rightHand = new THREE.Group();
-    this.rightHand.position.set(0, -0.20, 0);
+    this.rightHand.position.set(0, -0.145, 0);
     this.rightForearm.add(this.rightHand);
 
     // 4-Stage Drop-Down Hip System (X = ±0.060 - 2 chân mở rộng vừa vặn ra ngoài bẹn)
@@ -256,6 +412,19 @@ export class ArticulatedMannequin implements IHumanCharacter {
     this.rightThigh = new THREE.Group();
     this.rightHipBallGroup.add(this.rightThigh);
 
+    // Gắn các Group chứa trang phục quần vào đúng phân cấp xương
+    this.pantsGroup = new THREE.Group();
+    this.pantsGroup.name = 'Mannequin_PantsGroup';
+    this.pelvisBone.add(this.pantsGroup);
+
+    this.leftThighPantsGroup = new THREE.Group();
+    this.leftThighPantsGroup.name = 'Mannequin_LeftThighPantsGroup';
+    this.leftThigh.add(this.leftThighPantsGroup);
+
+    this.rightThighPantsGroup = new THREE.Group();
+    this.rightThighPantsGroup.name = 'Mannequin_RightThighPantsGroup';
+    this.rightThigh.add(this.rightThighPantsGroup);
+
     this.leftKnee = new THREE.Group();
     this.leftKnee.position.set(0, -0.30, 0);
     this.leftThigh.add(this.leftKnee);
@@ -270,6 +439,14 @@ export class ArticulatedMannequin implements IHumanCharacter {
     this.rightShin = new THREE.Group();
     this.rightKnee.add(this.rightShin);
 
+    this.leftShinPantsGroup = new THREE.Group();
+    this.leftShinPantsGroup.name = 'Mannequin_LeftShinPantsGroup';
+    this.leftShin.add(this.leftShinPantsGroup);
+
+    this.rightShinPantsGroup = new THREE.Group();
+    this.rightShinPantsGroup.name = 'Mannequin_RightShinPantsGroup';
+    this.rightShin.add(this.rightShinPantsGroup);
+
     this.leftFoot = new THREE.Group();
     this.leftFoot.position.set(0, -0.30, 0);
     this.leftShin.add(this.leftFoot);
@@ -280,6 +457,7 @@ export class ArticulatedMannequin implements IHumanCharacter {
 
     // 3. Build Detailed Geometry
     this.buildMannequin();
+    this.rebuildPants(this.currentPantsId, this.currentPantsColor);
   }
 
   // ===========================================================================
@@ -457,14 +635,15 @@ export class ArticulatedMannequin implements IHumanCharacter {
     headContainer.add(headMesh);
 
     // 1.1 Stylized High-Definition Anime/Realistic Eyes (Single Unified Cornea Dome with Canvas Texture)
-    const eyeGeo = this.createEyeballGeometry(0.0072, 0.0048, 0.0024);
+    const eyeGeo = this.createEyeballGeometry(0.0075, 0.0050, 0.0025);
     const eyelinerMat = new THREE.MeshBasicMaterial({ color: 0x181210 });
 
     [-1, 1].forEach((dir) => {
       const eyeGroup = new THREE.Group();
-      // Đặt chìm sâu vào đáy hốc mắt 3D: x = ±0.021m, y = 0.011m, z = 0.0366m
-      eyeGroup.position.set(dir * 0.0210, 0.0110, 0.0366);
-      eyeGroup.rotation.y = dir * 0.06;
+      // Đặt chìm sâu vào đáy hốc mắt 3D chuẩn tỉ lệ vàng giải phẫu học: x = ±0.0202m, y = 0.011m, z = 0.0384m
+      // Góc xoay trực diện nhìn thẳng camera (triệt tiêu 100% hiện tượng lác mắt)
+      eyeGroup.position.set(dir * 0.0202, 0.0110, 0.0384);
+      eyeGroup.rotation.y = 0;
 
       // 1. Unified Eyeball Mesh (Trọn vẹn tròng trắng + tròng màu + con ngươi trên 1 bề mặt cong 3D)
       const eyeMesh = new THREE.Mesh(eyeGeo, this.eyeMaterial);
@@ -473,9 +652,9 @@ export class ArticulatedMannequin implements IHumanCharacter {
 
       // 2. Viền mí mắt trên ôm sát da mí mắt
       const ptsEye = [
-        new THREE.Vector3(-0.0062, -0.0005, 0.0003),
+        new THREE.Vector3(-0.0068, -0.0006, 0.0003),
         new THREE.Vector3(0.0000, 0.0022, 0.0005),
-        new THREE.Vector3(0.0064, -0.0002, 0.0004),
+        new THREE.Vector3(0.0068, -0.0006, 0.0003),
       ];
       const eyeLidCurve = new THREE.CatmullRomCurve3(ptsEye);
       const eyeLidGeo = new THREE.TubeGeometry(eyeLidCurve, 12, 0.00022, 6, false);
@@ -496,15 +675,16 @@ export class ArticulatedMannequin implements IHumanCharacter {
       }
     });
 
-    // 1.2 Chân Mày Thanh Tú Căn Chuẩn Giải Phẫu Ngay Trên Khung Mắt & Con Ngươi
+    // 1.2 Chân Mày Thanh Tú Căn Chuẩn Giải Phẫu Ôm Sát Cung Mắt & Con Ngươi
     [-1, 1].forEach((dir) => {
       const pts = [
-        new THREE.Vector3(dir * 0.0125, 0.0188, 0.0448),
-        new THREE.Vector3(dir * 0.0235, 0.0225, 0.0418),
-        new THREE.Vector3(dir * 0.0345, 0.0180, 0.0325),
+        new THREE.Vector3(dir * 0.0075, 0.0162, 0.0452),
+        new THREE.Vector3(dir * 0.0145, 0.0178, 0.0436),
+        new THREE.Vector3(dir * 0.0225, 0.0185, 0.0410),
+        new THREE.Vector3(dir * 0.0315, 0.0145, 0.0330),
       ];
       const browCurve = new THREE.CatmullRomCurve3(pts);
-      const browGeo = new THREE.TubeGeometry(browCurve, 16, 0.00065, 8, false);
+      const browGeo = new THREE.TubeGeometry(browCurve, 18, 0.00085, 8, false);
       const browMesh = new THREE.Mesh(browGeo, this.browMaterial);
       browMesh.renderOrder = 5;
       headContainer.add(browMesh);
@@ -695,20 +875,25 @@ export class ArticulatedMannequin implements IHumanCharacter {
           const vLineTaper = 1.0 - taperCoeff * Math.pow(tLow, 1.15) + 0.03 * Math.pow(tLow, 2.2);
           rx = 0.0465 * vLineTaper;
           rz_front = 0.0450 * (1.0 - 0.04 * tLow2);
-          rz_back = 0.0550 * (1.0 - 0.42 * tLow2 + 0.05 * tLow2 * tLow);
+          
+          // Occipital dome curve: Vòm sọ chẩm sau uốn cong tròn đều vào trong ôm khít đỉnh gáy/cổ,
+          // xóa bỏ hoàn toàn gờ phẳng 90° nhô lơ lửng trên không trung.
+          const occT = Math.max(0, (tLow - 0.30) / 0.70);
+          const occCurve = occT * occT * (3.0 - 2.0 * occT);
+          rz_back = 0.0550 * (1.0 - 0.10 * Math.pow(tLow, 1.5)) - occCurve * 0.0245;
         }
 
         let px = sinT * rx;
         let pz = cosT >= 0 ? cosT * rz_front : cosT * rz_back;
 
-        // Submental undercutting (đáy hàm vuốt êm liên tục 100% C2 vào cổ, không gãy gập, không gờ bậc)
+        // Submental undercutting (sàn miệng dưới cằm dốc thoai thoải 95°-105° vào xương móng & đỉnh cổ)
         if (y < -0.034) {
           const underT = (-0.034 - y) / (-0.034 - yBottom);
           const underCut = underT * underT;
           const angleBlend = 0.5 + 0.5 * (1.0 - cosT); // 0 at front, 1 at back
-          const sigmaUnder = isSigmaChad ? 1.35 : 1.0;
-          px *= 1.0 - underCut * 0.12 * sigmaUnder;
-          pz *= 1.0 - underCut * (0.08 + 0.14 * angleBlend) * sigmaUnder;
+          const sigmaUnder = isSigmaChad ? 1.25 : 1.0;
+          px *= 1.0 - underCut * 0.10 * sigmaUnder;
+          pz *= 1.0 - underCut * (0.06 + 0.10 * angleBlend) * sigmaUnder;
         }
 
         // =====================================================================
@@ -727,9 +912,9 @@ export class ArticulatedMannequin implements IHumanCharacter {
           }
 
           // 2. Supraorbital Brow Ridge (Cung mày nâng đỡ chân mày 3D định vị chuẩn trên mắt)
-          if (y >= 0.014 && y <= 0.026 && Math.abs(px) <= 0.038) {
-            const bY = Math.sin(((y - 0.014) / 0.012) * Math.PI);
-            const bX = Math.exp(-Math.pow((Math.abs(px) - 0.022) / 0.014, 2));
+          if (y >= 0.012 && y <= 0.022 && Math.abs(px) <= 0.036) {
+            const bY = Math.sin(((y - 0.012) / 0.010) * Math.PI);
+            const bX = Math.exp(-Math.pow((Math.abs(px) - 0.0195) / 0.013, 2));
             let browArch = 1.0;
             if (browShape === 'brow_sword_bold') {
               browArch = 1.25;
@@ -755,7 +940,7 @@ export class ArticulatedMannequin implements IHumanCharacter {
           }
 
           // 3. Orbital Eye Sockets & Eyelids (4 Dáng Mắt: từ mắt híp đến mắt to tròn - hốc mắt chìm sâu tự nhiên)
-          let eyeRadiusX = 0.0112;
+          let eyeRadiusX = 0.0110;
           let eyeRadiusY = 0.0070;
           let eyeTilt = 0;
           let socketDepth = 0.0048;
@@ -765,18 +950,18 @@ export class ArticulatedMannequin implements IHumanCharacter {
             eyeRadiusY = 0.0055;
             socketDepth = 0.0042;
           } else if (isPhoenixEyes) {
-            eyeRadiusX = 0.0118;
+            eyeRadiusX = 0.0116;
             eyeRadiusY = 0.0062;
             eyeTilt = 0.08;
             socketDepth = 0.0046;
           } else if (isBigRoundEyes) {
-            eyeRadiusX = 0.0125;
-            eyeRadiusY = 0.0082;
-            socketDepth = 0.0052;
+            eyeRadiusX = 0.0118;
+            eyeRadiusY = 0.0078;
+            socketDepth = 0.0050;
           }
 
           [-1, 1].forEach((dir) => {
-            const cX = dir * 0.0210;
+            const cX = dir * 0.0202;
             const cY = 0.0110;
             const dx = (px - cX) / eyeRadiusX;
             const dy = (y - cY) / eyeRadiusY;
@@ -1045,13 +1230,13 @@ export class ArticulatedMannequin implements IHumanCharacter {
   // ===========================================================================
   private buildNeck() {
     // 1. Khớp cầu đỉnh cổ lồng vào đáy sọ (Top Ball Joint at Y = 0.082m)
-    const neckTopBallGeo = new THREE.SphereGeometry(0.024, 24, 20);
+    const neckTopBallGeo = new THREE.SphereGeometry(0.016, 20, 16);
     const neckTopBall = new THREE.Mesh(neckTopBallGeo, this.jointMaterial);
-    neckTopBall.position.set(0, 0.082, 0);
+    neckTopBall.position.set(0, 0.082, -0.006);
     neckTopBall.castShadow = true;
     this.neckBone.add(neckTopBall);
 
-    // 2. Thân cổ điêu khắc giải phẫu học cao ráo, cắm sâu 1.8cm vào lòng ngực (triệt tiêu hoàn toàn khe hở)
+    // 2. Thân cổ điêu khắc giải phẫu học thanh tú, thon gọn, không phình lồi
     const neckStemGeo = this.createSculptedNeckGeometry();
     const neckStem = new THREE.Mesh(neckStemGeo, this.bodyMaterial);
     neckStem.position.set(0, 0, 0);
@@ -1060,20 +1245,19 @@ export class ArticulatedMannequin implements IHumanCharacter {
     this.neckBone.add(neckStem);
 
     // 3. Khớp cầu đáy cổ lồng sâu vào cổ ngực (Base Ball Joint)
-    const neckBaseBallGeo = new THREE.SphereGeometry(0.027, 24, 18);
+    const neckBaseBallGeo = new THREE.SphereGeometry(0.020, 20, 16);
     const neckBaseBall = new THREE.Mesh(neckBaseBallGeo, this.jointMaterial);
-    neckBaseBall.position.set(0, 0, 0);
+    neckBaseBall.position.set(0, 0, -0.008);
     this.neckBone.add(neckBaseBall);
   }
 
   /**
-   * Generates an anatomically sculpted neck geometry with SCM muscle flow,
-   * subtle thyroid cartilage (Adam's apple), posterior nuchal groove, and deep collar socket integration.
-   * Starts from yBottom = -0.018m (deep inside chest) to yTop = 0.082m for a tall, elegant posture.
+   * Generates an anatomically sculpted, slender, elegant neck geometry
+   * with clean submental jawline clearance and smooth posterior nuchal contour.
    */
   private createSculptedNeckGeometry(): THREE.BufferGeometry {
-    const V = 36;
-    const U = 36;
+    const V = 48;
+    const U = 48;
     const positions: number[] = [];
     const uvs: number[] = [];
     const indices: number[] = [];
@@ -1088,25 +1272,28 @@ export class ArticulatedMannequin implements IHumanCharacter {
       // Normalized height fraction t from 0 (at collar level y=0) to 1 (at skull socket y=yTop)
       const t = Math.max(0, Math.min(1, y / yTop));
 
-      // Slight natural forward tilt angle
-      const zCenter = -0.004 + t * 0.004;
+      // 1. Natural Cervical Lordosis & Forward Posture Slant (Độ nghiêng & ưỡn cổ tự nhiên):
+      // Chân cổ lồng khít vào cổ ngực (z ≈ -0.005m), thân cổ ưỡn nhẹ, đỉnh cổ vươn nhẹ đỡ đáy sọ (z ≈ +0.001m)
+      const zCenter = -0.005 + 0.006 * Math.sin(t * (Math.PI * 0.5));
 
-      // Proportional radius:
-      // Base (embedded in chest socket): width 7.6cm (rx = 0.038m), depth 7.8cm (rz = 0.039m)
-      // Top (under skull): width 5.8cm (rx = 0.029m), depth 6.2cm (rz = 0.031m)
+      // 2. Anatomical Proportional Radii (Bán kính giải phẫu học đa tầng ôm khít ngực và sọ):
+      // Base (collar): Chiều rộng 5.2cm (rx = 0.026m), trước 4.6cm (rz_ant = 0.023m), sau 5.2cm (rz_pos = 0.026m)
+      // Mid-neck: Chiều rộng 4.6cm (rx = 0.023m), trước 4.2cm (rz_ant = 0.021m), sau 4.8cm (rz_pos = 0.024m)
+      // Top (skull socket): Chiều rộng 4.2cm (rx = 0.021m), trước 3.8cm (rz_ant = 0.019m), sau 4.6cm (rz_pos = 0.023m)
       let rX: number;
       let rZ_ant: number;
       let rZ_pos: number;
 
       if (y <= 0) {
         const subT = -y / (-yBottom);
-        rX = 0.038 + subT * 0.001;
-        rZ_ant = 0.037 + subT * 0.001;
-        rZ_pos = 0.039 + subT * 0.001;
+        rX = 0.0260 + subT * 0.001;
+        rZ_ant = 0.0230 + subT * 0.001;
+        rZ_pos = 0.0260 + subT * 0.001;
       } else {
-        rX = 0.038 - t * 0.009;
-        rZ_ant = 0.037 - t * 0.007;
-        rZ_pos = 0.039 - t * 0.008;
+        const smoothT = Math.sin(t * (Math.PI * 0.5));
+        rX = 0.0260 - smoothT * 0.0050;     // 0.026 -> 0.021
+        rZ_ant = 0.0230 - smoothT * 0.0040; // 0.023 -> 0.019
+        rZ_pos = 0.0260 - smoothT * 0.0030; // 0.026 -> 0.023
       }
 
       for (let u = 0; u <= U; u++) {
@@ -1119,28 +1306,40 @@ export class ArticulatedMannequin implements IHumanCharacter {
         let px = sinT * rX;
         let pz = zCenter + (cosT >= 0 ? cosT * rZ_ant : cosT * rZ_pos);
 
-        // 1. Sternocleidomastoid (SCM) Muscle Bands (Dải cơ ức đòn chũm 2 bên)
+        // =====================================================================
+        // ANATOMICAL MUSCLE & CARTILAGE DETAILS
+        // =====================================================================
         if (y >= 0) {
-          const scmThetaTarget = 0.32 + t * 0.88;
-          const scmDist = Math.abs(absSin - Math.sin(scmThetaTarget));
-          if (scmDist < 0.28 && cosT > -0.2) {
-            const scmBell = Math.cos((scmDist / 0.28) * Math.PI * 0.5);
-            const scmHeight = 0.0024 * (0.6 + 0.4 * Math.sin(t * Math.PI));
-            pz += scmBell * scmHeight * (cosT > 0 ? cosT : 0.4);
-            px += (sinT > 0 ? 1 : -1) * scmBell * scmHeight * 0.6;
+          // 1. Sternocleidomastoid (SCM) Muscle Flow (Cơ ức đòn chũm 3D chữ V nổi khối thanh thoát)
+          // Đi từ mỏm chũm sau tai (theta ≈ 115° = 2.0 rad ở đỉnh t=1.0) chéo xuống tụm về hõm ức (theta ≈ 20° = 0.35 rad ở t=0.0)
+          const scmAngle = 0.35 + t * 1.65;
+          const thetaCur = Math.acos(Math.max(-1, Math.min(1, cosT)));
+          const scmDist = Math.abs(thetaCur - scmAngle);
+          if (scmDist < 0.38) {
+            const scmBell = Math.cos((scmDist / 0.38) * (Math.PI * 0.5));
+            const scmThick = 0.0020 * Math.sin(Math.min(1, t / 0.15) * Math.min(1, (1 - t) / 0.15) * (Math.PI * 0.5) + 0.2);
+            pz += scmBell * scmThick * (cosT > 0 ? cosT : 0.4);
+            px += (sinT > 0 ? 1 : -1) * scmBell * scmThick * 0.6;
           }
 
-          // 2. Adam's Apple (Thyroid Cartilage) (Yết hầu nam tính tinh tế)
-          if (cosT > 0.65 && t >= 0.35 && t <= 0.75) {
-            const adT = Math.sin(((t - 0.35) / 0.40) * Math.PI);
-            const adX = Math.cos(((1.0 - cosT) / 0.35) * Math.PI * 0.5);
-            pz += adT * adX * 0.0032;
+          // 2. Thyroid Cartilage (Sụn giáp / Yết hầu nam / Adam's Apple nhô tự nhiên 2.6mm)
+          if (cosT > 0.60 && t >= 0.42 && t <= 0.70) {
+            const adY = Math.sin(((t - 0.42) / 0.28) * Math.PI);
+            const adX = Math.cos(((1.0 - cosT) / 0.40) * Math.PI * 0.5);
+            pz += adY * adX * 0.0026;
           }
 
-          // 3. Posterior Nuchal Groove (Rãnh gáy sau cổ)
-          if (cosT < -0.75) {
-            const nuchT = Math.cos((Math.abs(sinT) / Math.sin(Math.PI * 0.25)) * Math.PI * 0.5);
-            pz += nuchT * 0.0016;
+          // 3. Posterior Nuchal Groove & Trapezius Flanks (Rãnh gáy sau & gờ cơ thang sau gáy)
+          if (cosT < -0.60) {
+            if (absSin < 0.22) {
+              // Hõm rãnh gáy giữa (nuchal ligament groove)
+              pz += 0.0010 * Math.cos((absSin / 0.22) * Math.PI * 0.5) * Math.sin(t * Math.PI);
+            } else if (absSin >= 0.22 && absSin <= 0.65) {
+              // Gờ cơ thang 2 bên gáy
+              const trapY = Math.sin(t * Math.PI);
+              const trapX = Math.sin(((absSin - 0.22) / 0.43) * Math.PI);
+              pz -= trapY * trapX * 0.0014;
+            }
           }
         }
 
@@ -1322,12 +1521,12 @@ export class ArticulatedMannequin implements IHumanCharacter {
           }
         } else {
           // Trapezius Slope from Acromion up to Neck Collar (py from 0.114 to 0.165)
-          // Smooth continuous S-curve transition from 0.125m into neck base (0.038m x 0.039m)
+          // Smooth continuous S-curve transition from 0.125m into slender neck base (0.029m x 0.032m)
           const t2 = (py - 0.114) / (0.165 - 0.114);
           const smoothT = t2 * t2 * (3 - 2 * t2);
-          rx = 0.125 - smoothT * (0.125 - 0.038);
-          rz_ant = 0.071 - smoothT * (0.071 - 0.037);
-          rz_pos = 0.064 - smoothT * (0.064 - 0.039);
+          rx = 0.125 - smoothT * (0.125 - 0.029);
+          rz_ant = 0.071 - smoothT * (0.071 - 0.026);
+          rz_pos = 0.064 - smoothT * (0.064 - 0.032);
         }
 
         let px = sinT * rx;
@@ -1409,7 +1608,7 @@ export class ArticulatedMannequin implements IHumanCharacter {
     const uvs: number[] = [];
 
     const yTop = 0.000;
-    const yBottom = -0.220;
+    const yBottom = -0.160;
 
     for (let i = 0; i <= NY; i++) {
       const t = i / NY; // 0 at upper arm top socket, 1 at elbow bottom
@@ -1428,20 +1627,20 @@ export class ArticulatedMannequin implements IHumanCharacter {
         rZ_ant = 0.025 + s * 0.013; // 0.025 -> 0.038
         rZ_pos = 0.025 + s * 0.011; // 0.025 -> 0.036
       } else if (t <= 0.65) {
-        // 2. Bicep & Tricep Muscular Belly (y from -0.040 to -0.143) - BẮP TAY NỞ NANG KHỎE KHOẮN
+        // 2. Bicep & Tricep Muscular Belly
         const midT = (t - 0.18) / 0.47;
         const bicepBulge = Math.sin(midT * Math.PI);
-        rX_lat = 0.038 - midT * 0.009; // 0.038 -> 0.029
-        rX_med = 0.020 - midT * 0.002; // 0.020 -> 0.018
-        rZ_ant = 0.038 + bicepBulge * 0.004 - midT * 0.013; // 0.038 -> 0.042 -> 0.025 (bắp trước)
-        rZ_pos = 0.036 + bicepBulge * 0.003 - midT * 0.011; // 0.036 -> 0.039 -> 0.025 (bắp sau)
+        rX_lat = 0.038 - midT * 0.017; // 0.038 -> 0.021m
+        rX_med = 0.020 - midT * 0.005; // 0.020 -> 0.015m
+        rZ_ant = 0.038 + bicepBulge * 0.003 - midT * 0.018; // 0.038 -> 0.020m
+        rZ_pos = 0.036 + bicepBulge * 0.003 - midT * 0.016; // 0.036 -> 0.020m
       } else {
-        // 3. Supracondylar Taper down to Elbow Socket (y from -0.143 to -0.220) - Bo tròn ôm khớp cùi chỏ
+        // 3. Supracondylar Taper down to Elbow (y from -0.104 to -0.160) - Thon gọn mượt mà
         const lowT = (t - 0.65) / 0.35;
-        rX_lat = 0.029 - lowT * 0.007; // 0.029 -> 0.022
-        rX_med = 0.018 - lowT * 0.002; // 0.018 -> 0.016
-        rZ_ant = 0.025 - lowT * 0.004; // 0.025 -> 0.021
-        rZ_pos = 0.025 - lowT * 0.004; // 0.025 -> 0.021
+        rX_lat = 0.021 - lowT * 0.0015; // 0.021 -> 0.0195m
+        rX_med = 0.015 - lowT * 0.0005; // 0.015 -> 0.0145m
+        rZ_ant = 0.020 - lowT * 0.0015; // 0.020 -> 0.0185m
+        rZ_pos = 0.020 - lowT * 0.0015; // 0.020 -> 0.0185m
       }
 
       for (let j = 0; j <= NU; j++) {
@@ -1485,8 +1684,9 @@ export class ArticulatedMannequin implements IHumanCharacter {
   }
 
   /**
-   * Generates an anatomically sculpted forearm geometry with muscular brachioradialis tone.
-   * Smoothly cups the elbow hinge at the top and tapers seamlessly to an oval wrist socket at the bottom.
+   * Generates an anatomically sculpted, slender forearm geometry.
+   * Seamlessly proportioned to be slimmer than the upper arm biceps,
+   * with delicate brachioradialis flow tapering smoothly into a refined wrist.
    */
   private createSculptedForearmGeometry(dir: number): THREE.BufferGeometry {
     const NY = 28;
@@ -1496,7 +1696,7 @@ export class ArticulatedMannequin implements IHumanCharacter {
     const uvs: number[] = [];
 
     const yTop = 0.000;
-    const yBottom = -0.200;
+    const yBottom = -0.145;
 
     for (let i = 0; i <= NY; i++) {
       const t = i / NY;
@@ -1508,35 +1708,34 @@ export class ArticulatedMannequin implements IHumanCharacter {
       let rZ_pos: number;
 
       if (t <= 0.15) {
-        // 1. Inward-rounded Elbow Rim (y from 0.000 down to -0.030) - Ôm khít khớp cùi chỏ
+        // 1. Nối liền mạch với đáy bắp tay tại cùi chỏ (y từ 0.000 xuống -0.022m)
         const rimT = t / 0.15;
-        const s = Math.sin((rimT * Math.PI) / 2);
-        rX_lat = 0.022 + s * 0.012; // 0.022 -> 0.034
-        rX_med = 0.017 + s * 0.011; // 0.017 -> 0.028
-        rZ_ant = 0.022 + s * 0.012; // 0.022 -> 0.034
-        rZ_pos = 0.022 + s * 0.011; // 0.022 -> 0.033
+        rX_lat = 0.0195 + rimT * 0.0020; // 0.0195 -> 0.0215m
+        rX_med = 0.0145 + rimT * 0.0010; // 0.0145 -> 0.0155m
+        rZ_ant = 0.0185 + rimT * 0.0015; // 0.0185 -> 0.0200m
+        rZ_pos = 0.0185 + rimT * 0.0015; // 0.0185 -> 0.0200m
       } else if (t <= 0.45) {
-        // 2. Forearm Belly & Brachioradialis (y from -0.030 to -0.090) - CẲNG TAY NỞ NANG KHỎE MẠNH
+        // 2. Forearm Belly (y from -0.022 to -0.065m) - Cẳng tay thon gọn, thanh mảnh
         const bellyT = (t - 0.15) / 0.30;
         const bulge = Math.sin(bellyT * Math.PI);
-        rX_lat = 0.034 + bulge * 0.003;
-        rX_med = 0.028;
-        rZ_ant = 0.034 + bulge * 0.004;
-        rZ_pos = 0.033 + bulge * 0.003;
+        rX_lat = 0.0215 + bulge * 0.0010;
+        rX_med = 0.0155;
+        rZ_ant = 0.0200 + bulge * 0.0010;
+        rZ_pos = 0.0200 + bulge * 0.0008;
       } else if (t <= 0.75) {
-        // 3. Mid Forearm Taper (y from -0.090 to -0.150)
+        // 3. Mid Forearm Taper (y from -0.065 to -0.110m) - Vuốt thuôn thon dài
         const midT = (t - 0.45) / 0.30;
-        rX_lat = 0.034 - midT * 0.014; // 0.034 -> 0.020
-        rX_med = 0.028 - midT * 0.012; // 0.028 -> 0.016
-        rZ_ant = 0.034 - midT * 0.012; // 0.034 -> 0.022
-        rZ_pos = 0.033 - midT * 0.011; // 0.033 -> 0.022
+        rX_lat = 0.0215 - midT * 0.0075; // 0.0215 -> 0.0140m
+        rX_med = 0.0155 - midT * 0.0040; // 0.0155 -> 0.0115m
+        rZ_ant = 0.0200 - midT * 0.0070; // 0.0200 -> 0.0130m
+        rZ_pos = 0.0200 - midT * 0.0070; // 0.0200 -> 0.0130m
       } else {
-        // 4. Wrist Socket Taper (y from -0.150 to -0.200) - Ôm khít khớp cổ tay hình bầu dục
+        // 4. Wrist Socket Taper (y from -0.110 to -0.145m) - Khớp cổ tay tròn trịa liền mạch
         const wrtT = (t - 0.75) / 0.25;
-        rX_lat = 0.020 - wrtT * 0.007; // 0.020 -> 0.013
-        rX_med = 0.016 - wrtT * 0.004; // 0.016 -> 0.012
-        rZ_ant = 0.022 - wrtT * 0.005; // 0.022 -> 0.017
-        rZ_pos = 0.022 - wrtT * 0.005; // 0.022 -> 0.017
+        rX_lat = 0.0140 - wrtT * 0.0002; // 0.0140 -> 0.0138m
+        rX_med = 0.0115 + wrtT * 0.0005; // 0.0115 -> 0.0120m
+        rZ_ant = 0.0130;
+        rZ_pos = 0.0130;
       }
 
       for (let j = 0; j <= NU; j++) {
@@ -1615,33 +1814,18 @@ export class ArticulatedMannequin implements IHumanCharacter {
       upperArmMesh.castShadow = true;
       upperArmMesh.receiveShadow = true;
       upperArmBone.add(upperArmMesh);
+      if (dir < 0) {
+        this.leftUpperArmMesh = upperArmMesh;
+      } else {
+        this.rightUpperArmMesh = upperArmMesh;
+      }
 
-      // Đĩa đáy bo tròn bịt kín khớp cùi chỏ
-      const armEndCapGeo = new THREE.CircleGeometry(0.021, 20);
-      armEndCapGeo.rotateX(Math.PI / 2);
-      const armEndCap = new THREE.Mesh(armEndCapGeo, this.jointMaterial);
-      armEndCap.position.set(0, -0.220, 0);
-      upperArmBone.add(armEndCap);
-
-      // 3. SLEEK ORGANIC ELBOW JOINT (Khớp cùi chỏ bo tròn mượt mà, ôm khít 2 đoạn tay)
-      const elbowLinkGeo = new THREE.CylinderGeometry(0.014, 0.014, 0.026, 22);
-      elbowLinkGeo.rotateZ(Math.PI / 2);
-      const elbowLink = new THREE.Mesh(elbowLinkGeo, this.jointMaterial);
-      elbowGroup.add(elbowLink);
-
-      [-0.010, 0.010].forEach((yPos) => {
-        const discGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.030, 20);
-        discGeo.rotateZ(Math.PI / 2);
-        const disc = new THREE.Mesh(discGeo, this.jointMaterial);
-        disc.position.set(0, yPos, 0);
-        elbowGroup.add(disc);
-
-        const rivetGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.033, 14);
-        rivetGeo.rotateZ(Math.PI / 2);
-        const rivet = new THREE.Mesh(rivetGeo, this.accentMaterial);
-        rivet.position.set(0, yPos, 0);
-        elbowGroup.add(rivet);
-      });
+      // 3. INTERNAL SMOOTH ELBOW PIVOT (Khớp cùi chỏ nằm chìm 100% bên trong cánh tay)
+      const elbowCoreGeo = new THREE.SphereGeometry(0.0125, 16, 14);
+      const elbowCore = new THREE.Mesh(elbowCoreGeo, this.bodyMaterial);
+      elbowCore.castShadow = true;
+      elbowCore.receiveShadow = true;
+      elbowGroup.add(elbowCore);
 
       // 4. SCULPTED FOREARM & WRIST ALIGNMENT
       forearmBone.rotation.set(0.03, 0, 0);
@@ -1651,29 +1835,35 @@ export class ArticulatedMannequin implements IHumanCharacter {
       forearmMesh.castShadow = true;
       forearmMesh.receiveShadow = true;
       forearmBone.add(forearmMesh);
+      if (dir < 0) {
+        this.leftForearmMesh = forearmMesh;
+      } else {
+        this.rightForearmMesh = forearmMesh;
+      }
 
-      const forearmSeamGeo = new THREE.TorusGeometry(0.018, 0.0022, 10, 24);
-      forearmSeamGeo.rotateX(Math.PI / 2);
-      const forearmSeam = new THREE.Mesh(forearmSeamGeo, this.jointMaterial);
-      forearmSeam.position.set(0, -0.165, 0);
-      forearmBone.add(forearmSeam);
-
-      // Khớp cầu cổ tay lồng khít vào hốc cẳng tay
-      const wristBallGeo = new THREE.SphereGeometry(0.012, 20, 16);
-      const wristBall = new THREE.Mesh(wristBallGeo, this.jointMaterial);
-      wristBall.position.set(0, -0.198, 0);
+      // Khớp cầu cổ tay lồng khít 100% vào hốc cẳng tay (cùng màu da, triệt tiêu 100% khe hở nhìn xuyên thấu)
+      const wristBallGeo = new THREE.SphereGeometry(0.0138, 22, 18);
+      const wristBall = new THREE.Mesh(wristBallGeo, this.bodyMaterial);
+      wristBall.position.set(0, -0.144, 0);
       wristBall.castShadow = true;
+      wristBall.receiveShadow = true;
       forearmBone.add(wristBall);
+      if (dir < 0) {
+        this.leftWristBall = wristBall;
+      } else {
+        this.rightWristBall = wristBall;
+      }
 
       // 5. HAND: Natural Resting Stance (Lòng bàn tay úp vào trong đùi, mu bàn tay hướng ra ngoài, ngón cái phía trước)
       handGroup.rotation.set(0, 0, 0);
 
       // Phần gốc cổ tay bo tròn khít khớp cầu (Carpal Base Cup)
-      const carpalBaseGeo = new THREE.SphereGeometry(0.012, 16, 12);
-      carpalBaseGeo.scale(0.85, 0.70, 1.10);
+      const carpalBaseGeo = new THREE.SphereGeometry(0.0145, 22, 18);
+      carpalBaseGeo.scale(0.95, 1.05, 1.15);
       const carpalBase = new THREE.Mesh(carpalBaseGeo, this.bodyMaterial);
-      carpalBase.position.set(0, -0.004, 0);
+      carpalBase.position.set(0, -0.006, 0);
       carpalBase.castShadow = true;
+      carpalBase.receiveShadow = true;
       handGroup.add(carpalBase);
 
       // Palm Box (Dày theo trục X 1.3cm, cao theo Y 3.8cm, rộng từ trước ra sau theo Z 3.0cm)
@@ -1754,6 +1944,7 @@ export class ArticulatedMannequin implements IHumanCharacter {
     pelvisMesh.castShadow = true;
     pelvisMesh.receiveShadow = true;
     this.pelvisBone.add(pelvisMesh);
+    this.pelvisMesh = pelvisMesh;
 
     // Build Each Leg with SCULPTED SEAMLESS THIGHS & NATURAL ATHLETIC STANCE
     [-1, 1].forEach((dir) => {
@@ -1769,10 +1960,19 @@ export class ArticulatedMannequin implements IHumanCharacter {
       // UNIFIED SCULPTED THIGH (ĐÙI ĐÚC LIỀN NỞ NANG, TO HƠN TAY 20%+)
       // =======================================================================
       const thighGeo = this.createSculptedThighGeometry(dir);
+      if (dir < 0) {
+        this.fullThighGeoLeft = thighGeo;
+        this.shortsThighSkinGeoLeft = this.createShortsThighSkinGeometry(-1);
+      } else {
+        this.fullThighGeoRight = thighGeo;
+        this.shortsThighSkinGeoRight = this.createShortsThighSkinGeometry(1);
+      }
       const thighMesh = new THREE.Mesh(thighGeo, this.bodyMaterial);
       thighMesh.castShadow = true;
       thighMesh.receiveShadow = true;
       thighBone.add(thighMesh);
+      if (dir < 0) this.leftThighMesh = thighMesh;
+      else this.rightThighMesh = thighMesh;
 
       // Đĩa đáy bịt kín đầu gối (Knee end cap - bo tròn thu gọn)
       const thighEndCapGeo = new THREE.CircleGeometry(0.024, 22);
@@ -1808,6 +2008,8 @@ export class ArticulatedMannequin implements IHumanCharacter {
       patella.position.set(0, 0, 0.019);
       patella.castShadow = true;
       kneeGroup.add(patella);
+      if (dir < 0) this.leftPatellaMesh = patella;
+      else this.rightPatellaMesh = patella;
 
       // Sculpted Calf Block
       const calfGeo = this.createSculptedCalfGeometry(dir);
@@ -1815,6 +2017,8 @@ export class ArticulatedMannequin implements IHumanCharacter {
       calfMesh.castShadow = true;
       calfMesh.receiveShadow = true;
       shinBone.add(calfMesh);
+      if (dir < 0) this.leftCalfMesh = calfMesh;
+      else this.rightCalfMesh = calfMesh;
 
       const ankleBallGeo = new THREE.SphereGeometry(0.014, 22, 18);
       const ankleBall = new THREE.Mesh(ankleBallGeo, this.jointMaterial);
@@ -1871,37 +2075,42 @@ export class ArticulatedMannequin implements IHumanCharacter {
         const sinT = Math.sin(theta);
         const absSin = Math.abs(sinT);
 
-        let rX = 0.092;
-        let rZ = 0.078;
+        let rX: number;
+        let rZ_ant: number;
+        let rZ_pos: number;
 
         if (y < 0.0) {
           // Lower Pelvis & Crotch Taper
           const crotchT = -y / 0.065;
-          rX = 0.090 - crotchT * 0.044; // 0.090 -> 0.046
-          rZ = 0.076 - crotchT * 0.032; // 0.076 -> 0.044
+          rX = 0.088 - crotchT * 0.042; // 0.088 -> 0.046
+          rZ_ant = 0.072 - crotchT * 0.028; // 0.072 -> 0.044
+          rZ_pos = 0.070 - crotchT * 0.024; // 0.070 -> 0.046
         } else {
           // Upper Pelvis towards Waist (Smooth gluteal-to-lumbar contour)
           const waistT = y / 0.065;
-          rX = 0.090 - waistT * 0.005; // 0.090 -> 0.085
-          rZ = 0.076 - waistT * 0.012; // 0.076 -> 0.064
+          rX = 0.088 - waistT * 0.005; // 0.088 -> 0.083
+          rZ_ant = 0.072 - waistT * 0.008; // 0.072 -> 0.064
+          rZ_pos = 0.070 - waistT * 0.008; // 0.070 -> 0.062
+        }
+
+        // Đường cong 2 múi mông tự nhiên 2 bên (Dual gluteal cheek lobes, rãnh giữa ở x=0 phẳng êm)
+        if (y > -0.050 && y < 0.035 && absSin > 0.18 && absSin < 0.82) {
+          const yT = (y + 0.050) / 0.085;
+          const swellY = Math.sin(yT * Math.PI);
+          const cheekT = (absSin - 0.18) / 0.64;
+          const swellX = Math.sin(cheekT * Math.PI);
+          rZ_pos += swellY * swellX * 0.0025; // nhô nhẹ 2.5mm đúng 2 bên múi mông, tuyệt đối không lồi ở giữa x=0
         }
 
         let px = sinT * rX;
-        let pz = cosT * rZ;
+        let pz = cosT >= 0 ? cosT * rZ_ant : cosT * rZ_pos;
 
         // Smooth anatomical bikini leg cut opening (groin crease - uốn lượn mềm mại ôm đầu đùi)
         if (y < 0.025 && absSin > 0.22) {
           const cutT = (0.025 - y) / 0.090;
           const latT = (absSin - 0.22) / 0.78;
-          const cutAmt = cutT * Math.sin(latT * Math.PI) * 0.016;
+          const cutAmt = cutT * Math.sin(latT * Math.PI) * 0.012;
           px -= (sinT > 0 ? 1 : -1) * cutAmt;
-        }
-
-        // Gluteal definition on the back
-        if (cosT < 0 && y > -0.045 && y < 0.045 && absSin > 0.15 && absSin < 0.85) {
-          const gluteY = Math.sin(((y + 0.045) / 0.090) * Math.PI);
-          const gluteX = Math.sin(((absSin - 0.15) / 0.70) * Math.PI);
-          pz -= gluteY * gluteX * 0.012;
         }
 
         positions.push(px, y, pz);
@@ -2355,7 +2564,9 @@ export class ArticulatedMannequin implements IHumanCharacter {
           const vLineTaper = 1.0 - 0.44 * Math.pow(tLow, 1.15) + 0.03 * Math.pow(tLow, 2.2);
           rx = 0.0465 * vLineTaper;
           rz_front = 0.0450 * (1.0 - 0.04 * tLow2);
-          rz_back = 0.0550 * (1.0 - 0.42 * tLow2 + 0.05 * tLow2 * tLow);
+          const occT = Math.max(0, (tLow - 0.30) / 0.70);
+          const occCurve = occT * occT * (3.0 - 2.0 * occT);
+          rz_back = 0.0550 * (1.0 - 0.10 * Math.pow(tLow, 1.5)) - occCurve * 0.0245;
         }
 
         const px = sinT * rx;
@@ -2540,7 +2751,9 @@ export class ArticulatedMannequin implements IHumanCharacter {
           const vLineTaper = 1.0 - 0.44 * Math.pow(tLow, 1.15) + 0.03 * Math.pow(tLow, 2.2);
           rx = 0.0465 * vLineTaper;
           rz_front = 0.0450 * (1.0 - 0.04 * tLow2);
-          rz_back = 0.0550 * (1.0 - 0.42 * tLow2 + 0.05 * tLow2 * tLow);
+          const occT = Math.max(0, (tLow - 0.30) / 0.70);
+          const occCurve = occT * occT * (3.0 - 2.0 * occT);
+          rz_back = 0.0550 * (1.0 - 0.10 * Math.pow(tLow, 1.5)) - occCurve * 0.0245;
         }
 
         const px = sinT * rx;
@@ -2669,7 +2882,7 @@ export class ArticulatedMannequin implements IHumanCharacter {
       const sinT = Math.sin(tRad);
 
       // 1. Mép trán trước: Phân định chính xác giữa kiểu tóc LỘ TRÁN vs CHE TRÁN
-      let yForehead = 0.0460; // Chuẩn tự nhiên LỘ TRÁN CAO THOÁNG (Quiff, Undercut, Pompadour, Slicked Back, Side Part, Buzz, Crew...)
+      let yForehead = 0.0430; // Chuẩn tự nhiên LỘ TRÁN CAO THOÁNG (Quiff, Undercut, Pompadour, Slicked Back, Side Part, Buzz, Crew...)
 
       if (hairId === 'hair_french_crop') {
         yForehead = 0.0270; // French Crop: Mái ngố ngang che trán (cách mày 6mm)
@@ -2682,15 +2895,15 @@ export class ArticulatedMannequin implements IHumanCharacter {
       } else if (hairId === 'hair_curly_afro_perm') {
         yForehead = 0.0380; // Curly Afro Perm: Viền tóc xoăn tự nhiên
       } else if (hairId === 'hair_curly_mullet') {
-        yForehead = 0.0420; // Mullet xoăn trán thoáng
+        yForehead = 0.0410; // Mullet xoăn trán thoáng
       } else if (hairId === 'hair_wavy_middle_part') {
-        yForehead = 0.0440; // Xoăn rẽ ngôi 5/5
+        yForehead = 0.0430; // Xoăn rẽ ngôi 5/5
       } else if (hairId === 'hair_curly_side_part' || hairId === 'hair_side_part_slick' || hairId === 'hair_comb_over_fade') {
-        yForehead = 0.0450 + (sinT < -0.15 ? 0.0020 : 0.0);
+        yForehead = 0.0435 + (sinT < -0.15 ? 0.0020 : 0.0);
       } else if (hairId === 'hair_slicked_back') {
-        yForehead = 0.0470; // Vuốt ngược cao trán
+        yForehead = 0.0415; // Vuốt ngược gọn gàng, chuẩn tỉ lệ trán thanh lịch nam tính
       } else if (hairId === 'hair_faux_hawk' || hairId === 'hair_curly_frohawk') {
-        yForehead = t < 0.35 ? 0.0420 : 0.0460;
+        yForehead = t < 0.35 ? 0.0410 : 0.0440;
       }
 
       const ySideburn = 0.0000;
@@ -2758,12 +2971,22 @@ export class ArticulatedMannequin implements IHumanCharacter {
           const vLineTaper = 1.0 - 0.44 * Math.pow(tLow, 1.15) + 0.03 * Math.pow(tLow, 2.2);
           rx = 0.0465 * vLineTaper;
           rz_front = 0.0450 * (1.0 - 0.04 * tLow2);
-          rz_back = 0.0550 * (1.0 - 0.42 * tLow2 + 0.05 * tLow2 * tLow);
+          const occT = Math.max(0, (tLow - 0.30) / 0.70);
+          const occCurve = occT * occT * (3.0 - 2.0 * occT);
+          rz_back = 0.0550 * (1.0 - 0.10 * Math.pow(tLow, 1.5)) - occCurve * 0.0245;
         }
 
         let px = sinT * rx;
         let py = yBase;
         let pz = cosT >= 0 ? cosT * rz_front : cosT * rz_back;
+
+        // Bù đắp vầng trán nhô nhẹ khớp với createUnifiedSculptedHeadGeometry để hair base luôn khít khao
+        if (cosT > 0.15 && py >= 0.018 && py <= 0.055) {
+          const frontFactor = Math.min(1.0, (cosT - 0.15) / 0.42);
+          const fY = Math.sin(((py - 0.018) / 0.037) * Math.PI);
+          const fX = Math.exp(-Math.pow(px / 0.028, 2));
+          pz += fY * fX * 0.0012 * frontFactor;
+        }
 
         // 2. Vector Pháp Tuyến 3D Chuẩn (3D Surface Normal)
         let nx: number;
@@ -2839,10 +3062,14 @@ export class ArticulatedMannequin implements IHumanCharacter {
 
           case 'hair_undercut_classic':
             baseThick = 0.0060 + 0.0025 * Math.sin(vFrac * Math.PI);
-            if (cosT > -0.1) {
-              const topBlend = Math.max(0, cosT + 0.2) * Math.sin(vFrac * Math.PI);
+            if (cosT > 0.0) {
+              const topBlend = cosT * Math.sin(vFrac * Math.PI);
               dY += 0.0045 * topBlend;
-              dZ -= 0.0035 * topBlend;
+              dZ += 0.0015 * topBlend;
+            } else if (cosT > -0.2) {
+              const midBlend = (cosT + 0.2) * Math.sin(vFrac * Math.PI);
+              dY += 0.0020 * midBlend;
+              dZ -= 0.0015 * midBlend;
             }
             break;
 
@@ -2972,7 +3199,7 @@ export class ArticulatedMannequin implements IHumanCharacter {
 
           case 'hair_ponytail_high': {
             baseThick = 0.0042 + 0.0016 * Math.sin(vFrac * Math.PI);
-            if (cosT < 0.1) {
+            if (cosT < -0.1) {
               dZ -= 0.0030 * Math.sin(vFrac * Math.PI);
             }
             break;
@@ -3024,13 +3251,19 @@ export class ArticulatedMannequin implements IHumanCharacter {
             break;
 
           case 'hair_slicked_back':
-            baseThick = 0.0050 + 0.0020 * Math.sin(vFrac * Math.PI);
-            if (cosT > -0.1) {
-              const blend = Math.max(0, cosT + 0.1) * Math.sin(vFrac * Math.PI);
-              dZ -= 0.0050 * blend;
-              dY -= 0.0010 * blend;
-              dX += Math.sin(px * 160.0) * 0.0003 * waveFactor;
+            baseThick = 0.0055 + 0.0028 * Math.sin(vFrac * Math.PI);
+            if (cosT > 0.0) {
+              // Nâng bồng nhẹ ở chân tóc và vòm trán, vuốt mượt mà lượn ngược ra sau (không bị thụt lùi âm vào sọ)
+              const frontBlend = Math.pow(cosT, 1.2) * Math.sin(vFrac * Math.PI);
+              dY += 0.0028 * frontBlend;
+              dZ += 0.0018 * frontBlend;
+            } else {
+              // Vuốt mượt ôm sát sọ ra sau gáy
+              const backSweep = Math.abs(cosT) * Math.sin(vFrac * Math.PI) * 0.0015;
+              dZ -= backSweep;
             }
+            // Lọn thớ chải vuốt ngược mượt mà
+            dY += Math.sin(px * 100.0) * 0.00030 * waveFactor;
             break;
 
           case 'hair_textured_crop':
@@ -3057,9 +3290,9 @@ export class ArticulatedMannequin implements IHumanCharacter {
           }
 
           case 'hair_man_bun':
-            baseThick = 0.0038 + 0.0014 * Math.sin(vFrac * Math.PI);
+            baseThick = 0.0045 + 0.0018 * Math.sin(vFrac * Math.PI);
             if (cosT > 0.0) {
-              dZ -= 0.0024 * Math.sin(vFrac * Math.PI);
+              dY += 0.0015 * Math.sin(vFrac * Math.PI) * cosT;
             }
             break;
 
@@ -3069,13 +3302,13 @@ export class ArticulatedMannequin implements IHumanCharacter {
         }
 
         // 4. Gợn sóng & Lọn tóc sọc vân 3D chân thực, không bị trơn láng bóng lộn
-        const strandRidges = Math.sin(theta * 18.0) * 0.00065 * Math.sin(vFrac * Math.PI);
-        const flowWaves = Math.sin(vFrac * 14.0 + theta * 3.0) * 0.00035 * waveFactor;
-        const microTexture = (Math.sin(px * 160.0 + pz * 160.0) + Math.cos(py * 160.0)) * 0.00020 * waveFactor;
+        const strandRidges = Math.sin(theta * 18.0) * 0.00045 * Math.sin(vFrac * Math.PI);
+        const flowWaves = Math.sin(vFrac * 14.0 + theta * 3.0) * 0.00025 * waveFactor;
+        const microTexture = (Math.sin(px * 160.0 + pz * 160.0) + Math.cos(py * 160.0)) * 0.00015 * waveFactor;
         
-        // Taper độ dày về 0.3mm ở chân tóc để ôm dính 100% vào hộp sọ
-        const rimTaper = 0.0003 + (baseThick - 0.0003) * Math.pow(1.0 - vFrac, 0.70);
-        const finalThickness = Math.max(0.00030, rimTaper + strandRidges + flowWaves + microTexture);
+        // Taper độ dày về tối thiểu 0.8mm ở chân tóc để ôm dính 100% vào hộp sọ mà không bao giờ bị cắt răng cưa/xuyên sọ
+        const rimTaper = 0.0008 + (baseThick - 0.0008) * Math.pow(1.0 - vFrac, 0.70);
+        const finalThickness = Math.max(0.00060, rimTaper + strandRidges + flowWaves + microTexture);
 
         // 5. Màu tóc ĐỒNG NHẤT 100% Solid Molded
         let fadeRatio = 0;
@@ -3360,6 +3593,112 @@ export class ArticulatedMannequin implements IHumanCharacter {
   }
 
   /**
+   * Điêu khắc 3D Lọn tóc Anime vuốt nhọn (Sculpted Tapered Anime Hair Strand)
+   * Uốn lượn theo đường cong spline 3D, bồng xòe ở thân trên và vuốt nhọn dần về đuôi tóc
+   */
+  private createAnimeTaperedStrandGeometry(
+    points: THREE.Vector3[],
+    maxRadiusX: number,
+    maxRadiusY: number,
+    lengthSegments: number = 32,
+    radialSegments: number = 14,
+    hairColorHex: string = '#16161a'
+  ): THREE.BufferGeometry {
+    const curve = new THREE.CatmullRomCurve3(points);
+    const frenetFrames = curve.computeFrenetFrames(lengthSegments, false);
+    const hairCol = new THREE.Color(hairColorHex);
+
+    const positions: number[] = [];
+    const colors: number[] = [];
+    const uvs: number[] = [];
+    const indices: number[] = [];
+
+    for (let i = 0; i <= lengthSegments; i++) {
+      const uFrac = i / lengthSegments;
+      const point = curve.getPointAt(uFrac);
+      const N = frenetFrames.normals[i];
+      const B = frenetFrames.binormals[i];
+
+      // Hệ số thuôn nhọn 3D (Taper factor):
+      // - Gốc tóc (uFrac=0): độ dày vừa vặn xuất phát từ nút buộc
+      // - Thân trên (uFrac=0.2-0.35): bồng xòe cực đại tạo khối tóc bồng bềnh
+      // - Đuôi tóc (uFrac->1.0): vuốt nhọn dần về 0.3mm thanh thoát
+      let shapeFactor: number;
+      if (uFrac < 0.25) {
+        const s = uFrac / 0.25;
+        shapeFactor = 0.55 + 0.45 * Math.sin(s * Math.PI * 0.5);
+      } else {
+        const s = (uFrac - 0.25) / 0.75;
+        shapeFactor = Math.cos(s * Math.PI * 0.5);
+      }
+
+      const rX = Math.max(0.0003, maxRadiusX * shapeFactor);
+      const rY = Math.max(0.0003, maxRadiusY * shapeFactor);
+
+      for (let j = 0; j <= radialSegments; j++) {
+        const vFrac = j / radialSegments;
+        const theta = vFrac * Math.PI * 2;
+
+        // Điêu khắc vân lọn tóc sọc 3D (Stylized anime hair facets)
+        const facet = 1.0 + 0.14 * Math.cos(theta * 3.0) + 0.05 * Math.cos(theta * 6.0);
+        const offsetX = Math.cos(theta) * rX * facet;
+        const offsetY = Math.sin(theta) * rY * facet;
+
+        const posX = point.x + N.x * offsetX + B.x * offsetY;
+        const posY = point.y + N.y * offsetX + B.y * offsetY;
+        const posZ = point.z + N.z * offsetX + B.z * offsetY;
+
+        positions.push(posX, posY, posZ);
+        colors.push(hairCol.r, hairCol.g, hairCol.b);
+        uvs.push(uFrac, vFrac);
+      }
+    }
+
+    for (let i = 0; i < lengthSegments; i++) {
+      for (let j = 0; j < radialSegments; j++) {
+        const i0 = i * (radialSegments + 1) + j;
+        const i1 = i0 + 1;
+        const i2 = (i + 1) * (radialSegments + 1) + j;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i2, i1);
+        indices.push(i1, i2, i3);
+      }
+    }
+
+    // Đỉnh chóp nhọn khóa kín đáy (Pointed tip cap)
+    const tipPoint = curve.getPointAt(1.0);
+    const tipIndex = positions.length / 3;
+    positions.push(tipPoint.x, tipPoint.y, tipPoint.z);
+    colors.push(hairCol.r, hairCol.g, hairCol.b);
+    uvs.push(1.0, 0.5);
+
+    const lastRingStart = lengthSegments * (radialSegments + 1);
+    for (let j = 0; j < radialSegments; j++) {
+      indices.push(lastRingStart + j, lastRingStart + j + 1, tipIndex);
+    }
+
+    // Nắp chân tóc trong nút buộc (Root cap)
+    const rootPoint = curve.getPointAt(0.0);
+    const rootIndex = positions.length / 3;
+    positions.push(rootPoint.x, rootPoint.y, rootPoint.z);
+    colors.push(hairCol.r, hairCol.g, hairCol.b);
+    uvs.push(0.0, 0.5);
+
+    for (let j = 0; j < radialSegments; j++) {
+      indices.push(rootIndex, j + 1, j);
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
    * Điêu khắc 3D Tóc Đa Dạng (30+ Kiểu Tóc Solid Molded Tuyệt Mỹ)
    */
   private rebuildHair(hairId: string, hairColorHex: string, skinColorHex: string = '#B57850') {
@@ -3449,29 +3788,2616 @@ export class ArticulatedMannequin implements IHumanCharacter {
       this.hairGroup.add(bunMesh);
     } else if (hairId === 'hair_ponytail_high') {
       // 1. Dây buộc tóc (Scrunchie / Hair Tie Ring)
-      const tieGeo = new THREE.TorusGeometry(0.0085, 0.0032, 12, 24);
-      tieGeo.scale(1.0, 1.0, 1.2);
+      const tieGeo = new THREE.TorusGeometry(0.0092, 0.0032, 16, 28);
+      tieGeo.scale(1.15, 1.0, 1.25);
       const tieMesh = new THREE.Mesh(tieGeo, this.jointMaterial);
       tieMesh.position.set(0, 0.052, -0.046);
       tieMesh.rotation.x = -0.55;
       tieMesh.castShadow = true;
       this.hairGroup.add(tieMesh);
 
-      // 2. Chùm đuôi ngựa 3D uốn cong bồng bềnh dài xuống lưng
-      const ponyPts = [
+      // 2. Chùm đuôi ngựa Đa Tầng 3D Điêu Khắc (Layered High-End Anime Ponytail)
+      // 2.1 Lọn chính (Main Center Cascade - dài bồng bềnh uốn lượn xuống lưng và vuốt nhọn ở ngọn)
+      const mainPts = [
         new THREE.Vector3(0, 0.052, -0.046),
-        new THREE.Vector3(0, 0.070, -0.062),
-        new THREE.Vector3(0, 0.055, -0.078),
-        new THREE.Vector3(0, 0.015, -0.084),
-        new THREE.Vector3(0, -0.035, -0.080),
-        new THREE.Vector3(0, -0.075, -0.070),
+        new THREE.Vector3(0, 0.078, -0.059),
+        new THREE.Vector3(0, 0.068, -0.078),
+        new THREE.Vector3(0, 0.028, -0.088),
+        new THREE.Vector3(0, -0.025, -0.083),
+        new THREE.Vector3(0, -0.078, -0.072),
+        new THREE.Vector3(0, -0.125, -0.056),
       ];
-      const ponyCurve = new THREE.CatmullRomCurve3(ponyPts);
-      const ponyGeo = new THREE.TubeGeometry(ponyCurve, 32, 0.0115, 14, false);
-      const ponyMesh = new THREE.Mesh(ponyGeo, this.hairMaterial);
-      ponyMesh.castShadow = true;
-      ponyMesh.receiveShadow = true;
-      this.hairGroup.add(ponyMesh);
+      const mainGeo = this.createAnimeTaperedStrandGeometry(mainPts, 0.0150, 0.0105, 36, 16, hairColorHex);
+      const mainMesh = new THREE.Mesh(mainGeo, this.hairMaterial);
+      mainMesh.castShadow = true;
+      mainMesh.receiveShadow = true;
+      this.hairGroup.add(mainMesh);
+
+      // 2.2 Lọn búp vòm trên (Top Fountain Crest Lock - vồng cao đài phun nước anime)
+      const topPts = [
+        new THREE.Vector3(0, 0.053, -0.045),
+        new THREE.Vector3(0, 0.084, -0.057),
+        new THREE.Vector3(0, 0.075, -0.074),
+        new THREE.Vector3(0, 0.046, -0.084),
+        new THREE.Vector3(0, 0.012, -0.085),
+        new THREE.Vector3(0, -0.022, -0.080),
+      ];
+      const topGeo = this.createAnimeTaperedStrandGeometry(topPts, 0.0115, 0.0075, 28, 14, hairColorHex);
+      const topMesh = new THREE.Mesh(topGeo, this.hairMaterial);
+      topMesh.castShadow = true;
+      topMesh.receiveShadow = true;
+      this.hairGroup.add(topMesh);
+
+      // 2.3 Lọn rủ uốn lượn bên trái (Left Flowing Accent Lock)
+      const leftPts = [
+        new THREE.Vector3(-0.004, 0.051, -0.046),
+        new THREE.Vector3(-0.012, 0.073, -0.057),
+        new THREE.Vector3(-0.015, 0.054, -0.074),
+        new THREE.Vector3(-0.013, 0.012, -0.081),
+        new THREE.Vector3(-0.008, -0.036, -0.076),
+        new THREE.Vector3(-0.003, -0.082, -0.064),
+      ];
+      const leftGeo = this.createAnimeTaperedStrandGeometry(leftPts, 0.0090, 0.0068, 28, 14, hairColorHex);
+      const leftMesh = new THREE.Mesh(leftGeo, this.hairMaterial);
+      leftMesh.castShadow = true;
+      leftMesh.receiveShadow = true;
+      this.hairGroup.add(leftMesh);
+
+      // 2.4 Lọn rủ uốn lượn bên phải (Right Flowing Accent Lock)
+      const rightPts = [
+        new THREE.Vector3(0.004, 0.051, -0.046),
+        new THREE.Vector3(0.012, 0.073, -0.057),
+        new THREE.Vector3(0.015, 0.054, -0.074),
+        new THREE.Vector3(0.013, 0.012, -0.081),
+        new THREE.Vector3(0.008, -0.036, -0.076),
+        new THREE.Vector3(0.003, -0.082, -0.064),
+      ];
+      const rightGeo = this.createAnimeTaperedStrandGeometry(rightPts, 0.0090, 0.0068, 28, 14, hairColorHex);
+      const rightMesh = new THREE.Mesh(rightGeo, this.hairMaterial);
+      rightMesh.castShadow = true;
+      rightMesh.receiveShadow = true;
+      this.hairGroup.add(rightMesh);
+    }
+  }
+
+  /**
+   * Tạo hình học 3D thân áo ngực sơ mi Oxford / Áo thun (Form Rộng Thoải Mái Loose-Fit, Che Kín Toàn Bộ Vai & Ngực)
+   */
+  private createOxfordShirtChestGeometry(): THREE.BufferGeometry {
+    const V = 48;
+    const U = 48;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    // Bao phủ từ y = -0.045m (chồng lấn sâu 4.5cm vào eo) đến y = 0.168m (ôm khít chân cổ)
+    const yBottom = -0.045;
+    const yTop = 0.168;
+    const yTotal = yTop - yBottom;
+
+    for (let v = 0; v <= V; v++) {
+      const vFrac = v / V;
+      const py = yBottom + vFrac * yTotal;
+
+      for (let u = 0; u <= U; u++) {
+        const uFrac = u / U;
+        const theta = uFrac * Math.PI * 2;
+        const cosT = Math.cos(theta); // >0 trước, <0 sau
+        const sinT = Math.sin(theta); // <0 trái, >0 phải
+        const absSin = Math.abs(sinT);
+
+        let rx: number;
+        let rz_ant: number;
+        let rz_pos: number;
+
+        if (py <= 0.120) {
+          // Thân áo ngực & vòm nách áo sơ mi rộng rãi (Loose-Fit Chest & Acromion Shelf)
+          const t1 = (py - yBottom) / (0.120 - yBottom);
+          const sCurve = Math.sin(t1 * (Math.PI / 2));
+          // Phủ trọn vẹn mỏm vai acromion (0.135m), rộng hơn khớp xương vai 0.125m
+          rx = 0.096 + sCurve * 0.039;     // 0.096 -> 0.135m
+          rz_ant = 0.075 + sCurve * 0.005; // 0.075 -> 0.080m
+          rz_pos = 0.077 - sCurve * 0.003; // 0.077 -> 0.074m (nhẹ nhàng mở rộng tự nhiên xuống thắt lưng)
+
+          // Độ rủ vải 2 bên sườn áo sơ mi (Side body loose drape)
+          if (absSin > 0.35 && t1 > 0.15 && t1 < 0.90) {
+            const drapeFlare = Math.sin(((t1 - 0.15) / 0.75) * Math.PI) * (absSin - 0.35) * 0.004;
+            rx += drapeFlare;
+          }
+        } else {
+          // Cầu vai & dốc cơ thang áo sơ mi (Smooth Natural Shoulder Slope)
+          // Dốc mềm mại từ mỏm vai 0.135m lên vành cổ 0.033m
+          const t2 = Math.min(1.0, Math.max(0.0, (py - 0.120) / (0.168 - 0.120)));
+          const smoothT = t2 * t2 * (3 - 2 * t2);
+          rx = 0.135 - smoothT * (0.135 - 0.033);
+          rz_ant = 0.080 - smoothT * (0.080 - 0.030);
+          rz_pos = 0.074 - smoothT * (0.074 - 0.032);
+        }
+
+        let px = sinT * rx;
+        let pz = cosT >= 0 ? cosT * rz_ant : cosT * rz_pos;
+
+        // Vồng cao ôm kín cơ thang sau gáy & hạ nhẹ viền cổ trước
+        if (vFrac > 0.65) {
+          const trapT = (vFrac - 0.65) / 0.35;
+          if (cosT > 0) {
+            pz -= cosT * (1.0 - absSin) * 0.0020 * trapT;
+          } else {
+            pz += -cosT * 0.0035 * trapT;
+          }
+        }
+
+        // Nếp vải buông phẳng thanh lịch của áo sơ mi (không bó sát cơ bắp)
+        if (cosT > 0.20 && py >= 0.010 && py <= 0.112 && absSin <= 0.75) {
+          const pecX = absSin / 0.75;
+          const foldWave = Math.sin(pecX * Math.PI * 2) * 0.0012;
+          pz += foldWave * (cosT > 0 ? cosT : 0.4);
+        }
+
+        positions.push(px, py, pz);
+        uvs.push(uFrac, vFrac);
+      }
+    }
+
+    for (let v = 0; v < V; v++) {
+      for (let u = 0; u < U; u++) {
+        const i0 = v * (U + 1) + u;
+        const i1 = i0 + 1;
+        const i2 = (v + 1) * (U + 1) + u;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * Tạo hình học 3D cổ áo sơ mi bẻ Oxford (Continuous 3D Turn-Down Collar Leaf & Snug Stand)
+   */
+  private createOxfordShirtCollarGeometry(): THREE.BufferGeometry {
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    // 1. Chân cổ áo sơ mi (Collar Stand - vành ôm sát chân cổ tại y = 0.152m -> 0.165m)
+    const SEGS = 36;
+    const centerZ = -0.005;
+    const rX_stand = 0.0285;
+    const rZ_ant_stand = 0.0260;
+    const rZ_pos_stand = 0.0285;
+    const yStandBot = 0.152;
+    const yStandTop = 0.165;
+
+    for (let i = 0; i <= SEGS; i++) {
+      const uFrac = i / SEGS;
+      const angle = uFrac * Math.PI * 2;
+      const cosA = Math.cos(angle);
+      const sinA = Math.sin(angle);
+
+      const rZ = cosA >= 0 ? rZ_ant_stand : rZ_pos_stand;
+      const px = sinA * rX_stand;
+      const pz = centerZ + cosA * rZ;
+
+      // Bottom rim
+      positions.push(px, yStandBot, pz);
+      uvs.push(uFrac, 0);
+
+      // Top rim
+      positions.push(px, yStandTop, pz);
+      uvs.push(uFrac, 1);
+    }
+
+    for (let i = 0; i < SEGS; i++) {
+      const i0 = i * 2;
+      const i1 = i0 + 1;
+      const i2 = (i + 1) * 2;
+      const i3 = i2 + 1;
+
+      // Double-sided stand
+      indices.push(i0, i2, i1);
+      indices.push(i1, i2, i3);
+      indices.push(i0, i1, i2);
+      indices.push(i1, i3, i2);
+    }
+
+    // 2. Lá cổ bẻ 3D liền mạch (Continuous 3D Turn-Down Collar Leaf)
+    // Chạy vòng từ mép vạt trước trái -> vòng qua sau gáy -> mép vạt trước phải
+    const LEAF_SEGS = 40;
+    const baseLeafIdx = positions.length / 3;
+
+    for (let i = 0; i <= LEAF_SEGS; i++) {
+      const uFrac = i / LEAF_SEGS;
+      const angle = 0.52 + uFrac * (Math.PI * 2 - 1.04);
+      const cosA = Math.cos(angle);
+      const sinA = Math.sin(angle);
+
+      const rZ_inner = cosA >= 0 ? rZ_ant_stand + 0.0010 : rZ_pos_stand + 0.0010;
+      const pxInner = sinA * (rX_stand + 0.0010);
+      const pzInner = centerZ + cosA * rZ_inner;
+      const pyInner = yStandTop;
+
+      // Độ rủ và xòe của lá cổ
+      let leafDrop = 0.018 + (cosA > 0 ? cosA * 0.014 : 0);
+      let leafFlareX = 0.004 + (cosA > 0 ? cosA * 0.006 : 0);
+      let leafFlareZ = 0.004 + (cosA > 0 ? cosA * 0.008 : 0);
+
+      if (i === 0 || i === LEAF_SEGS) {
+        leafDrop += 0.004;
+        leafFlareZ += 0.003;
+      }
+
+      const pyOuter = pyInner - leafDrop;
+      const pxOuter = sinA * (rX_stand + leafFlareX);
+      const pzOuter = centerZ + cosA * (rZ_inner + leafFlareZ);
+
+      positions.push(pxInner, pyInner, pzInner);
+      uvs.push(uFrac, 0);
+
+      positions.push(pxOuter, pyOuter, pzOuter);
+      uvs.push(uFrac, 1);
+    }
+
+    for (let i = 0; i < LEAF_SEGS; i++) {
+      const i0 = baseLeafIdx + i * 2;
+      const i1 = i0 + 1;
+      const i2 = baseLeafIdx + (i + 1) * 2;
+      const i3 = i2 + 1;
+
+      // Mặt ngoài lá cổ
+      indices.push(i0, i1, i2);
+      indices.push(i1, i3, i2);
+      // Mặt trong lá cổ (Double-sided)
+      indices.push(i0, i2, i1);
+      indices.push(i1, i2, i3);
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * Tạo nẹp cúc uốn cong ôm sát mặt trước áo, các nút xà cừ và túi ngực
+   */
+  private buildOxfordShirtPlacket(targetGroup: THREE.Group) {
+    // 1. Nẹp cúc dọc ngực áo (Curved Button Placket ôm sát mặt trước)
+    const placketPts: number[] = [];
+    const placketIndices: number[] = [];
+    const placketUvs: number[] = [];
+
+    const NSEGS = 20;
+    const yStart = -0.045;
+    const yEnd = 0.165;
+    const halfW = 0.0070; // rộng 1.4cm
+
+    for (let i = 0; i <= NSEGS; i++) {
+      const t = i / NSEGS;
+      const py = yStart + t * (yEnd - yStart);
+
+      let curRz: number;
+      if (py <= 0.114) {
+        const t1 = (py - yStart) / (0.114 - yStart);
+        curRz = 0.076 + Math.sin(t1 * (Math.PI / 2)) * 0.005;
+      } else {
+        const t2 = (py - 0.114) / (yEnd - 0.114);
+        const smoothT = t2 * t2 * (3 - 2 * t2);
+        curRz = 0.081 - smoothT * (0.081 - 0.033) - t2 * 0.0030;
+      }
+
+      const pz = curRz + 0.0015;
+
+      placketPts.push(-halfW, py, pz);
+      placketUvs.push(0, t);
+      placketPts.push(halfW, py, pz);
+      placketUvs.push(1, t);
+    }
+
+    for (let i = 0; i < NSEGS; i++) {
+      const i0 = i * 2;
+      const i1 = i0 + 1;
+      const i2 = (i + 1) * 2;
+      const i3 = i2 + 1;
+
+      placketIndices.push(i0, i2, i1);
+      placketIndices.push(i1, i2, i3);
+    }
+
+    const placketGeo = new THREE.BufferGeometry();
+    placketGeo.setAttribute('position', new THREE.Float32BufferAttribute(placketPts, 3));
+    placketGeo.setAttribute('uv', new THREE.Float32BufferAttribute(placketUvs, 2));
+    placketGeo.setIndex(placketIndices);
+    placketGeo.computeVertexNormals();
+
+    const placketMesh = new THREE.Mesh(placketGeo, this.shirtMaterial);
+    placketMesh.castShadow = true;
+    targetGroup.add(placketMesh);
+
+    // 2. Hàng 5 cúc xà cừ 3D (Pearl Buttons) gắn chuẩn xác trên nẹp cúc
+    const buttonYList = [0.150, 0.102, 0.054, 0.006, -0.034];
+
+    buttonYList.forEach((bY) => {
+      let curRz: number;
+      if (bY <= 0.114) {
+        const t1 = (bY - yStart) / (0.114 - yStart);
+        curRz = 0.076 + Math.sin(t1 * (Math.PI / 2)) * 0.005;
+      } else {
+        const t2 = (bY - 0.114) / (yEnd - 0.114);
+        const smoothT = t2 * t2 * (3 - 2 * t2);
+        curRz = 0.081 - smoothT * (0.081 - 0.033) - t2 * 0.0030;
+      }
+
+      const buttonGeo = new THREE.CylinderGeometry(0.0032, 0.0032, 0.0016, 16);
+      buttonGeo.rotateX(Math.PI / 2);
+      const button = new THREE.Mesh(buttonGeo, this.shirtButtonMaterial);
+      button.position.set(0, bY, curRz + 0.0024);
+      button.castShadow = true;
+      targetGroup.add(button);
+    });
+
+    // 3. Hai cúc cài giữ mũi cổ áo sơ mi (Button-down collar points)
+    [-1, 1].forEach((dir) => {
+      const cornerBtnGeo = new THREE.CylinderGeometry(0.0022, 0.0022, 0.0012, 14);
+      cornerBtnGeo.rotateX(Math.PI / 2);
+      const cornerBtn = new THREE.Mesh(cornerBtnGeo, this.shirtButtonMaterial);
+      cornerBtn.position.set(dir * 0.024, 0.136, 0.068);
+      targetGroup.add(cornerBtn);
+    });
+
+    // 4. Túi ngực trái áo sơ mi (Left Chest Pocket)
+    const pocketGeo = new THREE.BoxGeometry(0.026, 0.030, 0.0018);
+    const pocketMesh = new THREE.Mesh(pocketGeo, this.shirtMaterial);
+    pocketMesh.position.set(-0.052, 0.065, 0.074);
+    pocketMesh.rotation.y = 0.14;
+    pocketMesh.castShadow = true;
+    targetGroup.add(pocketMesh);
+
+    // Nắp/viền miệng túi
+    const weltGeo = new THREE.BoxGeometry(0.027, 0.005, 0.0022);
+    const weltMesh = new THREE.Mesh(weltGeo, this.shirtMaterial);
+    weltMesh.position.set(-0.052, 0.080, 0.075);
+    weltMesh.rotation.y = 0.14;
+    targetGroup.add(weltMesh);
+  }
+
+  /**
+   * Tạo hình học 3D thân áo bụng sơ mi Oxford (Loose-Fit Waist Shell - Thụng Rộng Rãi & Mềm Mại)
+   */
+  private createOxfordShirtWaistGeometry(): THREE.BufferGeometry {
+    const V = 32;
+    const U = 44;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    const yBottom = -0.012; // Gấu áo buông cao hơn cạp quần thắt lưng, không trùm lấp đai cạp
+    const yTop = 0.170;
+    const yTotal = yTop - yBottom;
+
+    for (let v = 0; v <= V; v++) {
+      const vFrac = v / V;
+      const y = yBottom + vFrac * yTotal;
+
+      for (let u = 0; u <= U; u++) {
+        const uFrac = u / U;
+        const theta = uFrac * Math.PI * 2;
+        const cosT = Math.cos(theta);
+        const sinT = Math.sin(theta);
+
+        let rX: number;
+        let rZ_ant: number;
+        let rZ_pos: number;
+
+        if (y > 0.075) {
+          // 1. Phần lồng sâu vào bên trong thân áo ngực (Inserts smoothly inside chest shell)
+          const topT = (y - 0.075) / (yTop - 0.075);
+          const dome = topT * topT * (3.0 - 2.0 * topT);
+          rX = 0.0955 - dome * 0.016;       // 0.0955 -> 0.0795m (luôn nằm gọn trong ngực rx >= 0.096m)
+          rZ_ant = 0.0745 - dome * 0.015;   // 0.0745 -> 0.0595m (luôn nằm gọn trong ngực rz_ant >= 0.075m)
+          rZ_pos = 0.0755 - dome * 0.016;   // 0.0755 -> 0.0595m (luôn nằm gọn trong ngực rz_pos >= 0.077m)
+        } else {
+          // 2. Thân bụng và gấu áo buông thụng mềm mại liên tục C1 (Single unified smooth curve)
+          // Đường nét thon gọn tự nhiên, gấu áo buông phẳng phiu cao hơn cạp quần
+          const downT = (0.075 - y) / (0.075 - yBottom); // 0 tại y=0.075 -> 1 tại y=-0.012
+          const smoothDown = downT * downT * (3.0 - 2.0 * downT);
+          rX = 0.0955 + smoothDown * 0.0030;      // 0.0955 -> 0.0985m
+          rZ_ant = 0.0745 + smoothDown * 0.0020;  // 0.0745 -> 0.0765m
+          rZ_pos = 0.0755 + smoothDown * 0.0025;  // 0.0755 -> 0.0780m
+        }
+
+        const px = sinT * rX;
+        const pz = cosT >= 0 ? cosT * rZ_ant : cosT * rZ_pos;
+
+        positions.push(px, y, pz);
+        uvs.push(uFrac, vFrac);
+      }
+    }
+
+    for (let v = 0; v < V; v++) {
+      for (let u = 0; u < U; u++) {
+        const i0 = v * (U + 1) + u;
+        const i1 = i0 + 1;
+        const i2 = (v + 1) * (U + 1) + u;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * Tạo nẹp cúc & khuy áo đoạn eo bụng
+   */
+  private buildOxfordShirtWaistPlacket(targetGroup: THREE.Group) {
+    const placketPts: number[] = [];
+    const placketIndices: number[] = [];
+    const placketUvs: number[] = [];
+
+    const NSEGS = 16;
+    const yStart = -0.012;
+    const yEnd = 0.120;
+    const halfW = 0.0075;
+
+    for (let i = 0; i <= NSEGS; i++) {
+      const t = i / NSEGS;
+      const py = yStart + t * (yEnd - yStart);
+      const pz = 0.0765 + 0.0015;
+
+      placketPts.push(-halfW, py, pz);
+      placketUvs.push(0, t);
+      placketPts.push(halfW, py, pz);
+      placketUvs.push(1, t);
+    }
+
+    for (let i = 0; i < NSEGS; i++) {
+      const i0 = i * 2;
+      const i1 = i0 + 1;
+      const i2 = (i + 1) * 2;
+      const i3 = i2 + 1;
+
+      placketIndices.push(i0, i2, i1);
+      placketIndices.push(i1, i2, i3);
+    }
+
+    const placketGeo = new THREE.BufferGeometry();
+    placketGeo.setAttribute('position', new THREE.Float32BufferAttribute(placketPts, 3));
+    placketGeo.setAttribute('uv', new THREE.Float32BufferAttribute(placketUvs, 2));
+    placketGeo.setIndex(placketIndices);
+    placketGeo.computeVertexNormals();
+
+    const placket = new THREE.Mesh(placketGeo, this.shirtMaterial);
+    placket.castShadow = true;
+    targetGroup.add(placket);
+
+    [0.025, 0.075].forEach((bY) => {
+      const buttonGeo = new THREE.CylinderGeometry(0.0035, 0.0035, 0.0016, 16);
+      buttonGeo.rotateX(Math.PI / 2);
+      const button = new THREE.Mesh(buttonGeo, this.shirtButtonMaterial);
+      button.position.set(0, bY, 0.0795);
+      button.castShadow = true;
+      targetGroup.add(button);
+    });
+  }
+
+  /**
+   * Tạo hình học 3D ống tay áo sơ mi cộc tay Oxford (Form Rộng Loose-Fit)
+   */
+  private createOxfordShirtSleeveGeometry(dir: number): THREE.BufferGeometry {
+    const NY = 24;
+    const NU = 32;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    // Bắt đầu từ y = +0.020m (vòm cầu vai tròn trịa bọc kín 100% khớp vai) xuống y = -0.115m (gần khuỷu tay)
+    const yTop = 0.020;
+    const yBottom = -0.115;
+
+    for (let i = 0; i <= NY; i++) {
+      const t = i / NY;
+      const y = yTop - t * (yTop - yBottom);
+
+      let rX_lat: number;
+      let rX_med: number;
+      let rZ_ant: number;
+      let rZ_pos: number;
+
+      if (t <= 0.30) {
+        // 1. Chóp vòm cầu vai bo tròn bầu dục mượt mà bọc kín khớp vai
+        const capT = t / 0.30;
+        const dome = Math.sqrt(Math.max(0.0001, 1.0 - Math.pow(1.0 - capT, 2.0)));
+        rX_lat = Math.max(0.0005, dome * 0.046);
+        rX_med = Math.max(0.0005, dome * 0.032);
+        rZ_ant = Math.max(0.0005, dome * 0.046);
+        rZ_pos = Math.max(0.0005, dome * 0.046);
+      } else if (t <= 0.85) {
+        // 2. Thân ống tay buông rộng thoải mái
+        const midT = (t - 0.30) / 0.55;
+        rX_lat = 0.046 - midT * 0.005; // 0.046 -> 0.041m
+        rX_med = 0.032 - midT * 0.006; // 0.032 -> 0.026m
+        rZ_ant = 0.046 - midT * 0.005; // 0.046 -> 0.041m
+        rZ_pos = 0.046 - midT * 0.005; // 0.046 -> 0.041m
+      } else {
+        // 3. Gấu tay áo sơ mi gấp nếp dày dặn
+        const hemT = (t - 0.85) / 0.15;
+        rX_lat = 0.041 - hemT * 0.003;
+        rX_med = 0.026 - hemT * 0.002;
+        rZ_ant = 0.041 - hemT * 0.003;
+        rZ_pos = 0.041 - hemT * 0.003;
+      }
+
+      for (let j = 0; j <= NU; j++) {
+        const uFrac = j / NU;
+        const phi = uFrac * Math.PI * 2;
+        const cosP = Math.cos(phi);
+        const sinP = Math.sin(phi);
+
+        let px: number;
+        if (dir > 0) {
+          px = sinP * (sinP >= 0 ? rX_lat : rX_med);
+        } else {
+          px = sinP * (sinP <= 0 ? rX_lat : rX_med);
+        }
+
+        const pz = cosP * (cosP >= 0 ? rZ_ant : rZ_pos);
+        positions.push(px, y, pz);
+        uvs.push(uFrac, t);
+      }
+    }
+
+    for (let i = 0; i < NY; i++) {
+      for (let j = 0; j < NU; j++) {
+        const i0 = i * (NU + 1) + j;
+        const i1 = i0 + 1;
+        const i2 = (i + 1) * (NU + 1) + j;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * Tạo hình học 3D bắp tay áo sơ mi dài tay (nối liền mạch từ vòm vai xuống qua cùi chỏ mềm mại)
+   */
+  private createOxfordLongSleeveUpperGeometry(dir: number): THREE.BufferGeometry {
+    const NY = 32;
+    const NU = 32;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    const yTop = 0.020;
+    const yBottom = -0.160;
+
+    for (let i = 0; i <= NY; i++) {
+      const t = i / NY;
+      const y = yTop - t * (yTop - yBottom);
+
+      let rX_lat: number;
+      let rX_med: number;
+      let rZ_ant: number;
+      let rZ_pos: number;
+
+      if (t <= 0.28) {
+        const capT = t / 0.28;
+        const dome = Math.sqrt(Math.max(0.0001, 1.0 - Math.pow(1.0 - capT, 2.0)));
+        rX_lat = Math.max(0.0005, dome * 0.046);
+        rX_med = Math.max(0.0005, dome * 0.032);
+        rZ_ant = Math.max(0.0005, dome * 0.046);
+        rZ_pos = Math.max(0.0005, dome * 0.046);
+      } else if (t <= 0.85) {
+        const midT = (t - 0.28) / 0.57;
+        rX_lat = 0.046 - midT * 0.016; // 0.046 -> 0.0300m
+        rX_med = 0.032 - midT * 0.009; // 0.032 -> 0.0230m
+        rZ_ant = 0.046 - midT * 0.017; // 0.046 -> 0.0290m
+        rZ_pos = 0.046 - midT * 0.017; // 0.046 -> 0.0290m
+      } else {
+        const lowT = (t - 0.85) / 0.15;
+        rX_lat = 0.0300 - lowT * 0.0020; // 0.0300 -> 0.0280m
+        rX_med = 0.0230 - lowT * 0.0015; // 0.0230 -> 0.0215m
+        rZ_ant = 0.0290 - lowT * 0.0020; // 0.0290 -> 0.0270m
+        rZ_pos = 0.0290 - lowT * 0.0020; // 0.0290 -> 0.0270m
+      }
+
+      for (let j = 0; j <= NU; j++) {
+        const uFrac = j / NU;
+        const phi = uFrac * Math.PI * 2;
+        const cosP = Math.cos(phi);
+        const sinP = Math.sin(phi);
+
+        let px: number;
+        if (dir > 0) {
+          px = sinP * (sinP >= 0 ? rX_lat : rX_med);
+        } else {
+          px = sinP * (sinP <= 0 ? rX_lat : rX_med);
+        }
+
+        const pz = cosP * (cosP >= 0 ? rZ_ant : rZ_pos);
+
+        // Vạt sau vuốt cong mềm mại ôm nhẹ cùi chỏ (Smooth continuous posterior curve)
+        let py = y;
+        if (t > 0.70 && cosP < 0) {
+          const postWeight = Math.pow(Math.max(0, -cosP), 1.6);
+          py -= ((t - 0.70) / 0.30) * postWeight * 0.006;
+        }
+
+        positions.push(px, py, pz);
+        uvs.push(uFrac, t);
+      }
+    }
+
+    for (let i = 0; i < NY; i++) {
+      for (let j = 0; j < NU; j++) {
+        const i0 = i * (NU + 1) + j;
+        const i1 = i0 + 1;
+        const i2 = (i + 1) * (NU + 1) + j;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * Tạo hình học 3D ống cẳng tay áo sơ mi dài tay (nối liền mạch từ cùi chỏ xuống tận gốc bàn tay)
+   */
+  private createOxfordLongSleeveForearmGeometry(dir: number): THREE.BufferGeometry {
+    const NY = 32;
+    const NU = 32;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    const yTop = 0.000;
+    const yBottom = -0.148; // Phủ trọn vẹn khớp cổ tay (-0.144m) chạm đỉnh bàn tay, dáng suông thẳng hiện đại
+
+    for (let i = 0; i <= NY; i++) {
+      const t = i / NY;
+      const y = yTop - t * (yTop - yBottom);
+
+      let rX_lat: number;
+      let rX_med: number;
+      let rZ_ant: number;
+      let rZ_pos: number;
+
+      if (t <= 0.70) {
+        // 1. Thân cẳng tay buông suông nhẹ nhàng tự nhiên (Không bóp nghẹt, không thắt nút)
+        const midT = t / 0.70;
+        rX_lat = 0.0275 - midT * 0.0030; // 0.0275 -> 0.0245m
+        rX_med = 0.0215 - midT * 0.0025; // 0.0215 -> 0.0190m
+        rZ_ant = 0.0265 - midT * 0.0030; // 0.0265 -> 0.0235m
+        rZ_pos = 0.0265 - midT * 0.0030; // 0.0265 -> 0.0235m
+      } else if (t <= 0.95) {
+        // 2. Măng sét cổ tay Oxford (Barrel Cuffs) phom đứng suông thẳng, không bo túm
+        const cuffT = (t - 0.70) / 0.25;
+        const cuffRib = Math.sin(cuffT * Math.PI) * 0.0004;
+        rX_lat = 0.0245 + cuffRib;
+        rX_med = 0.0190 + cuffRib;
+        rZ_ant = 0.0235 + cuffRib;
+        rZ_pos = 0.0235 + cuffRib;
+      } else {
+        // 3. Mép gập viền măng sét giữ nguyên form suông mở (chỉ gập nhẹ 0.5mm)
+        const hemT = (t - 0.95) / 0.05;
+        rX_lat = 0.0245 - hemT * 0.0008; // 0.0245 -> 0.0237m
+        rX_med = 0.0190 - hemT * 0.0006; // 0.0190 -> 0.0184m
+        rZ_ant = 0.0235 - hemT * 0.0008; // 0.0235 -> 0.0227m
+        rZ_pos = 0.0235 - hemT * 0.0008; // 0.0235 -> 0.0227m
+      }
+
+      for (let j = 0; j <= NU; j++) {
+        const uFrac = j / NU;
+        const phi = uFrac * Math.PI * 2;
+        const cosP = Math.cos(phi);
+        const sinP = Math.sin(phi);
+
+        let px: number;
+        if (dir > 0) {
+          px = sinP * (sinP >= 0 ? rX_lat : rX_med);
+        } else {
+          px = sinP * (sinP <= 0 ? rX_lat : rX_med);
+        }
+
+        const pz = cosP * (cosP >= 0 ? rZ_ant : rZ_pos);
+
+        // Vạt trên vuốt cong mềm mại ôm nhẹ cùi chỏ từ cẳng tay
+        let py = y;
+        if (t < 0.30 && cosP < 0) {
+          const postWeight = Math.pow(Math.max(0, -cosP), 1.6);
+          py += (1.0 - t / 0.30) * postWeight * 0.006;
+        }
+
+        positions.push(px, py, pz);
+        uvs.push(uFrac, t);
+      }
+    }
+
+    for (let i = 0; i < NY; i++) {
+      for (let j = 0; j < NU; j++) {
+        const i0 = i * (NU + 1) + j;
+        const i1 = i0 + 1;
+        const i2 = (i + 1) * (NU + 1) + j;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * Tạo hình học 3D ống tay áo sơ mi xắn tay (Rolled-Up Sleeve) với nếp gấp xắn đúp 3D đúc liền
+   */
+  private createRolledSleeveUpperGeometry(dir: number): THREE.BufferGeometry {
+    const NY = 32;
+    const NU = 32;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    const yTop = 0.020;
+    const yBottom = -0.155; // Ôm trọn khuỷu tay trên
+
+    for (let i = 0; i <= NY; i++) {
+      const t = i / NY;
+      const y = yTop - t * (yTop - yBottom);
+
+      let rX_lat: number;
+      let rX_med: number;
+      let rZ_ant: number;
+      let rZ_pos: number;
+
+      if (t <= 0.28) {
+        const capT = t / 0.28;
+        const dome = Math.sqrt(Math.max(0.0001, 1.0 - Math.pow(1.0 - capT, 2.0)));
+        rX_lat = Math.max(0.0005, dome * 0.046);
+        rX_med = Math.max(0.0005, dome * 0.032);
+        rZ_ant = Math.max(0.0005, dome * 0.046);
+        rZ_pos = Math.max(0.0005, dome * 0.046);
+      } else if (t <= 0.70) {
+        const midT = (t - 0.28) / 0.42;
+        rX_lat = 0.046 - midT * 0.008; // 0.046 -> 0.038m
+        rX_med = 0.032 - midT * 0.006; // 0.032 -> 0.026m
+        rZ_ant = 0.046 - midT * 0.008; // 0.046 -> 0.038m
+        rZ_pos = 0.046 - midT * 0.008; // 0.046 -> 0.038m
+      } else if (t <= 0.92) {
+        // Nếp xắn tay đúp 2 tầng 3D hữu cơ đúc liền khối
+        const rollT = (t - 0.70) / 0.22;
+        const roll1 = Math.sin(Math.min(1.0, rollT * 2.0) * Math.PI) * 0.0045;
+        const roll2 = rollT > 0.5 ? Math.sin((rollT - 0.5) * 2.0 * Math.PI) * 0.0050 : 0;
+        const totalRoll = Math.max(roll1, roll2);
+
+        rX_lat = 0.038 + totalRoll;
+        rX_med = 0.026 + totalRoll;
+        rZ_ant = 0.038 + totalRoll;
+        rZ_pos = 0.038 + totalRoll;
+      } else {
+        // Mép xắn lộn ngược vào trong ôm khít bắp tay
+        const hemT = (t - 0.92) / 0.08;
+        rX_lat = 0.038 - hemT * 0.016; // 0.038 -> 0.022m
+        rX_med = 0.026 - hemT * 0.009; // 0.026 -> 0.017m
+        rZ_ant = 0.038 - hemT * 0.016; // 0.038 -> 0.022m
+        rZ_pos = 0.038 - hemT * 0.016; // 0.038 -> 0.022m
+      }
+
+      for (let j = 0; j <= NU; j++) {
+        const uFrac = j / NU;
+        const phi = uFrac * Math.PI * 2;
+        const cosP = Math.cos(phi);
+        const sinP = Math.sin(phi);
+
+        let px: number;
+        if (dir > 0) {
+          px = sinP * (sinP >= 0 ? rX_lat : rX_med);
+        } else {
+          px = sinP * (sinP <= 0 ? rX_lat : rX_med);
+        }
+
+        const pz = cosP * (cosP >= 0 ? rZ_ant : rZ_pos);
+        positions.push(px, y, pz);
+        uvs.push(uFrac, t);
+      }
+    }
+
+    for (let i = 0; i < NY; i++) {
+      for (let j = 0; j < NU; j++) {
+        const i0 = i * (NU + 1) + j;
+        const i1 = i0 + 1;
+        const i2 = (i + 1) * (NU + 1) + j;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * Tạo hình học 3D thân trên áo len dệt kim (Cozy Cable/Rib Knit Sweater) với độ che phủ toàn diện lồng sâu vào thân dưới
+   */
+  private createKnitSweaterChestGeometry(): THREE.BufferGeometry {
+    const V = 48;
+    const U = 48;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    // yBottom = -0.055m (lồng sâu 10.5cm vào thân eo áo len, triệt tiêu 100% khe hở ngực bụng)
+    const yBottom = -0.055;
+    const yTop = 0.170;
+    const yTotal = yTop - yBottom;
+
+    for (let v = 0; v <= V; v++) {
+      const vFrac = v / V;
+      const py = yBottom + vFrac * yTotal;
+
+      for (let u = 0; u <= U; u++) {
+        const uFrac = u / U;
+        const theta = uFrac * Math.PI * 2;
+        const cosT = Math.cos(theta);
+        const sinT = Math.sin(theta);
+
+        let rx: number;
+        let rz_ant: number;
+        let rz_pos: number;
+
+        if (py <= 0.125) {
+          const t1 = (py - yBottom) / (0.125 - yBottom);
+          const sCurve = Math.sin(t1 * (Math.PI / 2));
+          rx = 0.112 + sCurve * 0.030;     // 0.112 -> 0.142m
+          rz_ant = 0.084 + sCurve * 0.006; // 0.084 -> 0.090m
+          rz_pos = 0.085 - sCurve * 0.001; // 0.085 -> 0.084m
+        } else if (py <= 0.158) {
+          const t2 = (py - 0.125) / (0.158 - 0.125);
+          const smoothT = t2 * t2 * (3 - 2 * t2);
+          rx = 0.142 - smoothT * (0.142 - 0.042);
+          rz_ant = 0.090 - smoothT * (0.090 - 0.038);
+          rz_pos = 0.084 - smoothT * (0.084 - 0.038);
+        } else {
+          // Bo viền cổ len tròn đúc liền (Integrated Ribbed Crewneck Collar)
+          const t3 = (py - 0.158) / (0.170 - 0.158);
+          rx = 0.042 - t3 * 0.007; // 0.042 -> 0.035m
+          rz_ant = 0.038 - t3 * 0.006; // 0.038 -> 0.032m
+          rz_pos = 0.038 - t3 * 0.006; // 0.038 -> 0.032m
+        }
+
+        // Gân len dệt nổi 3D
+        const ribKnit = Math.sin(theta * 32.0) * 0.0009;
+        rx += ribKnit;
+        rz_ant += ribKnit;
+        rz_pos += ribKnit;
+
+        const px = sinT * rx;
+        const pz = cosT >= 0 ? cosT * rz_ant : cosT * rz_pos;
+
+        positions.push(px, py, pz);
+        uvs.push(uFrac, vFrac);
+      }
+    }
+
+    for (let v = 0; v < V; v++) {
+      for (let u = 0; u < U; u++) {
+        const i0 = v * (U + 1) + u;
+        const i1 = i0 + 1;
+        const i2 = (v + 1) * (U + 1) + u;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * Tạo hình học 3D thân dưới áo len dệt kim với Bo Gấu Len đúc liền (vươn cao đến y = +0.170m)
+   */
+  private createKnitSweaterWaistGeometry(): THREE.BufferGeometry {
+    const V = 36;
+    const U = 48;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    const yBottom = -0.012; // Bo gấu len thắt ngang eo buông cao hơn cạp quần thắt lưng
+    const yTop = 0.170; // Vươn cao lồng sâu vào thân ngực
+    const yTotal = yTop - yBottom;
+
+    for (let v = 0; v <= V; v++) {
+      const vFrac = v / V;
+      const y = yBottom + vFrac * yTotal;
+
+      for (let u = 0; u <= U; u++) {
+        const uFrac = u / U;
+        const theta = uFrac * Math.PI * 2;
+        const cosT = Math.cos(theta);
+        const sinT = Math.sin(theta);
+
+        let rx: number;
+        let rz_ant: number;
+        let rz_pos: number;
+
+        if (y > 0.065) {
+          // 1. Phần lồng sâu vào bên trong thân áo ngực (Inserts smoothly inside chest shell)
+          const topT = (y - 0.065) / (yTop - 0.065);
+          const dome = topT * topT * (3.0 - 2.0 * topT);
+          rx = 0.110 - dome * 0.018;       // 0.110 -> 0.092m (luôn nằm gọn bên trong ngực)
+          rz_ant = 0.0825 - dome * 0.016;  // 0.0825 -> 0.0665m
+          rz_pos = 0.0835 - dome * 0.018;  // 0.0835 -> 0.0655m
+        } else {
+          // 2. Thân áo len và Bo gấu len thắt nhẹ ngang hông liên tục C1
+          const downT = (0.065 - y) / (0.065 - yBottom);
+          const smoothDown = downT * downT * (3.0 - 2.0 * downT);
+          rx = 0.110 - smoothDown * 0.010;       // 0.110 -> 0.100m
+          rz_ant = 0.0825 - smoothDown * 0.0075; // 0.0825 -> 0.075m
+          rz_pos = 0.0835 - smoothDown * 0.0055; // 0.0835 -> 0.078m
+        }
+
+        // Gân dệt bo len dày dặn
+        const ribKnit = Math.sin(theta * 36.0) * (y < 0.010 ? 0.0010 : 0.0006);
+        rx += ribKnit;
+        rz_ant += ribKnit;
+        rz_pos += ribKnit;
+
+        const px = sinT * rx;
+        const pz = cosT >= 0 ? cosT * rz_ant : cosT * rz_pos;
+
+        positions.push(px, y, pz);
+        uvs.push(uFrac, vFrac);
+      }
+    }
+
+    for (let v = 0; v < V; v++) {
+      for (let u = 0; u < U; u++) {
+        const i0 = v * (U + 1) + u;
+        const i1 = i0 + 1;
+        const i2 = (v + 1) * (U + 1) + u;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * Tạo hình học 3D bắp tay áo len dài (Cozy Knit Upper Sleeve - Mềm Mại & Thuôn Mượt)
+   */
+  private createKnitSweaterUpperGeometry(dir: number): THREE.BufferGeometry {
+    const NY = 32;
+    const NU = 32;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    const yTop = 0.025;
+    const yBottom = -0.160;
+
+    for (let i = 0; i <= NY; i++) {
+      const t = i / NY;
+      const y = yTop - t * (yTop - yBottom);
+
+      let rX_lat: number;
+      let rX_med: number;
+      let rZ_ant: number;
+      let rZ_pos: number;
+
+      if (t <= 0.28) {
+        const capT = t / 0.28;
+        const dome = Math.sqrt(Math.max(0.0001, 1.0 - Math.pow(1.0 - capT, 2.0)));
+        rX_lat = Math.max(0.0005, dome * 0.050);
+        rX_med = Math.max(0.0005, dome * 0.035);
+        rZ_ant = Math.max(0.0005, dome * 0.050);
+        rZ_pos = Math.max(0.0005, dome * 0.050);
+      } else if (t <= 0.85) {
+        const midT = (t - 0.28) / 0.57;
+        rX_lat = 0.050 - midT * 0.019; // 0.050 -> 0.0310m
+        rX_med = 0.035 - midT * 0.012; // 0.035 -> 0.0230m
+        rZ_ant = 0.050 - midT * 0.020; // 0.050 -> 0.0300m
+        rZ_pos = 0.050 - midT * 0.020; // 0.050 -> 0.0300m
+      } else {
+        const lowT = (t - 0.85) / 0.15;
+        rX_lat = 0.0310 - lowT * 0.0025; // 0.0310 -> 0.0285m
+        rX_med = 0.0230 - lowT * 0.0015; // 0.0230 -> 0.0215m
+        rZ_ant = 0.0300 - lowT * 0.0025; // 0.0300 -> 0.0275m
+        rZ_pos = 0.0300 - lowT * 0.0025; // 0.0300 -> 0.0275m
+      }
+
+      for (let j = 0; j <= NU; j++) {
+        const uFrac = j / NU;
+        const phi = uFrac * Math.PI * 2;
+        const cosP = Math.cos(phi);
+        const sinP = Math.sin(phi);
+
+        const rib = Math.sin(phi * 24.0) * 0.0007;
+
+        let px: number;
+        if (dir > 0) {
+          px = sinP * (sinP >= 0 ? rX_lat + rib : rX_med + rib);
+        } else {
+          px = sinP * (sinP <= 0 ? rX_lat + rib : rX_med + rib);
+        }
+
+        const pz = cosP * ((cosP >= 0 ? rZ_ant : rZ_pos) + rib);
+
+        // Vạt sau vuốt cong mềm mại ôm nhẹ cùi chỏ len
+        let py = y;
+        if (t > 0.70 && cosP < 0) {
+          const postWeight = Math.pow(Math.max(0, -cosP), 1.6);
+          py -= ((t - 0.70) / 0.30) * postWeight * 0.006;
+        }
+
+        positions.push(px, py, pz);
+        uvs.push(uFrac, t);
+      }
+    }
+
+    for (let i = 0; i < NY; i++) {
+      for (let j = 0; j < NU; j++) {
+        const i0 = i * (NU + 1) + j;
+        const i1 = i0 + 1;
+        const i2 = (i + 1) * (NU + 1) + j;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * Tạo hình học 3D cẳng tay áo len dài với Bo Cổ Tay Chun Len đúc liền (chạm sát gốc bàn tay)
+   */
+  private createKnitSweaterForearmGeometry(dir: number): THREE.BufferGeometry {
+    const NY = 32;
+    const NU = 32;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    const yTop = 0.000;
+    const yBottom = -0.148; // Phủ trọn vẹn cổ tay và chạm sát gốc bàn tay, dáng suông thẳng tự nhiên
+
+    for (let i = 0; i <= NY; i++) {
+      const t = i / NY;
+      const y = yTop - t * (yTop - yBottom);
+
+      let rX_lat: number;
+      let rX_med: number;
+      let rZ_ant: number;
+      let rZ_pos: number;
+
+      if (t <= 0.70) {
+        const midT = t / 0.70;
+        rX_lat = 0.0280 - midT * 0.0035; // 0.0280 -> 0.0245m
+        rX_med = 0.0215 - midT * 0.0025; // 0.0215 -> 0.0190m
+        rZ_ant = 0.0270 - midT * 0.0035; // 0.0270 -> 0.0235m
+        rZ_pos = 0.0270 - midT * 0.0035; // 0.0270 -> 0.0235m
+      } else if (t <= 0.95) {
+        // Bo chun gân dệt ở cổ tay len đúc liền (Integrated Ribbed Knit Cuffs) dáng suông
+        rX_lat = 0.0245;
+        rX_med = 0.0190;
+        rZ_ant = 0.0235;
+        rZ_pos = 0.0235;
+      } else {
+        // Mép bo len ôm khít nhẹ nhàng
+        const hemT = (t - 0.95) / 0.05;
+        rX_lat = 0.0245 - hemT * 0.0010; // 0.0245 -> 0.0235m
+        rX_med = 0.0190 - hemT * 0.0006; // 0.0190 -> 0.0184m
+        rZ_ant = 0.0235 - hemT * 0.0010; // 0.0235 -> 0.0225m
+        rZ_pos = 0.0235 - hemT * 0.0010; // 0.0235 -> 0.0225m
+      }
+
+      for (let j = 0; j <= NU; j++) {
+        const uFrac = j / NU;
+        const phi = uFrac * Math.PI * 2;
+        const cosP = Math.cos(phi);
+        const sinP = Math.sin(phi);
+
+        const rib = Math.sin(phi * 24.0) * (t >= 0.70 ? 0.0012 : 0.0006);
+
+        let px: number;
+        if (dir > 0) {
+          px = sinP * (sinP >= 0 ? rX_lat + rib : rX_med + rib);
+        } else {
+          px = sinP * (sinP <= 0 ? rX_lat + rib : rX_med + rib);
+        }
+
+        const pz = cosP * ((cosP >= 0 ? rZ_ant : rZ_pos) + rib);
+
+        // Vạt trên vuốt cong mềm mại ôm nhẹ cùi chỏ len từ cẳng tay
+        let py = y;
+        if (t < 0.30 && cosP < 0) {
+          const postWeight = Math.pow(Math.max(0, -cosP), 1.6);
+          py += (1.0 - t / 0.30) * postWeight * 0.006;
+        }
+
+        positions.push(px, py, pz);
+        uvs.push(uFrac, t);
+      }
+    }
+
+    for (let i = 0; i < NY; i++) {
+      for (let j = 0; j < NU; j++) {
+        const i0 = i * (NU + 1) + j;
+        const i1 = i0 + 1;
+        const i2 = (i + 1) * (NU + 1) + j;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * Tái tạo áo 3D với 5 kiểu trang phục đa dạng và áp dụng màu sắc tùy biến PBR
+   */
+  private rebuildShirt(shirtId: string, colorHex: string = '#ffffff') {
+    this.currentShirtId = shirtId;
+    this.currentShirtColor = colorHex;
+
+    this.clearGroup(this.chestShirtGroup);
+    this.clearGroup(this.waistShirtGroup);
+    this.clearGroup(this.leftSleeveGroup);
+    this.clearGroup(this.rightSleeveGroup);
+    this.clearGroup(this.leftForearmSleeveGroup);
+    this.clearGroup(this.rightForearmSleeveGroup);
+    this.clearGroup(this.aoDaiFlapGroup);
+
+    if (shirtId === 'shirt_none' || shirtId === 'none' || !shirtId) {
+      return;
+    }
+
+    // Cập nhật màu vải áo
+    this.shirtMaterial.color.set(colorHex);
+
+    // Tự động chỉnh màu nút áo tương phản nhẹ nếu áo màu trắng
+    const isDark = new THREE.Color(colorHex).getHSL({ h: 0, s: 0, l: 0 }).l < 0.35;
+    this.shirtButtonMaterial.color.set(isDark ? '#e2e8f0' : '#f8fafc');
+
+    if (shirtId === 'shirt_oxford_button_down') {
+      // 1. ÁO SƠ MI CỘC TAY OXFORD
+      const chestGeo = this.createOxfordShirtChestGeometry();
+      const chestMesh = new THREE.Mesh(chestGeo, this.shirtMaterial);
+      chestMesh.castShadow = true;
+      chestMesh.receiveShadow = true;
+      this.chestShirtGroup.add(chestMesh);
+
+      const collarGeo = this.createOxfordShirtCollarGeometry();
+      const collarMesh = new THREE.Mesh(collarGeo, this.shirtMaterial);
+      collarMesh.castShadow = true;
+      collarMesh.receiveShadow = true;
+      this.chestShirtGroup.add(collarMesh);
+
+      this.buildOxfordShirtPlacket(this.chestShirtGroup);
+
+      const waistGeo = this.createOxfordShirtWaistGeometry();
+      const waistMesh = new THREE.Mesh(waistGeo, this.shirtMaterial);
+      waistMesh.castShadow = true;
+      waistMesh.receiveShadow = true;
+      this.waistShirtGroup.add(waistMesh);
+      this.buildOxfordShirtWaistPlacket(this.waistShirtGroup);
+
+      // Hai ống tay cộc
+      const sleeveLGeo = this.createOxfordShirtSleeveGeometry(-1);
+      const sleeveLMesh = new THREE.Mesh(sleeveLGeo, this.shirtMaterial);
+      sleeveLMesh.castShadow = true;
+      sleeveLMesh.receiveShadow = true;
+      this.leftSleeveGroup.add(sleeveLMesh);
+
+      const cuffLGeo = new THREE.TorusGeometry(0.030, 0.0020, 8, 24);
+      cuffLGeo.rotateX(Math.PI / 2);
+      const cuffL = new THREE.Mesh(cuffLGeo, this.shirtMaterial);
+      cuffL.position.set(0, -0.113, 0);
+      this.leftSleeveGroup.add(cuffL);
+
+      const sleeveRGeo = this.createOxfordShirtSleeveGeometry(1);
+      const sleeveRMesh = new THREE.Mesh(sleeveRGeo, this.shirtMaterial);
+      sleeveRMesh.castShadow = true;
+      sleeveRMesh.receiveShadow = true;
+      this.rightSleeveGroup.add(sleeveRMesh);
+
+      const cuffRGeo = new THREE.TorusGeometry(0.030, 0.0020, 8, 24);
+      cuffRGeo.rotateX(Math.PI / 2);
+      const cuffR = new THREE.Mesh(cuffRGeo, this.shirtMaterial);
+      cuffR.position.set(0, -0.113, 0);
+      this.rightSleeveGroup.add(cuffR);
+
+    } else if (shirtId === 'shirt_oxford_long_sleeve') {
+      // 2. ÁO SƠ MI DÀI TAY CÔNG SỞ (LONG-SLEEVE OXFORD) - LIỀN MẠCH MƯỢT MÀ
+      const chestGeo = this.createOxfordShirtChestGeometry();
+      const chestMesh = new THREE.Mesh(chestGeo, this.shirtMaterial);
+      chestMesh.castShadow = true;
+      chestMesh.receiveShadow = true;
+      this.chestShirtGroup.add(chestMesh);
+
+      const collarGeo = this.createOxfordShirtCollarGeometry();
+      const collarMesh = new THREE.Mesh(collarGeo, this.shirtMaterial);
+      collarMesh.castShadow = true;
+      collarMesh.receiveShadow = true;
+      this.chestShirtGroup.add(collarMesh);
+
+      this.buildOxfordShirtPlacket(this.chestShirtGroup);
+
+      const waistGeo = this.createOxfordShirtWaistGeometry();
+      const waistMesh = new THREE.Mesh(waistGeo, this.shirtMaterial);
+      waistMesh.castShadow = true;
+      waistMesh.receiveShadow = true;
+      this.waistShirtGroup.add(waistMesh);
+      this.buildOxfordShirtWaistPlacket(this.waistShirtGroup);
+
+      // Bắp tay trên nối liền mạch
+      const upperLGeo = this.createOxfordLongSleeveUpperGeometry(-1);
+      const upperLMesh = new THREE.Mesh(upperLGeo, this.shirtMaterial);
+      upperLMesh.castShadow = true;
+      upperLMesh.receiveShadow = true;
+      this.leftSleeveGroup.add(upperLMesh);
+
+      const upperRGeo = this.createOxfordLongSleeveUpperGeometry(1);
+      const upperRMesh = new THREE.Mesh(upperRGeo, this.shirtMaterial);
+      upperRMesh.castShadow = true;
+      upperRMesh.receiveShadow = true;
+      this.rightSleeveGroup.add(upperRMesh);
+
+      // Cẳng tay dài + Măng sét Barrel Cuffs bọc kín khớp cổ tay chạm sát bàn tay
+      const foreLGeo = this.createOxfordLongSleeveForearmGeometry(-1);
+      const foreLMesh = new THREE.Mesh(foreLGeo, this.shirtMaterial);
+      foreLMesh.castShadow = true;
+      foreLMesh.receiveShadow = true;
+      this.leftForearmSleeveGroup.add(foreLMesh);
+
+      const foreRGeo = this.createOxfordLongSleeveForearmGeometry(1);
+      const foreRMesh = new THREE.Mesh(foreRGeo, this.shirtMaterial);
+      foreRMesh.castShadow = true;
+      foreRMesh.receiveShadow = true;
+      this.rightForearmSleeveGroup.add(foreRMesh);
+
+      // Khối cầu vải bên trong khớp cùi chỏ (Snug Fabric Internal Elbow Cap) - ẩn hoàn toàn bên trong ống tay
+      [-1, 1].forEach((dir) => {
+        const targetFore = dir < 0 ? this.leftForearmSleeveGroup : this.rightForearmSleeveGroup;
+
+        const elbowCapGeo = new THREE.SphereGeometry(0.0245, 16, 16);
+        const elbowCap = new THREE.Mesh(elbowCapGeo, this.shirtMaterial);
+        elbowCap.position.set(0, 0.000, 0);
+        elbowCap.castShadow = true;
+        elbowCap.receiveShadow = true;
+        targetFore.add(elbowCap);
+      });
+
+      // Cúc măng sét cổ tay
+      [-1, 1].forEach((dir) => {
+        const targetGroup = dir < 0 ? this.leftForearmSleeveGroup : this.rightForearmSleeveGroup;
+        const cuffBtnGeo = new THREE.CylinderGeometry(0.0025, 0.0025, 0.0014, 14);
+        cuffBtnGeo.rotateZ(Math.PI / 2);
+        const cuffBtn = new THREE.Mesh(cuffBtnGeo, this.shirtButtonMaterial);
+        cuffBtn.position.set(dir * 0.0248, -0.130, 0.002);
+        cuffBtn.castShadow = true;
+        targetGroup.add(cuffBtn);
+      });
+
+    } else if (shirtId === 'shirt_oxford_rolled_sleeve') {
+      // 3. ÁO SƠ MI XẮN TAY (ROLLED-UP SLEEVE) - GẤU XẮN 3D ĐÚC LIỀN
+      const chestGeo = this.createOxfordShirtChestGeometry();
+      const chestMesh = new THREE.Mesh(chestGeo, this.shirtMaterial);
+      chestMesh.castShadow = true;
+      chestMesh.receiveShadow = true;
+      this.chestShirtGroup.add(chestMesh);
+
+      const collarGeo = this.createOxfordShirtCollarGeometry();
+      const collarMesh = new THREE.Mesh(collarGeo, this.shirtMaterial);
+      collarMesh.castShadow = true;
+      collarMesh.receiveShadow = true;
+      this.chestShirtGroup.add(collarMesh);
+
+      this.buildOxfordShirtPlacket(this.chestShirtGroup);
+
+      const waistGeo = this.createOxfordShirtWaistGeometry();
+      const waistMesh = new THREE.Mesh(waistGeo, this.shirtMaterial);
+      waistMesh.castShadow = true;
+      waistMesh.receiveShadow = true;
+      this.waistShirtGroup.add(waistMesh);
+      this.buildOxfordShirtWaistPlacket(this.waistShirtGroup);
+
+      // Ống tay xắn đúp 2 tầng 3D đúc liền, không dùng Torus rời
+      const rolledLGeo = this.createRolledSleeveUpperGeometry(-1);
+      const rolledLMesh = new THREE.Mesh(rolledLGeo, this.shirtMaterial);
+      rolledLMesh.castShadow = true;
+      rolledLMesh.receiveShadow = true;
+      this.leftSleeveGroup.add(rolledLMesh);
+
+      const rolledRGeo = this.createRolledSleeveUpperGeometry(1);
+      const rolledRMesh = new THREE.Mesh(rolledRGeo, this.shirtMaterial);
+      rolledRMesh.castShadow = true;
+      rolledRMesh.receiveShadow = true;
+      this.rightSleeveGroup.add(rolledRMesh);
+
+    } else if (shirtId === 'shirt_knit_sweater') {
+      // 4. ÁO LEN DỆT KIM (COZY KNIT SWEATER) - TÍCH HỢP BO GẤU & BO CỔ TAY ĐÚC LIỀN (CHE PHỦ 100% THÂN NGỰC EO)
+      const knitChestGeo = this.createKnitSweaterChestGeometry();
+      const knitChestMesh = new THREE.Mesh(knitChestGeo, this.shirtMaterial);
+      knitChestMesh.castShadow = true;
+      knitChestMesh.receiveShadow = true;
+      this.chestShirtGroup.add(knitChestMesh);
+
+      const knitWaistGeo = this.createKnitSweaterWaistGeometry();
+      const knitWaistMesh = new THREE.Mesh(knitWaistGeo, this.shirtMaterial);
+      knitWaistMesh.castShadow = true;
+      knitWaistMesh.receiveShadow = true;
+      this.waistShirtGroup.add(knitWaistMesh);
+
+      // Tay áo len dài nối liền mạch
+      const upperLGeo = this.createKnitSweaterUpperGeometry(-1);
+      const upperLMesh = new THREE.Mesh(upperLGeo, this.shirtMaterial);
+      upperLMesh.castShadow = true;
+      upperLMesh.receiveShadow = true;
+      this.leftSleeveGroup.add(upperLMesh);
+
+      const upperRGeo = this.createKnitSweaterUpperGeometry(1);
+      const upperRMesh = new THREE.Mesh(upperRGeo, this.shirtMaterial);
+      upperRMesh.castShadow = true;
+      upperRMesh.receiveShadow = true;
+      this.rightSleeveGroup.add(upperRMesh);
+
+      const foreLGeo = this.createKnitSweaterForearmGeometry(-1);
+      const foreLMesh = new THREE.Mesh(foreLGeo, this.shirtMaterial);
+      foreLMesh.castShadow = true;
+      foreLMesh.receiveShadow = true;
+      this.leftForearmSleeveGroup.add(foreLMesh);
+
+      const foreRGeo = this.createKnitSweaterForearmGeometry(1);
+      const foreRMesh = new THREE.Mesh(foreRGeo, this.shirtMaterial);
+      foreRMesh.castShadow = true;
+      foreRMesh.receiveShadow = true;
+      this.rightForearmSleeveGroup.add(foreRMesh);
+
+      // Khối cầu len bên trong khớp cùi chỏ (Snug Fabric Internal Elbow Cap for Knit Sweater)
+      [-1, 1].forEach((dir) => {
+        const targetFore = dir < 0 ? this.leftForearmSleeveGroup : this.rightForearmSleeveGroup;
+
+        const elbowCapGeo = new THREE.SphereGeometry(0.0250, 16, 16);
+        const elbowCap = new THREE.Mesh(elbowCapGeo, this.shirtMaterial);
+        elbowCap.position.set(0, 0.000, 0);
+        elbowCap.castShadow = true;
+        elbowCap.receiveShadow = true;
+        targetFore.add(elbowCap);
+      });
+
+    } else if (shirtId === 'shirt_fitted_cotton_tee') {
+      // 5. ÁO THUN CỔ TRÒN (COTTON CREWNECK TEE)
+      const chestGeo = this.createOxfordShirtChestGeometry();
+      const chestMesh = new THREE.Mesh(chestGeo, this.shirtMaterial);
+      chestMesh.castShadow = true;
+      chestMesh.receiveShadow = true;
+      this.chestShirtGroup.add(chestMesh);
+
+      const crewneckGeo = new THREE.TorusGeometry(0.035, 0.0030, 10, 28);
+      crewneckGeo.rotateX(Math.PI / 2);
+      const crewneck = new THREE.Mesh(crewneckGeo, this.shirtMaterial);
+      crewneck.position.set(0, 0.160, 0.002);
+      this.chestShirtGroup.add(crewneck);
+
+      const waistGeo = this.createOxfordShirtWaistGeometry();
+      const waistMesh = new THREE.Mesh(waistGeo, this.shirtMaterial);
+      waistMesh.castShadow = true;
+      waistMesh.receiveShadow = true;
+      this.waistShirtGroup.add(waistMesh);
+
+      const sleeveLGeo = this.createOxfordShirtSleeveGeometry(-1);
+      const sleeveLMesh = new THREE.Mesh(sleeveLGeo, this.shirtMaterial);
+      sleeveLMesh.castShadow = true;
+      sleeveLMesh.receiveShadow = true;
+      this.leftSleeveGroup.add(sleeveLMesh);
+
+      const sleeveRGeo = this.createOxfordShirtSleeveGeometry(1);
+      const sleeveRMesh = new THREE.Mesh(sleeveRGeo, this.shirtMaterial);
+      sleeveRMesh.castShadow = true;
+      sleeveRMesh.receiveShadow = true;
+      this.rightSleeveGroup.add(sleeveRMesh);
+    }
+  }
+
+  /**
+   * 0. Khối thân/cạp quần 3D siêu mịn mượt (Ultra-Smooth C1 Solid Pants Pelvis Trunk)
+   * Vòm đũng háng chữ U/V cong tự nhiên, tách biệt rõ ràng hai chân và không bị khối hộp vuông.
+   */
+  private createPantsPelvisGeometry(): THREE.BufferGeometry {
+    const V = 36;
+    const U = 48;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    // y từ -0.048m (vòm đũng háng cong tự nhiên) lên tới +0.040m (cổ cạp lồng trong áo)
+    const yBottom = -0.048;
+    const yTop = 0.040;
+    const yTotal = yTop - yBottom;
+
+    // Bán kính chuẩn tại thắt lưng (y = 0.015m)
+    const rX_waist = 0.0905;
+    const rZ_ant_waist = 0.0675;
+    const rZ_pos_waist = 0.0685;
+
+    for (let v = 0; v <= V; v++) {
+      const vFrac = v / V;
+      const y = yBottom + vFrac * yTotal;
+
+      let rX: number;
+      let rZ_ant: number;
+      let rZ_pos: number;
+
+      if (y > 0.015) {
+        // Cổ cạp lồng êm vào trong áo (y từ 0.015 lên 0.040m)
+        const t = Math.min(1.0, (y - 0.015) / 0.025);
+        const s = t * t * (3.0 - 2.0 * t);
+        rX = rX_waist * (1.0 - s) + 0.0815 * s;
+        rZ_ant = rZ_ant_waist * (1.0 - s) + 0.0595 * s;
+        rZ_pos = rZ_pos_waist * (1.0 - s) + 0.0605 * s;
+      } else {
+        // Thân hông và đũng quần (y từ -0.048 đến 0.015m)
+        // Độ nở hông tự nhiên bao bọc lấy khớp đùi mấu chuyển lớn
+        const t = Math.min(1.0, (0.015 - y) / (0.015 - yBottom));
+        const sinT = Math.sin(t * Math.PI * 0.5);
+        const wHip = sinT * sinT * (1.0 - t) * 2.5;
+
+        rX = rX_waist + 0.0135 * wHip - 0.0020 * t;
+        rZ_ant = rZ_ant_waist - 0.0065 * t;
+        rZ_pos = rZ_pos_waist + 0.0050 * wHip - 0.0050 * t;
+      }
+
+      // Độ cong nâng đũng và vòm háng giữa 2 chân ở nửa dưới (y < -0.015m)
+      const tLow = Math.max(0.0, (-0.015 - y) / (-0.015 - yBottom));
+      const crotchArch = tLow * tLow * (3.0 - 2.0 * tLow);
+
+      for (let u = 0; u <= U; u++) {
+        const uFrac = u / U;
+        const theta = uFrac * Math.PI * 2;
+        const cosT = Math.cos(theta); // >0 trước (bụng), <0 sau (mông)
+        const sinT = Math.sin(theta); // lateral
+        const absSin = Math.abs(sinT);
+
+        let curRzPos = rZ_pos;
+        // Rãnh mông quần tự nhiên ở mặt sau (z < 0), làm mềm Gaussian
+        if (cosT < 0 && y > -0.042 && y < 0.015) {
+          const rearCleft = Math.exp(-((absSin / 0.32) ** 2)) * Math.sin(Math.PI * (y + 0.042) / 0.057);
+          curRzPos -= rearCleft * 0.0018;
+        }
+
+        let px = sinT * rX;
+        let pz = cosT >= 0 ? cosT * rZ_ant : cosT * curRzPos;
+        let py = y;
+
+        // Vòm đũng quần C-infinity liên tục:
+        if (crotchArch > 0) {
+          const cos4 = cosT * cosT * cosT * cosT;
+          pz *= 1.0 - crotchArch * cos4 * 0.20;
+          // Nâng cong đáy đũng lên 14mm giữa 2 chân tạo khe đũng chữ V/U tự nhiên
+          py += crotchArch * (1.0 - absSin * absSin) * 0.014;
+        }
+
+        positions.push(px, py, pz);
+        uvs.push(uFrac, vFrac);
+      }
+    }
+
+    for (let v = 0; v < V; v++) {
+      for (let u = 0; u < U; u++) {
+        const i0 = v * (U + 1) + u;
+        const i1 = i0 + 1;
+        const i2 = (v + 1) * (U + 1) + u;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * 0. Phần da đùi dưới khi mặc Quần Đùi (Shorts Thigh Skin Geometry)
+   * Bắt đầu từ Y = -0.155 (nằm sâu 3.5cm bên trong ống quần đùi rộng kết thúc ở Y = -0.190)
+   * xuống đến Y = -0.300 (khớp gối).
+   * Có nắp vòm bo tròn khép kín ở Y = -0.155 để triệt tiêu 100% hiện tượng da thịt xuyên cạp/hông quần.
+   */
+  private createShortsThighSkinGeometry(dir: number): THREE.BufferGeometry {
+    const NY = 24;
+    const NU = 32;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    const yTop = -0.155;
+    const yBottom = -0.300;
+
+    for (let i = 0; i <= NY; i++) {
+      const t = i / NY;
+      const y = yTop - t * (yTop - yBottom);
+
+      // Nắp vòm bo tròn ở đỉnh bên trong ống quần (Dome top closure)
+      const sCap = t <= 0.12 ? Math.sin((t / 0.12) * (Math.PI / 2)) : 1.0;
+
+      let rX_lat: number;
+      let rX_med: number;
+      let rZ_ant: number;
+      let rZ_pos: number;
+
+      // Đoạn từ -0.155 đến -0.242: Cơ đùi dưới và cơ giọt nước vastus medialis
+      if (y >= -0.242) {
+        const midT = (-0.155 - y) / (-0.155 - (-0.242)); // 0.0 -> 1.0
+        const teardrop = Math.sin(Math.pow(midT, 1.4) * Math.PI);
+
+        rX_lat = sCap * (0.046 - midT * 0.010);
+        rX_med = sCap * (0.038 + teardrop * 0.005 - midT * 0.007);
+        rZ_ant = sCap * (0.048 + teardrop * 0.003 - midT * 0.011);
+        rZ_pos = sCap * (0.042 - midT * 0.009);
+      } else {
+        // Đoạn từ -0.242 đến -0.300: Vùng khớp trên đầu gối (supracondylar)
+        const kT = (-0.242 - y) / (-0.242 - (-0.300)); // 0.0 -> 1.0
+        rX_lat = 0.036 - kT * 0.012;
+        rX_med = 0.031 - kT * 0.009;
+        rZ_ant = 0.037 - kT * 0.012;
+        rZ_pos = 0.033 - kT * 0.008;
+      }
+
+      for (let j = 0; j <= NU; j++) {
+        const uFrac = j / NU;
+        const phi = uFrac * Math.PI * 2;
+        const cosP = Math.cos(phi);
+        const sinP = Math.sin(phi);
+
+        let px: number;
+        if (dir > 0) {
+          px = sinP * (sinP >= 0 ? rX_lat : rX_med);
+        } else {
+          px = sinP * (sinP <= 0 ? rX_lat : rX_med);
+        }
+
+        const pz = cosP * (cosP >= 0 ? rZ_ant : rZ_pos);
+
+        positions.push(px, y, pz);
+        uvs.push(uFrac, t);
+      }
+    }
+
+    for (let i = 0; i < NY; i++) {
+      for (let j = 0; j < NU; j++) {
+        const i0 = i * (NU + 1) + j;
+        const i1 = i0 + 1;
+        const i2 = (i + 1) * (NU + 1) + j;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * Helper: Tạo dải cung cong ôm theo phom tròn của ống chân (Curved Arc Ribbon)
+   * Giúp các chi tiết rách gối, gân biker moto bo tròn 100% theo chu vi chân, không bị phẳng đơ.
+   */
+  private createCurvedArcBand(
+    rX: number,
+    rZ: number,
+    phiSpan: number,
+    yTop: number,
+    yBottom: number,
+    radialOffset: number = 0.0015
+  ): THREE.BufferGeometry {
+    const N = 16;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    const effectiveRx = rX + radialOffset;
+    const effectiveRz = rZ + radialOffset;
+
+    for (let i = 0; i <= N; i++) {
+      const u = i / N;
+      const phi = -phiSpan + u * (2 * phiSpan);
+      const sinP = Math.sin(phi);
+      const cosP = Math.cos(phi);
+
+      const px = sinP * effectiveRx;
+      const pz = cosP * effectiveRz;
+
+      positions.push(px, yTop, pz);
+      uvs.push(u, 0);
+
+      positions.push(px, yBottom, pz);
+      uvs.push(u, 1);
+    }
+
+    for (let i = 0; i < N; i++) {
+      const i0 = i * 2;
+      const i1 = i0 + 1;
+      const i2 = (i + 1) * 2;
+      const i3 = i2 + 1;
+
+      indices.push(i0, i1, i2);
+      indices.push(i1, i3, i2);
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * Helper: Tạo sợi chỉ cong ôm vòng cung theo chân (Curved Thread Arc)
+   */
+  private createCurvedThreadArc(
+    rX: number,
+    rZ: number,
+    phiSpan: number,
+    yCenter: number,
+    threadRadius: number = 0.0008,
+    radialOffset: number = 0.0020
+  ): THREE.BufferGeometry {
+    const points: THREE.Vector3[] = [];
+    const N = 16;
+    const effectiveRx = rX + radialOffset;
+    const effectiveRz = rZ + radialOffset;
+
+    for (let i = 0; i <= N; i++) {
+      const u = i / N;
+      const phi = -phiSpan + u * (2 * phiSpan);
+      const px = Math.sin(phi) * effectiveRx;
+      const pz = Math.cos(phi) * effectiveRz;
+      const sag = Math.sin(u * Math.PI) * 0.0010 * (Math.sin(yCenter * 100) > 0 ? 1 : -1);
+      points.push(new THREE.Vector3(px, yCenter + sag, pz));
+    }
+
+    const curve = new THREE.CatmullRomCurve3(points);
+    return new THREE.TubeGeometry(curve, 14, threadRadius, 6, false);
+  }
+
+  /**
+   * 1. Ống đùi Quần Đùi (Casual Shorts Thigh Geometry - Phom Rộng Thoải Mái Nam Tính)
+   * Dài 1/2 đùi từ Y = 0.018 đến Y = -0.190, ống xòe rộng thể thao thoáng mát, không bó sát đùi.
+   */
+  private createShortsThighGeometry(dir: number): THREE.BufferGeometry {
+    const NY = 28;
+    const NU = 36;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    const yTop = 0.018;
+    const yBottom = -0.190;
+
+    for (let i = 0; i <= NY; i++) {
+      const t = i / NY;
+      const y = yTop - t * (yTop - yBottom);
+
+      // Cổ trên lồng trong pelvis (t <= 0.18): thu nhẹ 3mm để nằm lọt trong thân cạp
+      const sCollar = t <= 0.18 ? 0.88 + 0.12 * Math.sin((t / 0.18) * (Math.PI / 2)) : 1.0;
+
+      // Phom quần đùi xòe suông rộng dần xuống gấu (Relaxed Flare Cut):
+      const tFlare = Math.max(0.0, (t - 0.20) / 0.80);
+      const sFlare = tFlare * tFlare * (3.0 - 2.0 * tFlare);
+
+      // Gấu quần viền gấp thể thao tại t >= 0.88
+      const isHem = t >= 0.88;
+      const hemSwell = isHem ? Math.sin(((t - 0.88) / 0.12) * Math.PI) * 0.0025 : 0.0;
+
+      const rX_lat = sCollar * (0.0435 + sFlare * 0.0135) + hemSwell; // Đạt 0.0570m ở gấu
+      const rX_med = sCollar * (0.0370 + sFlare * 0.0090) + hemSwell * 0.8; // Đạt 0.0460m ở gấu
+      const rZ_ant = sCollar * (0.0485 + sFlare * 0.0135) + hemSwell; // Đạt 0.0620m ở gấu
+      const rZ_pos = sCollar * (0.0450 + sFlare * 0.0110) + hemSwell; // Đạt 0.0560m ở gấu
+
+      for (let j = 0; j <= NU; j++) {
+        const uFrac = j / NU;
+        const phi = uFrac * Math.PI * 2;
+        const cosP = Math.cos(phi);
+        const sinP = Math.sin(phi);
+
+        let px = sinP * (dir > 0 ? (sinP >= 0 ? rX_lat : rX_med) : (sinP <= 0 ? rX_lat : rX_med));
+        let pz = cosP * (cosP >= 0 ? rZ_ant : rZ_pos);
+
+        positions.push(px, y, pz);
+        uvs.push(uFrac, t);
+      }
+    }
+
+    for (let i = 0; i < NY; i++) {
+      for (let j = 0; j < NU; j++) {
+        const i0 = i * (NU + 1) + j;
+        const i1 = i0 + 1;
+        const i2 = (i + 1) * (NU + 1) + j;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * 2. Ống đùi Quần Ngố (Bermuda / Cargo Cropped Pants Thigh - Dài trọn đùi kết thúc ở Y = -0.285 ngay trên khớp gối)
+   * Phom suông đứng dáng cargo thể thao, nối liền mượt mà với cạp pelvis, không thắt cổ chai, gấu lơ-vê phẳng phiu.
+   */
+  private createCroppedThighGeometry(dir: number): THREE.BufferGeometry {
+    const NY = 36;
+    const NU = 36;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    const yTop = 0.018;
+    const yBottom = -0.285;
+
+    for (let i = 0; i <= NY; i++) {
+      const t = i / NY;
+      const y = yTop - t * (yTop - yBottom);
+
+      // Cổ trên lồng trong pelvis (t <= 0.15): thu nhẹ 4mm để nằm lọt trong thân cạp
+      const sCollar = t <= 0.15 ? 0.88 + 0.12 * Math.sin((t / 0.15) * (Math.PI / 2)) : 1.0;
+
+      // Phom đùi nở nhẹ tự nhiên (t đỉnh ở 0.32)
+      const wQuad = Math.exp(-Math.pow((t - 0.32) / 0.25, 2));
+
+      // Vuốt nhẹ dáng suông về gối (từ 0.45 đến 1.0)
+      const tKnee = Math.max(0.0, (t - 0.45) / 0.55);
+      const taper = tKnee * 0.0045;
+
+      // Gấu lơ-vê tại t >= 0.88
+      const isHem = t >= 0.88;
+      const hemSwell = isHem ? Math.sin(((t - 0.88) / 0.12) * Math.PI) * 0.0020 : 0.0;
+
+      const rX_lat = sCollar * (0.0465 + 0.0035 * wQuad - taper) + hemSwell;
+      const rX_med = sCollar * (0.0380 + 0.0020 * wQuad - taper * 0.6) + hemSwell * 0.7;
+      const rZ_ant = sCollar * (0.0515 + 0.0040 * wQuad - taper * 0.8) + hemSwell;
+      const rZ_pos = sCollar * (0.0470 + 0.0025 * wQuad - taper * 0.7) + hemSwell;
+
+      for (let j = 0; j <= NU; j++) {
+        const uFrac = j / NU;
+        const phi = uFrac * Math.PI * 2;
+        const cosP = Math.cos(phi);
+        const sinP = Math.sin(phi);
+
+        let px = sinP * (dir > 0 ? (sinP >= 0 ? rX_lat : rX_med) : (sinP <= 0 ? rX_lat : rX_med));
+        let pz = cosP * (cosP >= 0 ? rZ_ant : rZ_pos);
+
+        positions.push(px, y, pz);
+        uvs.push(uFrac, t);
+      }
+    }
+
+    for (let i = 0; i < NY; i++) {
+      for (let j = 0; j < NU; j++) {
+        const i0 = i * (NU + 1) + j;
+        const i1 = i0 + 1;
+        const i2 = (i + 1) * (NU + 1) + j;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * 4. Ống đùi Quần Dài (Long Pants Thigh Geometry - Tailored Silhouette)
+   * Tỉ lệ giải phẫu học rõ nét: Đùi trên nở nang đầy đặn, thon gọn dần về phía đầu gối.
+   */
+  private createLongPantsThighGeometry(dir: number): THREE.BufferGeometry {
+    const NY = 36;
+    const NU = 36;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    const yTop = 0.018;
+    const yBottom = -0.315;
+
+    for (let i = 0; i <= NY; i++) {
+      const t = i / NY;
+      const y = yTop - t * (yTop - yBottom);
+
+      const sCollar = t <= 0.15 ? 0.88 + 0.12 * Math.sin((t / 0.15) * (Math.PI / 2)) : 1.0;
+
+      // 1. Phom cơ đùi trên nở nang đầy đặn (quadriceps fullness, đỉnh tại t ~ 0.32)
+      const wQuad = Math.exp(-Math.pow((t - 0.32) / 0.22, 2));
+
+      // 2. Thon gọn eo gối (supra-patellar cinch, thu hẹp rõ rệt 13mm khi xuống gối)
+      const tKneeCinch = Math.max(0.0, Math.min(1.0, (t - 0.42) / 0.48));
+      const sKneeCinch = tKneeCinch * tKneeCinch * (3.0 - 2.0 * tKneeCinch);
+
+      const rX_lat = sCollar * (0.0450 + 0.0065 * wQuad - 0.0065 * sKneeCinch);
+      const rX_med = sCollar * (0.0375 + 0.0030 * wQuad - 0.0040 * sKneeCinch);
+      const rZ_ant = sCollar * (0.0495 + 0.0080 * wQuad - 0.0030 * sKneeCinch);
+      const rZ_pos = sCollar * (0.0460 + 0.0045 * wQuad - 0.0050 * sKneeCinch);
+
+      for (let j = 0; j <= NU; j++) {
+        const uFrac = j / NU;
+        const phi = uFrac * Math.PI * 2;
+        const cosP = Math.cos(phi);
+        const sinP = Math.sin(phi);
+
+        let px = sinP * (dir > 0 ? (sinP >= 0 ? rX_lat : rX_med) : (sinP <= 0 ? rX_lat : rX_med));
+        let pz = cosP * (cosP >= 0 ? rZ_ant : rZ_pos);
+
+        positions.push(px, y, pz);
+      }
+    }
+
+    for (let i = 0; i < NY; i++) {
+      for (let j = 0; j < NU; j++) {
+        const i0 = i * (NU + 1) + j;
+        const i1 = i0 + 1;
+        const i2 = (i + 1) * (NU + 1) + j;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * 5. Ống cẳng chân Quần Dài (Long Pants Calf Geometry - Tailored Silhouette)
+   * Phom bắp chuối lượn cong ra ngoài (Gastrocnemius flare đạt rX ~ 0.0430m) và vuốt thon xuống cổ chân (rX ~ 0.0330m).
+   */
+  private createLongPantsCalfGeometry(dir: number): THREE.BufferGeometry {
+    const NY = 36;
+    const NU = 36;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    const yTop = 0.020;
+    const yBottom = -0.285;
+
+    for (let i = 0; i <= NY; i++) {
+      const t = i / NY;
+      const y = yTop - t * (yTop - yBottom);
+
+      // Bo vòm khớp gối trong (t <= 0.12)
+      const sKnee = t <= 0.12 ? 0.88 + 0.12 * Math.sin((t / 0.12) * (Math.PI / 2)) : 1.0;
+
+      // 1. Đường cong bắp chuối nở ra ngoài và ra sau (Gastrocnemius muscle curve, đỉnh tại t ~ 0.30)
+      const wCalf = Math.exp(-Math.pow((t - 0.30) / 0.16, 2));
+
+      // 2. Vuốt thon gọn xuống cổ chân (Ankle taper, từ t > 0.40 xuống gấu quần)
+      const tAnkle = Math.max(0.0, Math.min(1.0, (t - 0.40) / 0.50));
+      const sAnkle = tAnkle * tAnkle * (3.0 - 2.0 * tAnkle);
+
+      // Bán kính cẳng chân:
+      // - Gối (t=0): rX_lat ~0.0385m (nối khít với eo gối đùi trên)
+      // - Bắp chân (t=0.30): rX_lat nở phồng ra ngoài đạt ~0.0430m, rZ_pos nở ra sau đạt ~0.0465m
+      // - Cổ chân (t=0.90): rX_lat vuốt thon gọn xuống ~0.0330m
+      let rX_lat = sKnee * (0.0385 + 0.0045 * wCalf - 0.0055 * sAnkle);
+      let rX_med = sKnee * (0.0335 + 0.0018 * wCalf - 0.0050 * sAnkle);
+      let rZ_ant = sKnee * (0.0465 - 0.0105 * sAnkle);
+      let rZ_pos = sKnee * (0.0410 + 0.0055 * wCalf - 0.0060 * sAnkle);
+
+      // Gấu quần dập mép gập chỉ tinh tế ở cổ chân
+      if (t > 0.88) {
+        const hemFold = Math.sin(((t - 0.88) / 0.12) * Math.PI) * 0.0012;
+        rX_lat += hemFold;
+        rX_med += hemFold;
+        rZ_ant += hemFold;
+        rZ_pos += hemFold;
+      }
+
+      for (let j = 0; j <= NU; j++) {
+        const uFrac = j / NU;
+        const phi = uFrac * Math.PI * 2;
+        const cosP = Math.cos(phi);
+        const sinP = Math.sin(phi);
+
+        let px = sinP * (dir > 0 ? (sinP >= 0 ? rX_lat : rX_med) : (sinP <= 0 ? rX_lat : rX_med));
+        let pz = cosP * (cosP >= 0 ? rZ_ant : rZ_pos);
+
+        positions.push(px, y, pz);
+        uvs.push(uFrac, t);
+      }
+    }
+
+    for (let i = 0; i < NY; i++) {
+      for (let j = 0; j < NU; j++) {
+        const i0 = i * (NU + 1) + j;
+        const i1 = i0 + 1;
+        const i2 = (i + 1) * (NU + 1) + j;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * 6. Ống cẳng chân Quần Dài Ống Loe (Flared Bell-Bottom Calf Geometry)
+   * Phom ôm sát thon gọn ở vùng gối (t <= 0.28, rX ~ 0.035m), sau đó xòe loe hình quả chuông (Bell-Bottom)
+   * từ giữa bắp chân xuống trùm phủ qua gót giày (t = 1.0, rX_lat ~ 0.0605m, rZ ~ 0.0620m).
+   */
+  private createFlaredCalfGeometry(dir: number): THREE.BufferGeometry {
+    const NY = 36;
+    const NU = 36;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const uvs: number[] = [];
+
+    const yTop = 0.020;
+    const yBottom = -0.292;
+
+    for (let i = 0; i <= NY; i++) {
+      const t = i / NY;
+      const y = yTop - t * (yTop - yBottom);
+
+      // Bo vòm khớp gối trong (t <= 0.12)
+      const sKnee = t <= 0.12 ? 0.88 + 0.12 * Math.sin((t / 0.12) * (Math.PI / 2)) : 1.0;
+
+      // Đường cong ôm gối và xòe loe chuông (Bell Flare):
+      // - Phần trên (t <= 0.28): Ôm gọn gàng theo đùi và gối (rX_lat ~ 0.035m)
+      // - Phần dưới (t > 0.28 đến 1.0): Nở loe mạnh dần ra ngoài và trước sau
+      const tFlare = Math.max(0.0, Math.min(1.0, (t - 0.28) / 0.72));
+      const sFlare = tFlare * tFlare * (3.0 - 2.0 * tFlare); // Smoothstep S-curve
+
+      // Bán kính:
+      let rX_lat = sKnee * (0.0350 + sFlare * 0.0255); // Đạt 0.0605m ở gấu ngoài
+      let rX_med = sKnee * (0.0315 + sFlare * 0.0160); // Đạt 0.0475m ở gấu trong (không cạ chân)
+      let rZ_ant = sKnee * (0.0420 + sFlare * 0.0200); // Đạt 0.0620m ở mu trước (trùm giày)
+      let rZ_pos = sKnee * (0.0390 + sFlare * 0.0170); // Đạt 0.0560m ở gót sau
+
+      // Gấu quần loe may nẹp viền dày dặn (Hem fold ở đáy)
+      if (t > 0.90) {
+        const hemFold = Math.sin(((t - 0.90) / 0.10) * Math.PI) * 0.0016;
+        rX_lat += hemFold;
+        rX_med += hemFold;
+        rZ_ant += hemFold;
+        rZ_pos += hemFold;
+      }
+
+      for (let j = 0; j <= NU; j++) {
+        const uFrac = j / NU;
+        const phi = uFrac * Math.PI * 2;
+        const cosP = Math.cos(phi);
+        const sinP = Math.sin(phi);
+
+        let px = sinP * (dir > 0 ? (sinP >= 0 ? rX_lat : rX_med) : (sinP <= 0 ? rX_lat : rX_med));
+        let pz = cosP * (cosP >= 0 ? rZ_ant : rZ_pos);
+
+        positions.push(px, y, pz);
+        uvs.push(uFrac, t);
+      }
+    }
+
+    for (let i = 0; i < NY; i++) {
+      for (let j = 0; j < NU; j++) {
+        const i0 = i * (NU + 1) + j;
+        const i1 = i0 + 1;
+        const i2 = (i + 1) * (NU + 1) + j;
+        const i3 = i2 + 1;
+
+        indices.push(i0, i1, i2);
+        indices.push(i1, i3, i2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  /**
+   * Tái tạo Quần 3D với 6 kiểu trang phục tiêu chuẩn cao cấp:
+   * 1. Quần Dài Jeans Cổ Điển (Straight Denim Jeans) - 5 túi, đường may vàng bò, mác da lưng quần, đinh tán đồng
+   * 2. Quần Dài Ống Loe (Flared Bell-Bottom) - Ôm đùi gối, xòe rộng hình chuông từ bắp chân trùm gót giày
+   * 3. Quần Biker Rách Boi Phố (Distressed Jeans) - Vết rách gối lộ sợi chỉ xơ trắng, gân sọc biker moto, xích kim loại
+   * 4. Quần Dài Âu / Kaki (Tailored Chinos) - Phẳng phiu công sở, túi mổ sau, không lộ đinh tán / chỉ vàng
+   * 5. Quần Đùi Thể Thao (Casual Shorts) - Dài 1/2 đùi, cạp dây rút thể thao
+   * 6. Quần Ngố Túi Hộp (Bermuda Cargo) - Dài qua gối, túi hộp 3D sườn đùi
+   */
+  private rebuildPants(pantsId: string, colorHex: string = '#1e293b') {
+    // Luôn fallback về Quần Dài Jeans Cổ Điển khi không có hoặc khi truyền underwear cũ
+    if (!pantsId || pantsId === 'pants_underwear_briefs' || pantsId === 'none') {
+      pantsId = 'pants_classic_denim_jeans';
+    }
+
+    this.currentPantsId = pantsId;
+    this.currentPantsColor = colorHex;
+
+    this.clearGroup(this.pantsGroup);
+    this.clearGroup(this.leftThighPantsGroup);
+    this.clearGroup(this.rightThighPantsGroup);
+    this.clearGroup(this.leftShinPantsGroup);
+    this.clearGroup(this.rightShinPantsGroup);
+
+    this.pantsMaterial.color.set(colorHex || '#1e293b');
+
+    const isShorts = pantsId === 'pants_casual_shorts';
+    const isCropped = pantsId === 'pants_bermuda_cropped';
+    const isChinos = pantsId === 'pants_tailored_chinos';
+    const isFlared = pantsId === 'pants_flared_bell_bottom';
+    const isRipped = pantsId === 'pants_distressed_ripped_jeans';
+    const isClassicJeans = !isShorts && !isCropped && !isChinos && !isFlared && !isRipped;
+
+    // Cập nhật chất liệu vải: Denim Twill Normal Map cho các dòng Jeans & Quần Ngố, Cotton mịn cho Chinos & Shorts
+    const isDenim = isClassicJeans || isFlared || isRipped || isCropped;
+    if (isDenim) {
+      this.pantsMaterial.roughness = 0.76;
+      this.pantsMaterial.metalness = 0.03;
+      try {
+        const twill = getDenimTwillTexture();
+        this.pantsMaterial.normalMap = twill;
+        this.pantsMaterial.normalScale.set(0.42, 0.42);
+      } catch {
+        this.pantsMaterial.normalMap = null;
+      }
+    } else {
+      this.pantsMaterial.roughness = 0.56;
+      this.pantsMaterial.metalness = 0.01;
+      this.pantsMaterial.normalMap = null;
+    }
+    this.pantsMaterial.needsUpdate = true;
+
+    // 1. Quản lý hiển thị da thịt bên dưới quần để triệt tiêu 100% xuyên da (Zero clipping)
+    if (this.pelvisMesh) {
+      this.pelvisMesh.visible = false;
+    }
+
+    if (isShorts) {
+      if (this.leftThighMesh) {
+        if (this.shortsThighSkinGeoLeft) this.leftThighMesh.geometry = this.shortsThighSkinGeoLeft;
+        this.leftThighMesh.visible = true;
+      }
+      if (this.rightThighMesh) {
+        if (this.shortsThighSkinGeoRight) this.rightThighMesh.geometry = this.shortsThighSkinGeoRight;
+        this.rightThighMesh.visible = true;
+      }
+      if (this.leftPatellaMesh) this.leftPatellaMesh.visible = true;
+      if (this.rightPatellaMesh) this.rightPatellaMesh.visible = true;
+      if (this.leftCalfMesh) this.leftCalfMesh.visible = true;
+      if (this.rightCalfMesh) this.rightCalfMesh.visible = true;
+    } else if (isCropped) {
+      if (this.leftThighMesh) {
+        if (this.fullThighGeoLeft) this.leftThighMesh.geometry = this.fullThighGeoLeft;
+        this.leftThighMesh.visible = false;
+      }
+      if (this.rightThighMesh) {
+        if (this.fullThighGeoRight) this.rightThighMesh.geometry = this.fullThighGeoRight;
+        this.rightThighMesh.visible = false;
+      }
+      if (this.leftPatellaMesh) this.leftPatellaMesh.visible = true;
+      if (this.rightPatellaMesh) this.rightPatellaMesh.visible = true;
+      if (this.leftCalfMesh) this.leftCalfMesh.visible = true;
+      if (this.rightCalfMesh) this.rightCalfMesh.visible = true;
+    } else {
+      // Quần dài (Jeans, Flared, Ripped, Chinos): che kín toàn bộ chân
+      if (this.leftThighMesh) {
+        if (this.fullThighGeoLeft) this.leftThighMesh.geometry = this.fullThighGeoLeft;
+        this.leftThighMesh.visible = false;
+      }
+      if (this.rightThighMesh) {
+        if (this.fullThighGeoRight) this.rightThighMesh.geometry = this.fullThighGeoRight;
+        this.rightThighMesh.visible = false;
+      }
+      if (this.leftPatellaMesh) this.leftPatellaMesh.visible = false;
+      if (this.rightPatellaMesh) this.rightPatellaMesh.visible = false;
+      if (this.leftCalfMesh) this.leftCalfMesh.visible = false;
+      if (this.rightCalfMesh) this.rightCalfMesh.visible = false;
+    }
+
+    // 2. DỰNG HÌNH TRANG PHỤC QUẦN 3D
+    if (isShorts) {
+      // --- 1. QUẦN ĐÙI THỂ THAO ---
+      const waistGeo = this.createPantsPelvisGeometry();
+      const waistMesh = new THREE.Mesh(waistGeo, this.pantsMaterial);
+      waistMesh.castShadow = true;
+      waistMesh.receiveShadow = true;
+      this.pantsGroup.add(waistMesh);
+
+      [-0.006, 0.006].forEach((sDir) => {
+        const cordGeo = new THREE.CylinderGeometry(0.0016, 0.0014, 0.034, 10);
+        cordGeo.rotateZ(sDir * 0.15);
+        const cord = new THREE.Mesh(cordGeo, this.shirtButtonMaterial);
+        cord.position.set(sDir, 0.018, 0.0685);
+        cord.castShadow = true;
+        this.pantsGroup.add(cord);
+      });
+
+      [-1, 1].forEach((dir) => {
+        const targetThigh = dir < 0 ? this.leftThighPantsGroup : this.rightThighPantsGroup;
+        const shortsGeo = this.createShortsThighGeometry(dir);
+        const shortsMesh = new THREE.Mesh(shortsGeo, this.pantsMaterial);
+        shortsMesh.castShadow = true;
+        shortsMesh.receiveShadow = true;
+        targetThigh.add(shortsMesh);
+      });
+
+    } else if (isCropped) {
+      // --- 2. QUẦN NGỐ TÚI HỘP ---
+      const waistGeo = this.createPantsPelvisGeometry();
+      const waistMesh = new THREE.Mesh(waistGeo, this.pantsMaterial);
+      waistMesh.castShadow = true;
+      waistMesh.receiveShadow = true;
+      this.pantsGroup.add(waistMesh);
+
+      const loopAngles = [-0.65, -0.25, 0.25, 0.65, Math.PI];
+      loopAngles.forEach((ang) => {
+        const loopGeo = new THREE.BoxGeometry(0.0035, 0.012, 0.002);
+        const loop = new THREE.Mesh(loopGeo, this.pantsMaterial);
+        const lx = Math.sin(ang) * 0.0905;
+        const lz = Math.cos(ang) * 0.0675;
+        loop.position.set(lx, 0.018, lz);
+        loop.rotation.y = ang;
+        this.pantsGroup.add(loop);
+      });
+
+      [-1, 1].forEach((dir) => {
+        const targetThigh = dir < 0 ? this.leftThighPantsGroup : this.rightThighPantsGroup;
+        const thighGeo = this.createCroppedThighGeometry(dir);
+        const thighMesh = new THREE.Mesh(thighGeo, this.pantsMaterial);
+        thighMesh.castShadow = true;
+        thighMesh.receiveShadow = true;
+        targetThigh.add(thighMesh);
+
+        const pocketGeo = new THREE.BoxGeometry(0.009, 0.054, 0.042);
+        const pocket = new THREE.Mesh(pocketGeo, this.pantsMaterial);
+        pocket.position.set(dir * 0.050, -0.155, 0.005);
+        pocket.castShadow = true;
+        targetThigh.add(pocket);
+
+        const flapGeo = new THREE.BoxGeometry(0.011, 0.014, 0.044);
+        const flap = new THREE.Mesh(flapGeo, this.pantsMaterial);
+        flap.position.set(dir * 0.051, -0.126, 0.005);
+        flap.castShadow = true;
+        targetThigh.add(flap);
+      });
+
+    } else if (isClassicJeans) {
+      // --- 3. QUẦN DÀI JEANS CỔ ĐIỂN (5 TÚI DENIM CHUẨN, MÁC DA LƯNG & ĐINH TÁN ĐỒNG ÁP SÁT) ---
+      const waistGeo = this.createPantsPelvisGeometry();
+      const waistMesh = new THREE.Mesh(waistGeo, this.pantsMaterial);
+      waistMesh.castShadow = true;
+      waistMesh.receiveShadow = true;
+      this.pantsGroup.add(waistMesh);
+
+      // 5 Con đỉa thắt lưng cạp quần
+      const loopAngles = [-0.65, -0.25, 0.25, 0.65, Math.PI];
+      loopAngles.forEach((ang) => {
+        const loopGeo = new THREE.BoxGeometry(0.0035, 0.013, 0.002);
+        const loop = new THREE.Mesh(loopGeo, this.pantsMaterial);
+        const lx = Math.sin(ang) * 0.0905;
+        const lz = Math.cos(ang) * 0.0675;
+        loop.position.set(lx, 0.018, lz);
+        loop.rotation.y = ang;
+        this.pantsGroup.add(loop);
+      });
+
+      // Cúc đinh tán kim loại to ở cạp trước (Center Heavy Brass Button)
+      const centerButtonGeo = new THREE.CylinderGeometry(0.0042, 0.0042, 0.0022, 16);
+      centerButtonGeo.rotateX(Math.PI / 2);
+      const centerButton = new THREE.Mesh(centerButtonGeo, this.denimRivetMaterial);
+      centerButton.position.set(0, 0.018, 0.0688);
+      centerButton.castShadow = true;
+      this.pantsGroup.add(centerButton);
+
+      // Đinh tán đồng ở các góc túi mổ trước (Copper Rivets - áp sát vải)
+      [-1, 1].forEach((dir) => {
+        const r1Geo = new THREE.CylinderGeometry(0.0020, 0.0020, 0.0014, 12);
+        r1Geo.rotateX(Math.PI / 2);
+        const rivet1 = new THREE.Mesh(r1Geo, this.denimRivetMaterial);
+        rivet1.position.set(dir * 0.038, 0.016, 0.0665);
+        this.pantsGroup.add(rivet1);
+
+        const r2Geo = new THREE.CylinderGeometry(0.0020, 0.0020, 0.0014, 12);
+        r2Geo.rotateY(-dir * 0.6);
+        const rivet2 = new THREE.Mesh(r2Geo, this.denimRivetMaterial);
+        rivet2.position.set(dir * 0.080, 0.005, 0.0520);
+        this.pantsGroup.add(rivet2);
+      });
+
+      // Túi quẹt / đồng hồ nhỏ đặc trưng bên hông phải (Coin / Watch Pocket on Right Hip)
+      const coinPocketGeo = new THREE.BoxGeometry(0.018, 0.014, 0.0008);
+      const coinPocket = new THREE.Mesh(coinPocketGeo, this.pantsMaterial);
+      coinPocket.position.set(0.058, 0.002, 0.0625);
+      coinPocket.rotation.y = 0.35;
+      coinPocket.rotation.z = -0.08;
+      this.pantsGroup.add(coinPocket);
+
+      // 2 đinh tán con ở góc miệng túi quẹt
+      [0.051, 0.066].forEach((cx, cIdx) => {
+        const cRivetGeo = new THREE.CylinderGeometry(0.0014, 0.0014, 0.0012, 10);
+        cRivetGeo.rotateX(Math.PI / 2);
+        cRivetGeo.rotateY(0.35);
+        const cRivet = new THREE.Mesh(cRivetGeo, this.denimRivetMaterial);
+        cRivet.position.set(cx, 0.008, 0.0622 - cIdx * 0.002);
+        this.pantsGroup.add(cRivet);
+      });
+
+      // Mác da lưng quần Levi's ở góc lưng phải (Leather Brand Jacron Patch - ôm sát thắt lưng)
+      const patchGeo = new THREE.BoxGeometry(0.024, 0.013, 0.0010);
+      const patchMesh = new THREE.Mesh(patchGeo, this.jeansLeatherPatchMaterial);
+      patchMesh.position.set(0.050, 0.018, -0.0665);
+      patchMesh.rotation.y = -0.32;
+      this.pantsGroup.add(patchMesh);
+
+      // 2 Túi ốp sau mông hình lục giác phẳng ôm sát mặt mông (Back Patch Pockets - 100% không lơ lửng)
+      [-1, 1].forEach((dir) => {
+        const backPocketGeo = new THREE.BoxGeometry(0.034, 0.036, 0.0008);
+        const backPocket = new THREE.Mesh(backPocketGeo, this.pantsMaterial);
+        backPocket.position.set(dir * 0.046, -0.012, -0.0635);
+        backPocket.rotation.y = -dir * 0.16;
+        backPocket.rotation.x = -0.06;
+        backPocket.castShadow = true;
+        this.pantsGroup.add(backPocket);
+      });
+
+      // Ống đùi và cẳng chân quần jeans suông dài
+      [-1, 1].forEach((dir) => {
+        const targetThigh = dir < 0 ? this.leftThighPantsGroup : this.rightThighPantsGroup;
+        const targetShin = dir < 0 ? this.leftShinPantsGroup : this.rightShinPantsGroup;
+
+        const thighGeo = this.createLongPantsThighGeometry(dir);
+        const thighMesh = new THREE.Mesh(thighGeo, this.pantsMaterial);
+        thighMesh.castShadow = true;
+        thighMesh.receiveShadow = true;
+        targetThigh.add(thighMesh);
+
+        const shinGeo = this.createLongPantsCalfGeometry(dir);
+        const shinMesh = new THREE.Mesh(shinGeo, this.pantsMaterial);
+        shinMesh.castShadow = true;
+        shinMesh.receiveShadow = true;
+        targetShin.add(shinMesh);
+      });
+
+    } else if (isFlared) {
+      // --- 4. QUẦN DÀI ỐNG LOE (FLARED BELL-BOTTOMS) ---
+      const waistGeo = this.createPantsPelvisGeometry();
+      const waistMesh = new THREE.Mesh(waistGeo, this.pantsMaterial);
+      waistMesh.castShadow = true;
+      waistMesh.receiveShadow = true;
+      this.pantsGroup.add(waistMesh);
+
+      // 5 Con đỉa cạp quần bản rộng
+      const loopAngles = [-0.65, -0.25, 0.25, 0.65, Math.PI];
+      loopAngles.forEach((ang) => {
+        const loopGeo = new THREE.BoxGeometry(0.0040, 0.014, 0.002);
+        const loop = new THREE.Mesh(loopGeo, this.pantsMaterial);
+        const lx = Math.sin(ang) * 0.0905;
+        const lz = Math.cos(ang) * 0.0675;
+        loop.position.set(lx, 0.018, lz);
+        loop.rotation.y = ang;
+        this.pantsGroup.add(loop);
+      });
+
+      // Cúc vintage kim loại sáng
+      const btnGeo = new THREE.CylinderGeometry(0.0045, 0.0045, 0.0020, 16);
+      btnGeo.rotateX(Math.PI / 2);
+      const btn = new THREE.Mesh(btnGeo, this.metalChainMaterial);
+      btn.position.set(0, 0.018, 0.0688);
+      this.pantsGroup.add(btn);
+
+      // Túi chéo xẻ sườn phong cách thanh lịch
+      [-1, 1].forEach((dir) => {
+        const slashPocketGeo = new THREE.BoxGeometry(0.002, 0.045, 0.018);
+        const slashPocket = new THREE.Mesh(slashPocketGeo, this.pantsAccentMaterial);
+        slashPocket.position.set(dir * 0.078, 0.002, 0.040);
+        slashPocket.rotation.z = dir * 0.40;
+        this.pantsGroup.add(slashPocket);
+      });
+
+      // Ống đùi ôm sát + cẳng chân xòe rộng hình chuông trùm qua gót giày (Bell Hem)
+      [-1, 1].forEach((dir) => {
+        const targetThigh = dir < 0 ? this.leftThighPantsGroup : this.rightThighPantsGroup;
+        const targetShin = dir < 0 ? this.leftShinPantsGroup : this.rightShinPantsGroup;
+
+        // Đùi ôm sát làm nổi bật dáng chân
+        const thighGeo = this.createLongPantsThighGeometry(dir);
+        const thighMesh = new THREE.Mesh(thighGeo, this.pantsMaterial);
+        thighMesh.castShadow = true;
+        thighMesh.receiveShadow = true;
+        targetThigh.add(thighMesh);
+
+        // Cẳng chân xòe loe hình chuông chạm đất
+        const flaredShinGeo = this.createFlaredCalfGeometry(dir);
+        const flaredShinMesh = new THREE.Mesh(flaredShinGeo, this.pantsMaterial);
+        flaredShinMesh.castShadow = true;
+        flaredShinMesh.receiveShadow = true;
+        targetShin.add(flaredShinMesh);
+
+        // Gân ly nổi thẳng tắp chạy dọc từ đùi xuống gấu quần ống loe
+        const creaseGeo = new THREE.CylinderGeometry(0.0009, 0.0012, 0.300, 6);
+        const creaseMesh = new THREE.Mesh(creaseGeo, this.pantsMaterial);
+        creaseMesh.position.set(dir * 0.004, -0.140, 0.046);
+        targetShin.add(creaseMesh);
+      });
+
+    } else if (isRipped) {
+      // --- 5. QUẦN BIKER RÁCH BOI PHỐ (DISTRESSED RIPPED JEANS - BO TRÒN THEO CHÂN) ---
+      const waistGeo = this.createPantsPelvisGeometry();
+      const waistMesh = new THREE.Mesh(waistGeo, this.pantsMaterial);
+      waistMesh.castShadow = true;
+      waistMesh.receiveShadow = true;
+      this.pantsGroup.add(waistMesh);
+
+      // 5 Con đỉa
+      const loopAngles = [-0.65, -0.25, 0.25, 0.65, Math.PI];
+      loopAngles.forEach((ang) => {
+        const loopGeo = new THREE.BoxGeometry(0.0035, 0.013, 0.002);
+        const loop = new THREE.Mesh(loopGeo, this.pantsMaterial);
+        const lx = Math.sin(ang) * 0.0905;
+        const lz = Math.cos(ang) * 0.0675;
+        loop.position.set(lx, 0.018, lz);
+        loop.rotation.y = ang;
+        this.pantsGroup.add(loop);
+      });
+
+      // Cúc gunmetal đen mờ
+      const darkBtnGeo = new THREE.CylinderGeometry(0.0042, 0.0042, 0.0020, 16);
+      darkBtnGeo.rotateX(Math.PI / 2);
+      const darkBtn = new THREE.Mesh(darkBtnGeo, this.accentMaterial);
+      darkBtn.position.set(0, 0.018, 0.0688);
+      this.pantsGroup.add(darkBtn);
+
+      // Xích kim loại / móc khóa boi phố bên hông phải (Metallic Keychain / Belt Chain)
+      const ringGeo = new THREE.TorusGeometry(0.0045, 0.0012, 8, 16);
+      const ringMesh = new THREE.Mesh(ringGeo, this.metalChainMaterial);
+      ringMesh.position.set(0.026, 0.011, 0.0690);
+      this.pantsGroup.add(ringMesh);
+
+      const chainCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0.026, 0.010, 0.0690),
+        new THREE.Vector3(0.048, -0.010, 0.0680),
+        new THREE.Vector3(0.068, -0.018, 0.0630),
+      ]);
+      const chainGeo = new THREE.TubeGeometry(chainCurve, 14, 0.0014, 6, false);
+      const chainMesh = new THREE.Mesh(chainGeo, this.metalChainMaterial);
+      this.pantsGroup.add(chainMesh);
+
+      [-1, 1].forEach((dir) => {
+        const targetThigh = dir < 0 ? this.leftThighPantsGroup : this.rightThighPantsGroup;
+        const targetShin = dir < 0 ? this.leftShinPantsGroup : this.rightShinPantsGroup;
+
+        // Thân đùi ôm thon
+        const thighGeo = this.createLongPantsThighGeometry(dir);
+        const thighMesh = new THREE.Mesh(thighGeo, this.pantsMaterial);
+        thighMesh.castShadow = true;
+        thighMesh.receiveShadow = true;
+        targetThigh.add(thighMesh);
+
+        // Vết rạch cong ngang đùi trên (Upper Thigh Curved Slashes - bo tròn theo đùi)
+        [-0.105, -0.150].forEach((sy, sIdx) => {
+          const slashSpan = 0.32 - sIdx * 0.05;
+          const slashGeo = this.createCurvedArcBand(0.044, 0.049, slashSpan, sy + 0.0025, sy - 0.0025, 0.0010);
+          const slashMesh = new THREE.Mesh(slashGeo, this.accentMaterial);
+          targetThigh.add(slashMesh);
+
+          const strandGeo = this.createCurvedThreadArc(0.044, 0.049, slashSpan * 0.88, sy, 0.0007, 0.0018);
+          const strandMesh = new THREE.Mesh(strandGeo, this.frayedThreadMaterial);
+          targetThigh.add(strandMesh);
+        });
+
+        // 3 Gân sọc biker moto bo tròn cong theo chu vi đùi (Moto Biker Accordion Ribbed Curved Pleats)
+        [-0.205, -0.222, -0.239].forEach((ry) => {
+          const ribGeo = this.createCurvedArcBand(0.039, 0.045, 0.48, ry + 0.0035, ry - 0.0035, 0.0018);
+          const rib = new THREE.Mesh(ribGeo, this.pantsMaterial);
+          rib.castShadow = true;
+          targetThigh.add(rib);
+        });
+
+        // Vết rách gối toang bo tròn cong theo khớp gối (Curved Knee Ripped Window with Frayed Threads)
+        const ripY = -0.268;
+        // Mặt nền thịt bên dưới lỗ rách cong theo đầu gối
+        const ripBackingGeo = this.createCurvedArcBand(0.036, 0.042, 0.52, ripY + 0.012, ripY - 0.012, 0.0006);
+        const ripBacking = new THREE.Mesh(ripBackingGeo, this.bodyMaterial);
+        targetThigh.add(ripBacking);
+
+        // Viền vải denim xơ xung quanh lỗ rách uốn lượn cong
+        const topBorderGeo = this.createCurvedArcBand(0.036, 0.042, 0.54, ripY + 0.013, ripY + 0.010, 0.0015);
+        const topBorder = new THREE.Mesh(topBorderGeo, this.pantsAccentMaterial);
+        targetThigh.add(topBorder);
+
+        const botBorderGeo = this.createCurvedArcBand(0.036, 0.042, 0.54, ripY - 0.010, ripY - 0.013, 0.0015);
+        const botBorder = new THREE.Mesh(botBorderGeo, this.pantsAccentMaterial);
+        targetThigh.add(botBorder);
+
+        // 5 sợi chỉ xơ màu trắng đan ngang uốn cong theo chu vi đầu gối (Signature Curved Threads)
+        [-0.007, -0.0035, 0, 0.0035, 0.007].forEach((dy) => {
+          const threadSpan = 0.48 - Math.abs(dy) * 5.0;
+          const threadGeo = this.createCurvedThreadArc(0.036, 0.042, threadSpan, ripY + dy, 0.0008, 0.0018);
+          const threadMesh = new THREE.Mesh(threadGeo, this.frayedThreadMaterial);
+          targetThigh.add(threadMesh);
+        });
+
+        // Cẳng chân suông
+        const shinGeo = this.createLongPantsCalfGeometry(dir);
+        const shinMesh = new THREE.Mesh(shinGeo, this.pantsMaterial);
+        shinMesh.castShadow = true;
+        shinMesh.receiveShadow = true;
+        targetShin.add(shinMesh);
+
+        // Vết xước nhỏ ở đầu cẳng chân uốn cong
+        const shinSlashGeo = this.createCurvedArcBand(0.038, 0.043, 0.28, -0.058, -0.062, 0.0012);
+        const shinSlashMesh = new THREE.Mesh(shinSlashGeo, this.accentMaterial);
+        targetShin.add(shinSlashMesh);
+      });
+
+    } else {
+      // --- 6. QUẦN DÀI ÂU / KAKI (TAILORED CHINOS - CÔNG SỞ PHẲNG PHIU) ---
+      const waistGeo = this.createPantsPelvisGeometry();
+      const waistMesh = new THREE.Mesh(waistGeo, this.pantsMaterial);
+      waistMesh.castShadow = true;
+      waistMesh.receiveShadow = true;
+      this.pantsGroup.add(waistMesh);
+
+      // 5 Con đỉa mảnh mai
+      const loopAngles = [-0.65, -0.25, 0.25, 0.65, Math.PI];
+      loopAngles.forEach((ang) => {
+        const loopGeo = new THREE.BoxGeometry(0.0030, 0.012, 0.0018);
+        const loop = new THREE.Mesh(loopGeo, this.pantsMaterial);
+        const lx = Math.sin(ang) * 0.0905;
+        const lz = Math.cos(ang) * 0.0675;
+        loop.position.set(lx, 0.018, lz);
+        loop.rotation.y = ang;
+        this.pantsGroup.add(loop);
+      });
+
+      // 2 Túi mổ sau phẳng phiu (Welt Back Pockets)
+      [-1, 1].forEach((dir) => {
+        const weltGeo = new THREE.BoxGeometry(0.034, 0.003, 0.0015);
+        const weltMesh = new THREE.Mesh(weltGeo, this.pantsAccentMaterial);
+        weltMesh.position.set(dir * 0.046, 0.005, -0.0725);
+        weltMesh.rotation.y = -dir * 0.15;
+        this.pantsGroup.add(weltMesh);
+      });
+
+      // Ống đùi và cẳng chân đứng phom, đường ly quần ép phẳng phiu
+      [-1, 1].forEach((dir) => {
+        const targetThigh = dir < 0 ? this.leftThighPantsGroup : this.rightThighPantsGroup;
+        const targetShin = dir < 0 ? this.leftShinPantsGroup : this.rightShinPantsGroup;
+
+        const thighGeo = this.createLongPantsThighGeometry(dir);
+        const thighMesh = new THREE.Mesh(thighGeo, this.pantsMaterial);
+        thighMesh.castShadow = true;
+        thighMesh.receiveShadow = true;
+        targetThigh.add(thighMesh);
+
+        // Ly quần trước đùi
+        const thighCreaseGeo = new THREE.CylinderGeometry(0.0006, 0.0006, 0.270, 6);
+        const thighCrease = new THREE.Mesh(thighCreaseGeo, this.pantsMaterial);
+        thighCrease.position.set(dir * 0.004, -0.135, 0.048);
+        targetThigh.add(thighCrease);
+
+        const shinGeo = this.createLongPantsCalfGeometry(dir);
+        const shinMesh = new THREE.Mesh(shinGeo, this.pantsMaterial);
+        shinMesh.castShadow = true;
+        shinMesh.receiveShadow = true;
+        targetShin.add(shinMesh);
+
+        // Ly quần trước cẳng chân
+        const shinCreaseGeo = new THREE.CylinderGeometry(0.0006, 0.0006, 0.280, 6);
+        const shinCrease = new THREE.Mesh(shinCreaseGeo, this.pantsMaterial);
+        shinCrease.position.set(dir * 0.004, -0.138, 0.042);
+        targetShin.add(shinCrease);
+      });
     }
   }
 
@@ -3500,6 +6426,16 @@ export class ArticulatedMannequin implements IHumanCharacter {
     const skinTone = config?.skinTone || '#B57850';
     this.rebuildHair(hairId, hairColor, skinTone);
 
+    // Cập nhật áo 3D & màu sắc áo
+    const shirtId = config?.shirtId || 'shirt_oxford_button_down';
+    const shirtColor = config?.shirtColor || '#ffffff';
+    this.rebuildShirt(shirtId, shirtColor);
+
+    // Cập nhật quần 3D & màu sắc quần (Jeans / Shorts / Cargo / Chinos - Mặc định Jeans)
+    const pantsId = config?.pantsId || 'pants_classic_denim_jeans';
+    const pantsColor = config?.pantsColor || '#1e293b';
+    this.rebuildPants(pantsId, pantsColor);
+
     // Cập nhật ngũ quan khuôn mặt khi config thay đổi
     if (this.headMesh && config) {
       const oldGeo = this.headMesh.geometry;
@@ -3524,8 +6460,8 @@ export class ArticulatedMannequin implements IHumanCharacter {
 
     if (eyeShape === 'eye_shape_narrow_slanted') {
       // 1. Mắt Híp / Một Mí: dẹt ngang hẹp dọc đặc trưng mắt cười/một mí
-      eyeScaleX = 1.30;
-      eyeScaleY = 0.36;
+      eyeScaleX = 1.25;
+      eyeScaleY = 0.40;
       eyeTiltZ = 0;
     } else if (eyeShape === 'eye_shape_natural_almond') {
       // 2. Mắt Hạnh Nhân / Tự Nhiên: mở vừa vặn, chuẩn Á Đông cân đối
@@ -3534,23 +6470,25 @@ export class ArticulatedMannequin implements IHumanCharacter {
       eyeTiltZ = 0;
     } else if (eyeShape === 'eye_shape_phoenix') {
       // 3. Mắt Phượng: xếch nhẹ thanh tú sắc sảo
-      eyeScaleX = 1.18;
+      eyeScaleX = 1.15;
       eyeScaleY = 0.72;
-      eyeTiltZ = 0.18;
+      eyeTiltZ = 0.16;
     } else if (eyeShape === 'eye_shape_big_round') {
       // 4. Mắt To Tròn: mở to tròn long lanh hai mí
-      eyeScaleX = 1.12;
-      eyeScaleY = 1.35;
+      eyeScaleX = 1.08;
+      eyeScaleY = 1.15;
       eyeTiltZ = 0;
     }
 
     if (this.leftEyeGroup) {
+      this.leftEyeGroup.position.set(-0.0202, 0.0110, 0.0384);
       this.leftEyeGroup.scale.set(eyeScaleX, eyeScaleY, 1.0);
-      this.leftEyeGroup.rotation.z = -eyeTiltZ;
+      this.leftEyeGroup.rotation.set(0, 0, -eyeTiltZ);
     }
     if (this.rightEyeGroup) {
+      this.rightEyeGroup.position.set(0.0202, 0.0110, 0.0384);
       this.rightEyeGroup.scale.set(eyeScaleX, eyeScaleY, 1.0);
-      this.rightEyeGroup.rotation.z = eyeTiltZ;
+      this.rightEyeGroup.rotation.set(0, 0, eyeTiltZ);
     }
 
     // Cập nhật 9 dáng chân mày 3D (Độc lạ, Cắt khấc, Lượn sóng, Tia chớp, Unibrow, Kiếm mi...)
@@ -3578,100 +6516,101 @@ export class ArticulatedMannequin implements IHumanCharacter {
         if (browShape === 'brow_sword_bold') {
           // 2. Chân mày kiếm: đầu mày trên hốc mắt trong, đỉnh và đuôi xếch cao thái dương
           pts = [
-            new THREE.Vector3(dir * 0.0115, 0.0180, 0.0452),
-            new THREE.Vector3(dir * 0.0245, 0.0242, 0.0415),
-            new THREE.Vector3(dir * 0.0360, 0.0238, 0.0315),
+            new THREE.Vector3(dir * 0.0072, 0.0155, 0.0455),
+            new THREE.Vector3(dir * 0.0220, 0.0195, 0.0410),
+            new THREE.Vector3(dir * 0.0330, 0.0185, 0.0315),
           ];
-          tubeRadius = 0.00095;
+          tubeRadius = 0.00105;
         } else if (browShape === 'brow_unibrow_continuous') {
           // 3. Lông mày liền nhau (Unibrow): Nối liền liên tục từ giữa sống mũi x=0 qua khóe mắt sang 2 bên
           pts = [
-            new THREE.Vector3(0.0000, 0.0195, 0.0475),
-            new THREE.Vector3(dir * 0.0125, 0.0195, 0.0448),
-            new THREE.Vector3(dir * 0.0235, 0.0220, 0.0418),
-            new THREE.Vector3(dir * 0.0345, 0.0180, 0.0325),
+            new THREE.Vector3(0.0000, 0.0160, 0.0470),
+            new THREE.Vector3(dir * 0.0078, 0.0162, 0.0450),
+            new THREE.Vector3(dir * 0.0210, 0.0180, 0.0415),
+            new THREE.Vector3(dir * 0.0315, 0.0145, 0.0325),
           ];
           tubeRadius = 0.00120;
         } else if (browShape === 'brow_slit_cyber') {
           // 4. Chân mày cắt khấc Cyber Slit (Đuôi mày rạch khấc đứt đoạn cực ngầu)
           pts = [
-            new THREE.Vector3(dir * 0.0120, 0.0185, 0.0450),
-            new THREE.Vector3(dir * 0.0215, 0.0225, 0.0425),
-            new THREE.Vector3(dir * 0.0240, 0.0228, 0.0380),
-            new THREE.Vector3(dir * 0.0265, 0.0232, 0.0412),
-            new THREE.Vector3(dir * 0.0360, 0.0220, 0.0315),
+            new THREE.Vector3(dir * 0.0075, 0.0158, 0.0452),
+            new THREE.Vector3(dir * 0.0185, 0.0182, 0.0425),
+            new THREE.Vector3(dir * 0.0210, 0.0185, 0.0380),
+            new THREE.Vector3(dir * 0.0235, 0.0188, 0.0410),
+            new THREE.Vector3(dir * 0.0325, 0.0170, 0.0318),
           ];
-          tubeRadius = 0.00090;
+          tubeRadius = 0.00095;
         } else if (browShape === 'brow_wave_squiggles') {
           // 5. Chân mày lượn sóng Squiggle (Uốn lượn hình sin sóng biển phá cách)
           pts = [
-            new THREE.Vector3(dir * 0.0120, 0.0180, 0.0450),
-            new THREE.Vector3(dir * 0.0175, 0.0245, 0.0435),
-            new THREE.Vector3(dir * 0.0235, 0.0180, 0.0420),
-            new THREE.Vector3(dir * 0.0295, 0.0250, 0.0375),
-            new THREE.Vector3(dir * 0.0360, 0.0180, 0.0315),
+            new THREE.Vector3(dir * 0.0075, 0.0155, 0.0452),
+            new THREE.Vector3(dir * 0.0140, 0.0195, 0.0435),
+            new THREE.Vector3(dir * 0.0205, 0.0150, 0.0420),
+            new THREE.Vector3(dir * 0.0265, 0.0198, 0.0375),
+            new THREE.Vector3(dir * 0.0325, 0.0150, 0.0318),
           ];
-          tubeRadius = 0.00085;
+          tubeRadius = 0.00090;
         } else if (browShape === 'brow_lightning_zigzag') {
           // 6. Chân mày tia chớp Zig-Zag (Gãy khúc sắc nhọn phong cách anime/manga)
           pts = [
-            new THREE.Vector3(dir * 0.0115, 0.0175, 0.0452),
-            new THREE.Vector3(dir * 0.0195, 0.0260, 0.0430),
-            new THREE.Vector3(dir * 0.0240, 0.0170, 0.0415),
-            new THREE.Vector3(dir * 0.0305, 0.0265, 0.0370),
-            new THREE.Vector3(dir * 0.0365, 0.0240, 0.0315),
+            new THREE.Vector3(dir * 0.0072, 0.0150, 0.0455),
+            new THREE.Vector3(dir * 0.0160, 0.0205, 0.0430),
+            new THREE.Vector3(dir * 0.0205, 0.0145, 0.0415),
+            new THREE.Vector3(dir * 0.0268, 0.0210, 0.0370),
+            new THREE.Vector3(dir * 0.0330, 0.0185, 0.0315),
           ];
-          tubeRadius = 0.00085;
+          tubeRadius = 0.00090;
         } else if (browShape === 'brow_straight_korean') {
           // 7. Chân mày ngang Hàn Quốc: thẳng tắp thanh lịch ngang trên mắt
           pts = [
-            new THREE.Vector3(dir * 0.0120, 0.0198, 0.0450),
-            new THREE.Vector3(dir * 0.0235, 0.0200, 0.0418),
-            new THREE.Vector3(dir * 0.0345, 0.0195, 0.0325),
+            new THREE.Vector3(dir * 0.0075, 0.0165, 0.0452),
+            new THREE.Vector3(dir * 0.0200, 0.0168, 0.0420),
+            new THREE.Vector3(dir * 0.0310, 0.0162, 0.0328),
           ];
-          tubeRadius = 0.00085;
+          tubeRadius = 0.00095;
         } else if (browShape === 'brow_high_arch_western') {
           // 8. Chân mày cong cao Diva (High Arch): đỉnh vòm cong vút cực cao trên con ngươi
           pts = [
-            new THREE.Vector3(dir * 0.0130, 0.0175, 0.0445),
-            new THREE.Vector3(dir * 0.0245, 0.0268, 0.0412),
-            new THREE.Vector3(dir * 0.0355, 0.0145, 0.0320),
+            new THREE.Vector3(dir * 0.0080, 0.0150, 0.0450),
+            new THREE.Vector3(dir * 0.0215, 0.0205, 0.0412),
+            new THREE.Vector3(dir * 0.0320, 0.0125, 0.0322),
           ];
-          tubeRadius = 0.00075;
+          tubeRadius = 0.00085;
         } else if (browShape === 'brow_thick_bushy') {
           // 9. Chân mày rậm rạp sâu róm: to bản dày đặc nam tính
           pts = [
-            new THREE.Vector3(dir * 0.0105, 0.0185, 0.0455),
-            new THREE.Vector3(dir * 0.0235, 0.0232, 0.0420),
-            new THREE.Vector3(dir * 0.0355, 0.0175, 0.0320),
+            new THREE.Vector3(dir * 0.0068, 0.0158, 0.0458),
+            new THREE.Vector3(dir * 0.0205, 0.0188, 0.0420),
+            new THREE.Vector3(dir * 0.0320, 0.0145, 0.0322),
           ];
-          tubeRadius = 0.00160;
+          tubeRadius = 0.00165;
         } else if (browShape === 'brow_sigma_raised') {
           // 10. Chân mày Sigma (The Rock): 1 bên nhướn cong vút siêu cao, 1 bên hạ thấp sắc bén
           if (dir > 0) {
             // Bên phải: Nhướn siêu cao
             pts = [
-              new THREE.Vector3(0.0120, 0.0215, 0.0445),
-              new THREE.Vector3(0.0245, 0.0295, 0.0410),
-              new THREE.Vector3(0.0355, 0.0235, 0.0320),
+              new THREE.Vector3(0.0075, 0.0175, 0.0450),
+              new THREE.Vector3(0.0215, 0.0235, 0.0410),
+              new THREE.Vector3(0.0320, 0.0185, 0.0320),
             ];
           } else {
             // Bên trái: Hạ thấp sắc bén gằn nét
             pts = [
-              new THREE.Vector3(-0.0115, 0.0165, 0.0452),
-              new THREE.Vector3(-0.0235, 0.0195, 0.0422),
-              new THREE.Vector3(-0.0350, 0.0175, 0.0325),
+              new THREE.Vector3(-0.0070, 0.0145, 0.0455),
+              new THREE.Vector3(-0.0205, 0.0162, 0.0425),
+              new THREE.Vector3(-0.0315, 0.0145, 0.0325),
             ];
           }
-          tubeRadius = 0.00095;
+          tubeRadius = 0.00100;
         } else {
           // 1. Chân mày cánh cung tự nhiên (Soft Arch): vòm cong thanh tú ôm trọn bầu mắt
           pts = [
-            new THREE.Vector3(dir * 0.0125, 0.0188, 0.0448),
-            new THREE.Vector3(dir * 0.0235, 0.0225, 0.0418),
-            new THREE.Vector3(dir * 0.0345, 0.0180, 0.0325),
+            new THREE.Vector3(dir * 0.0075, 0.0162, 0.0452),
+            new THREE.Vector3(dir * 0.0145, 0.0178, 0.0436),
+            new THREE.Vector3(dir * 0.0225, 0.0185, 0.0410),
+            new THREE.Vector3(dir * 0.0315, 0.0145, 0.0330),
           ];
-          tubeRadius = 0.00065;
+          tubeRadius = 0.00085;
         }
 
         tubeRadius *= intensityScale;
@@ -3683,22 +6622,60 @@ export class ArticulatedMannequin implements IHumanCharacter {
       }
     });
 
-    // Cập nhật tỉ lệ cơ thể 3D (Chiều cao mầm non chuẩn WHO: 95cm - 115cm & Tỉ lệ dài chân)
+    // Cập nhật tỉ lệ cơ thể 3D (Chiều cao mầm non: Min 95cm, Max 115cm, Default 95cm & Tỉ lệ dài chân/tay Default 85%)
     if (config?.body) {
-      // 1. Chiều cao mầm non (chuẩn 105cm)
-      const heightCm = config.body.heightCm || 105;
-      const heightRatio = heightCm / 105;
+      // 1. Chiều cao mầm non (chuẩn mặc định 95cm)
+      const heightCm = config.body.heightCm || 95;
+      const heightRatio = heightCm / 95;
       this.spineRoot.scale.set(heightRatio, heightRatio, heightRatio);
 
-      // 2. Tỉ lệ chiều dài chân (Leg Length Ratio)
+      // 2. Tỉ lệ chiều dài chân (Leg Length Ratio - mặc định 0.85 / 85%)
       // Chỉ scale leftThigh và rightThigh, vì leftShin và leftFoot là con trong cây phân cấp
       // nên đã tự động kế thừa scale Y. Giữ leftShin/rightShin scale (1,1,1) để tránh bị nhân đôi (legScale^2)
-      const legScale = config.body.legLengthScale || 1.0;
+      const legScale = typeof config.body.legLengthScale === 'number' ? config.body.legLengthScale : 0.85;
       this.currentLegScale = legScale;
       this.leftThigh.scale.set(1, legScale, 1);
       this.rightThigh.scale.set(1, legScale, 1);
       this.leftShin.scale.set(1, 1, 1);
       this.rightShin.scale.set(1, 1, 1);
+
+      // 3. Tỉ lệ chiều dài tay (Arm Length Ratio - độc lập hoàn toàn, mặc định 1.0 / 100%)
+      const armScale = typeof config.body.armLengthScale === 'number'
+        ? config.body.armLengthScale
+        : 1.0;
+      this.currentArmScale = armScale;
+
+      // Giữ scale các group xương cố định là (1,1,1) để KHÔNG BAO GIỜ bị biến dạng / shear ma trận khi xoay tư thế (như vẫy tay chào)
+      this.leftUpperArm.scale.set(1, 1, 1);
+      this.rightUpperArm.scale.set(1, 1, 1);
+      this.leftElbow.scale.set(1, 1, 1);
+      this.rightElbow.scale.set(1, 1, 1);
+      this.leftForearm.scale.set(1, 1, 1);
+      this.rightForearm.scale.set(1, 1, 1);
+      this.leftHand.scale.set(1, 1, 1);
+      this.rightHand.scale.set(1, 1, 1);
+
+      // Cập nhật vị trí tịnh tiến của các khớp theo tỉ lệ armScale
+      const upperArmLen = 0.160 * armScale;
+      const forearmLen = 0.145 * armScale;
+
+      this.leftElbow.position.set(0, -upperArmLen, 0);
+      this.rightElbow.position.set(0, -upperArmLen, 0);
+      this.leftHand.position.set(0, -forearmLen, 0);
+      this.rightHand.position.set(0, -forearmLen, 0);
+
+      // Scale trực tiếp hình học hiển thị (mesh) theo chiều dọc Y
+      if (this.leftUpperArmMesh) this.leftUpperArmMesh.scale.set(1, armScale, 1);
+      if (this.rightUpperArmMesh) this.rightUpperArmMesh.scale.set(1, armScale, 1);
+      if (this.leftArmEndCap) this.leftArmEndCap.position.set(0, -upperArmLen, 0);
+      if (this.rightArmEndCap) this.rightArmEndCap.position.set(0, -upperArmLen, 0);
+
+      if (this.leftForearmMesh) this.leftForearmMesh.scale.set(1, armScale, 1);
+      if (this.rightForearmMesh) this.rightForearmMesh.scale.set(1, armScale, 1);
+      if (this.leftForearmSeam) this.leftForearmSeam.position.set(0, -0.120 * armScale, 0);
+      if (this.rightForearmSeam) this.rightForearmSeam.position.set(0, -0.120 * armScale, 0);
+      if (this.leftWristBall) this.leftWristBall.position.set(0, -0.143 * armScale, 0);
+      if (this.rightWristBall) this.rightWristBall.position.set(0, -0.143 * armScale, 0);
     }
   }
 
@@ -3887,6 +6864,11 @@ export class ArticulatedMannequin implements IHumanCharacter {
     this.bodyMaterial.dispose();
     this.jointMaterial.dispose();
     this.accentMaterial.dispose();
+    this.shirtMaterial.dispose();
+    this.shirtButtonMaterial.dispose();
+    this.shirtAccentMaterial.dispose();
+    this.pantsMaterial.dispose();
+    this.pantsAccentMaterial.dispose();
     if (this.eyeTexture) {
       this.eyeTexture.dispose();
       this.eyeTexture = null;

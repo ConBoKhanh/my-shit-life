@@ -263,9 +263,9 @@ export const Character3DViewer: React.FC<Character3DViewerProps> = ({
 
       // Tính toán vị trí không gian 3D thực tế theo tỉ lệ Chiều cao (heightCm) & Chân (legScale)
       const currentConfig = configRef.current;
-      const heightCm = currentConfig?.body?.heightCm || 105;
-      const heightRatio = heightCm / 105;
-      const legScale = currentConfig?.body?.legLengthScale || 1.0;
+      const heightCm = currentConfig?.body?.heightCm || 95;
+      const heightRatio = heightCm / 95;
+      const legScale = typeof currentConfig?.body?.legLengthScale === 'number' ? currentConfig.body.legLengthScale : 0.85;
 
       const yBase = showPodium ? 0.16 : 0.0;
       const pelvisHeight = (0.030 + 0.632 * legScale) * heightRatio;

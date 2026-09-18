@@ -16,11 +16,12 @@ export interface RealisticAssetOption {
 }
 
 export interface RealisticBodyMetrics {
-  heightCm: number; // 150 - 200 (Default: 175)
-  weightKg: number; // 45 - 110 (Default: 68)
-  musclePct: number; // 0 - 100 (Default: 45)
+  heightCm: number; // 95 - 115 (Default: 95)
+  weightKg: number; // 45 - 110 (Default: 24)
+  musclePct: number; // 0 - 100 (Default: 20)
   shoulderWidthScale: number; // 0.85 - 1.25 (Default: 1.0)
-  legLengthScale: number; // 0.9 - 1.15 (Default: 1.0)
+  legLengthScale: number; // 0.85 - 1.15 (Default: 0.85)
+  armLengthScale?: number; // 0.85 - 1.15 (Default: 1.0)
 }
 
 export interface RealisticAvatarConfig {
@@ -577,65 +578,119 @@ export const REALISTIC_JAW_SHAPE_OPTIONS: RealisticAssetOption[] = [
   },
 ];
 
-// 3. Áo (2 mẫu áo kinh điển chuẩn PBR)
+// 3. Áo (Bộ sưu tập áo sơ mi & áo thun chuẩn PBR)
 export const REALISTIC_SHIRT_OPTIONS: RealisticAssetOption[] = [
   {
-    id: 'shirt_fitted_cotton_tee',
-    name: 'Fitted Cotton Crewneck Tee',
+    id: 'shirt_oxford_button_down',
+    name: 'Áo Sơ Mi Cộc Tay (Oxford Button-Down)',
     category: 'shirt',
-    description: 'Áo thun cotton dệt sợi cao cấp, cổ tròn bo viền gân tinh tế, form ôm vừa vặn và nếp gấp eo mềm mại.',
+    description: 'Áo sơ mi cộc tay dáng đứng phom thanh lịch, cổ bẻ cài cúc, nẹp áo hàng nút xà cừ 3D và túi ngực chỉn chu.',
     materialType: 'cotton',
-    badge: '★ Tối Giản',
+    badge: '★ Thanh Lịch',
     colorHex: '#ffffff',
   },
   {
-    id: 'shirt_oxford_button_down',
-    name: 'Oxford Button-Down Shirt',
+    id: 'shirt_oxford_long_sleeve',
+    name: 'Áo Sơ Mi Dài Tay (Long-Sleeve Oxford)',
     category: 'shirt',
-    description: 'Áo sơ mi Oxford đứng form, cổ bẻ cài cúc, nẹp áo đính hàng cúc xà cừ và túi ngực may chìm sang trọng.',
+    description: 'Áo sơ mi dài tay công sở sang trọng, cổ bẻ 3D, măng sét cổ tay cứng cáp đính khuy xà cừ và nẹp xẻ tà.',
     materialType: 'cotton',
-    badge: '★ Thanh Lịch',
+    badge: '★ Công Sở',
+    colorHex: '#f8fafc',
+  },
+  {
+    id: 'shirt_oxford_rolled_sleeve',
+    name: 'Áo Sơ Mi Xắn Tay (Rolled-Up Sleeve)',
+    category: 'shirt',
+    description: 'Áo sơ mi xắn gấp 2 nếp phồng 3D phong trần ngay dưới khuỷu tay, tôn nét nam tính trẻ trung.',
+    materialType: 'cotton',
+    badge: '★ Trẻ Trung',
+    colorHex: '#ffffff',
+  },
+  {
+    id: 'shirt_knit_sweater',
+    name: 'Áo Len Dệt Kim (Cozy Knit Sweater)',
+    category: 'shirt',
+    description: 'Áo len phom bồng dày dặn ấm áp, cổ tròn dệt gân nổi 3D, bo chun gân co giãn ở gấu áo và cổ tay.',
+    materialType: 'cotton',
+    badge: '★ Ấm Áp',
     colorHex: '#e2e8f0',
   },
   {
-    id: 'shirt_none',
-    name: 'Cơ Thể Nguyên Bản (Base Torso)',
+    id: 'shirt_fitted_cotton_tee',
+    name: 'Áo Thun Cổ Tròn (Cotton Crewneck Tee)',
     category: 'shirt',
-    description: 'Không mặc áo, phô diễn trọn vẹn giải phẫu cơ ngực, xương quai xanh, eo thon và cơ lưng mềm mại.',
+    description: 'Áo thun cotton co giãn cao cấp, cổ tròn bo gân tinh tế, form ôm năng động thoải mái.',
+    materialType: 'cotton',
+    badge: '★ Năng Động',
+    colorHex: '#18181b',
+  },
+  {
+    id: 'shirt_none',
+    name: 'Cơ Thể Nguyên Bản (Không Mặc Áo)',
+    category: 'shirt',
+    description: 'Không mặc áo, phô diễn trọn vẹn giải phẫu cơ ngực, xương quai xanh, eo thon và cơ lưng.',
     materialType: 'cotton',
     badge: '★ Base Body',
     colorHex: '#ffffff',
   },
 ];
 
-// 4. Quần (2 mẫu quần phom chuẩn + Base Underwear)
+// 4. Quần (Quần Dài Jeans, Quần Ống Loe, Quần Boi Phố Rách, Quần Âu, Quần Đùi, Quần Ngố) - Mặc định Quần Dài Jeans
 export const REALISTIC_PANTS_OPTIONS: RealisticAssetOption[] = [
   {
     id: 'pants_classic_denim_jeans',
-    name: 'Classic Straight-Cut Denim Jeans',
+    name: 'Quần Dài Jeans Cổ Điển (Straight Jeans)',
     category: 'pants',
-    description: 'Quần jeans vải bò dệt chéo (twill weave), đinh tán đồng ở góc túi, con đỉa cạp quần và nếp gấp ống chân.',
+    description: 'Quần denim 5 túi chuẩn mực: 2 túi mổ cong, túi quẹt đồng hồ, mác da lưng quần, đường chỉ đôi vàng bò và đinh tán đồng.',
     materialType: 'denim',
-    badge: '★ Phong Cách',
+    badge: '★ Mặc Định',
     colorHex: '#2563eb',
   },
   {
-    id: 'pants_tailored_chinos',
-    name: 'Tailored Chino Trousers',
+    id: 'pants_flared_bell_bottom',
+    name: 'Quần Dài Ống Loe (Flared Bell-Bottom)',
     category: 'pants',
-    description: 'Quần kaki/âu cao cấp dáng suông, đường ly quần ép phẳng phiu, túi mổ sau và gấu quần may giấu chỉ.',
-    materialType: 'cotton',
-    badge: '★ Chỉn Chu',
-    colorHex: '#475569',
+    description: 'Phom ôm sát đùi và gối tôn dáng, ống xòe loe hình quả chuông từ bắp chân trùm phủ giày phong cách retro thời thượng.',
+    materialType: 'denim',
+    badge: '★ Ống Loe Retro',
+    colorHex: '#1d4ed8',
   },
   {
-    id: 'pants_underwear_briefs',
-    name: 'Quần Thể Thao Tối Giản (Athletic Briefs)',
+    id: 'pants_distressed_ripped_jeans',
+    name: 'Quần Biker Rách Boi Phố (Distressed Jeans)',
     category: 'pants',
-    description: 'Quần lót thể thao ôm sát hông, để lộ toàn bộ đường nét giải phẫu cơ đùi, đầu gối và bắp chân.',
-    materialType: 'cotton',
-    badge: '★ Base Body',
+    description: 'Phong cách boi phố cá tính: vệt rách ngang gối lộ sợi chỉ xơ trắng, gân sọc biker moto trên gối và xích kim loại hông.',
+    materialType: 'denim',
+    badge: '★ Boi Phố Rách',
     colorHex: '#1e293b',
+  },
+  {
+    id: 'pants_tailored_chinos',
+    name: 'Quần Dài Âu / Kaki (Tailored Chinos)',
+    category: 'pants',
+    description: 'Quần kaki/âu cao cấp phẳng phiu, túi mổ sau, không lộ đinh tán hay đường may gồ ghề, đường ly đứng đắn lịch sự.',
+    materialType: 'cotton',
+    badge: '★ Chỉn Chu',
+    colorHex: '#64748b',
+  },
+  {
+    id: 'pants_casual_shorts',
+    name: 'Quần Đùi Thể Thao (Casual Shorts)',
+    category: 'pants',
+    description: 'Quần đùi dạo phố mùa hè dài 1/2 đùi, cạp chun dây rút thể thao năng động, ống rộng thoáng mát.',
+    materialType: 'cotton',
+    badge: '★ Năng Động',
+    colorHex: '#334155',
+  },
+  {
+    id: 'pants_bermuda_cropped',
+    name: 'Quần Ngố Túi Hộp (Bermuda Cargo)',
+    category: 'pants',
+    description: 'Quần lửng ngang gối phom suông rộng rãi, 2 túi hộp 3D sườn đùi cá tính, gấu lửng bọc kín khớp gối.',
+    materialType: 'denim',
+    badge: '★ Trẻ Trung',
+    colorHex: '#475569',
   },
 ];
 
@@ -738,12 +793,12 @@ export const REALISTIC_LIP_COLORS = [
   { id: 'plum_velvet', name: 'Đỏ Mận Quý Phái', hex: '#8A293E' },
 ];
 
-// Cấu hình mặc định: Chuẩn Human Base Mesh giải phẫu (Ảnh 2 Reference)
+// Cấu hình mặc định: Chuẩn Human Base Mesh giải phẫu cho giai đoạn mầm non
 export const DEFAULT_REALISTIC_CONFIG: RealisticAvatarConfig = {
   hairId: 'hair_buzz_cut_fade',
   faceId: 'face_confident_natural',
-  shirtId: 'shirt_none',
-  pantsId: 'pants_underwear_briefs',
+  shirtId: 'shirt_oxford_button_down',
+  pantsId: 'pants_classic_denim_jeans',
   shoesId: 'shoes_barefoot',
   accessoryId: '',
 
@@ -764,11 +819,12 @@ export const DEFAULT_REALISTIC_CONFIG: RealisticAvatarConfig = {
   shoesColor: '#f8fafc',
 
   body: {
-    heightCm: 105, // Default cho giai đoạn mầm non theo WHO: 105cm (Khoảng 95cm - 115cm)
+    heightCm: 95, // Default cho giai đoạn mầm non / mẫu giáo: 95cm (Min: 95cm, Max: 115cm)
     weightKg: 24,
     musclePct: 20,
     shoulderWidthScale: 1.0,
-    legLengthScale: 1.0,
+    legLengthScale: 0.85, // Default cho giai đoạn mầm non: 85% (0.85)
+    armLengthScale: 1.0, // Default cho cánh tay: 100% (1.0)
   },
 };
 
@@ -776,14 +832,15 @@ export function normalizeToRealisticConfig(input?: any): RealisticAvatarConfig {
   if (!input) return DEFAULT_REALISTIC_CONFIG;
 
   // 1. Ưu tiên lấy giá trị từ input.body (state từ thanh trượt customizer)
-  let parsedHeight = DEFAULT_REALISTIC_CONFIG.body.heightCm; // 105
-  let parsedLegScale = DEFAULT_REALISTIC_CONFIG.body.legLengthScale; // 1.0
+  let parsedHeight = DEFAULT_REALISTIC_CONFIG.body.heightCm; // 95
+  let parsedLegScale = DEFAULT_REALISTIC_CONFIG.body.legLengthScale; // 0.85
+  let parsedArmScale = DEFAULT_REALISTIC_CONFIG.body.armLengthScale ?? 1.0; // 1.0
 
   if (input.body) {
     if (typeof input.body.heightCm === 'number') {
-      // Giới hạn chiều cao giai đoạn mầm non theo chuẩn WHO: [95cm, 115cm], mặc định 105cm
+      // Giới hạn chiều cao giai đoạn mầm non theo chuẩn: [95cm, 115cm], mặc định 95cm
       if (input.body.heightCm > 115 || input.body.heightCm < 95) {
-        parsedHeight = 105;
+        parsedHeight = 95;
       } else {
         parsedHeight = input.body.heightCm;
       }
@@ -791,19 +848,27 @@ export function normalizeToRealisticConfig(input?: any): RealisticAvatarConfig {
     if (typeof input.body.legLengthScale === 'number') {
       parsedLegScale = Math.max(0.85, Math.min(1.15, input.body.legLengthScale));
     }
+    if (typeof input.body.armLengthScale === 'number') {
+      parsedArmScale = Math.max(0.85, Math.min(1.15, input.body.armLengthScale));
+    } else {
+      parsedArmScale = 1.0;
+    }
   } else {
     // Fallback nếu truyền từ định dạng 2D avatar cũ (ví dụ heightScale: 1.0)
     if (typeof input.heightScale === 'number' && input.heightScale > 0) {
-      const rawH = Math.round(input.heightScale * 105);
-      parsedHeight = rawH > 115 || rawH < 95 ? 105 : rawH;
+      const rawH = Math.round(input.heightScale * 95);
+      parsedHeight = rawH > 115 || rawH < 95 ? 95 : rawH;
     }
     if (typeof input.legScale === 'number' && input.legScale > 0) {
       parsedLegScale = Math.max(0.85, Math.min(1.15, input.legScale));
     }
+    if (typeof input.armScale === 'number' && input.armScale > 0) {
+      parsedArmScale = Math.max(0.85, Math.min(1.15, input.armScale));
+    }
   }
 
-  // Tách bỏ các thuộc tính heightScale / legScale ở root để tránh ghi đè body
-  const { heightScale: _hs, legScale: _ls, ...cleanInput } = input;
+  // Tách bỏ các thuộc tính heightScale / legScale / armScale ở root để tránh ghi đè body
+  const { heightScale: _hs, legScale: _ls, armScale: _as, ...cleanInput } = input;
 
   // Lọc dáng mắt: kiểm tra hợp lệ
   const validEyeShapes = REALISTIC_EYE_SHAPE_OPTIONS.map((o) => o.id);
@@ -874,16 +939,58 @@ export function normalizeToRealisticConfig(input?: any): RealisticAvatarConfig {
         ...input.body,
         heightCm: parsedHeight,
         legLengthScale: parsedLegScale,
+        armLengthScale: parsedArmScale,
       },
     };
   }
 
   const isShirtNone = input.shirtId === 'shirt_none' || input.shirtId === 'none' || input.shirtId === '';
-  const isShirtOxford = input.shirtId?.includes('formal') || input.shirtId?.includes('vest') || input.shirtId?.includes('polo') || input.shirtId === 'shirt_oxford_button_down';
+  const validShirtIds = [
+    'shirt_oxford_button_down',
+    'shirt_oxford_long_sleeve',
+    'shirt_oxford_rolled_sleeve',
+    'shirt_knit_sweater',
+    'shirt_fitted_cotton_tee',
+    'shirt_none',
+  ];
+  let resolvedShirtId = DEFAULT_REALISTIC_CONFIG.shirtId;
+  if (isShirtNone) {
+    resolvedShirtId = 'shirt_none';
+  } else if (input.shirtId && validShirtIds.includes(input.shirtId)) {
+    resolvedShirtId = input.shirtId;
+  } else if (input.shirtId?.includes('sweater') || input.shirtId?.includes('hoodie') || input.shirtId?.includes('knit')) {
+    resolvedShirtId = 'shirt_knit_sweater';
+  } else if (input.shirtId?.includes('roll')) {
+    resolvedShirtId = 'shirt_oxford_rolled_sleeve';
+  } else if (input.shirtId?.includes('formal') || input.shirtId?.includes('long') || input.shirtId?.includes('suit')) {
+    resolvedShirtId = 'shirt_oxford_long_sleeve';
+  } else if (input.shirtId?.includes('tee') || input.shirtId?.includes('tanktop')) {
+    resolvedShirtId = 'shirt_fitted_cotton_tee';
+  } else if (input.shirtId?.includes('polo') || input.shirtId?.includes('oxford')) {
+    resolvedShirtId = 'shirt_oxford_button_down';
+  }
   
-  const isPantsUnderwear = input.pantsId === 'pants_underwear_briefs' || input.pantsId === 'none' || input.pantsId === '';
+  const isPantsShorts = input.pantsId?.includes('short') || input.pantsId === 'pants_casual_shorts';
+  const isPantsCropped = input.pantsId?.includes('ngo') || input.pantsId?.includes('bermuda') || input.pantsId?.includes('cropped') || input.pantsId === 'pants_bermuda_cropped';
   const isPantsChino = input.pantsId?.includes('trouser') || input.pantsId?.includes('khaki') || input.pantsId?.includes('chino') || input.pantsId === 'pants_tailored_chinos';
+  const isPantsFlared = input.pantsId?.includes('flare') || input.pantsId?.includes('loe') || input.pantsId === 'pants_flared_bell_bottom';
+  const isPantsRipped = input.pantsId?.includes('rip') || input.pantsId?.includes('rach') || input.pantsId?.includes('boi_pho') || input.pantsId === 'pants_distressed_ripped_jeans';
   
+  let resolvedPantsId = DEFAULT_REALISTIC_CONFIG.pantsId;
+  if (isPantsShorts) {
+    resolvedPantsId = 'pants_casual_shorts';
+  } else if (isPantsCropped) {
+    resolvedPantsId = 'pants_bermuda_cropped';
+  } else if (isPantsChino) {
+    resolvedPantsId = 'pants_tailored_chinos';
+  } else if (isPantsFlared) {
+    resolvedPantsId = 'pants_flared_bell_bottom';
+  } else if (isPantsRipped) {
+    resolvedPantsId = 'pants_distressed_ripped_jeans';
+  } else {
+    resolvedPantsId = 'pants_classic_denim_jeans';
+  }
+
   const isShoesBarefoot = input.shoesId === 'shoes_barefoot' || input.shoesId === 'none' || input.shoesId === '';
   const isShoesOxford = input.shoesId?.includes('leather') || input.shoesId?.includes('dress') || input.shoesId === 'shoes_polished_leather_oxford';
 
@@ -892,8 +999,8 @@ export function normalizeToRealisticConfig(input?: any): RealisticAvatarConfig {
     ...cleanInput,
     hairId: resolvedHairId,
     faceId: input.faceId?.includes('smile') ? 'face_warm_smile' : (input.faceId || DEFAULT_REALISTIC_CONFIG.faceId),
-    shirtId: isShirtNone ? 'shirt_none' : (isShirtOxford ? 'shirt_oxford_button_down' : (input.shirtId || DEFAULT_REALISTIC_CONFIG.shirtId)),
-    pantsId: isPantsUnderwear ? 'pants_underwear_briefs' : (isPantsChino ? 'pants_tailored_chinos' : (input.pantsId || DEFAULT_REALISTIC_CONFIG.pantsId)),
+    shirtId: resolvedShirtId,
+    pantsId: resolvedPantsId,
     shoesId: isShoesBarefoot ? 'shoes_barefoot' : (isShoesOxford ? 'shoes_polished_leather_oxford' : (input.shoesId || DEFAULT_REALISTIC_CONFIG.shoesId)),
     accessoryId: input.accessoryId === '' || input.accessoryId === 'none' || !input.accessoryId ? '' : (input.accessoryId?.includes('watch') ? 'acc_minimalist_leather_watch' : 'acc_wireframe_glasses'),
     eyeShapeId: resolvedEyeShape,
@@ -915,6 +1022,7 @@ export function normalizeToRealisticConfig(input?: any): RealisticAvatarConfig {
       musclePct: input.body?.musclePct || DEFAULT_REALISTIC_CONFIG.body.musclePct,
       shoulderWidthScale: input.body?.shoulderWidthScale || 1.0,
       legLengthScale: parsedLegScale,
+      armLengthScale: parsedArmScale,
     },
   };
 }

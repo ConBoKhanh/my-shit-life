@@ -1267,34 +1267,97 @@ export class RealisticHumanRig implements IHumanCharacter {
     this.rebuildAccessory(config.accessoryId);
 
     // 5. Dynamic Ngũ Quan Morphing
-    this.rebuildEyebrows(config.eyebrowShapeId);
+    this.rebuildEyebrows(config.eyebrowShapeId, config.eyebrowIntensity);
     this.updateEyeShape(config.eyeShapeId);
     this.updateJawline(config.jawlineShapeId);
   }
 
   // -------------------------------------------------------------
-  // REBUILD 2 CURATED EYEBROW SHAPES
+  // REBUILD 9 CURATED EYEBROW SHAPES
   // -------------------------------------------------------------
-  private rebuildEyebrows(browShapeId: string = 'brow_soft_arch') {
+  private rebuildEyebrows(browShapeId: string = 'brow_soft_arch', intensity: number = 85) {
     this.clearGroup(this.eyebrowsGroup);
     const eyeSpacing = 0.038;
     const eyeHeight = 0.027;
     const eyeDepth = 0.076;
 
-    const isSword = browShapeId === 'brow_sword_bold';
+    const opacityVal = Math.max(0.12, Math.min(1.0, intensity / 100));
+    const intensityScale = 0.70 + 0.40 * (intensity / 100);
+
+    const browMat = this.hairMaterial.clone();
+    browMat.transparent = opacityVal < 0.98;
+    browMat.opacity = opacityVal;
+
     [-1, 1].forEach((dir) => {
-      if (isSword) {
+      if (browShapeId === 'brow_sword_bold') {
         // Chân mày kiếm: dứt khoát, vát nhọn và xếch lên thái dương
-        const browGeo = new THREE.TorusGeometry(0.033, 0.0046, 8, 20, Math.PI * 0.42);
+        const browGeo = new THREE.TorusGeometry(0.033, 0.0046 * intensityScale, 8, 20, Math.PI * 0.42);
         browGeo.rotateZ(dir > 0 ? -0.30 : Math.PI + 0.30);
-        const browMesh = new THREE.Mesh(browGeo, this.hairMaterial);
+        const browMesh = new THREE.Mesh(browGeo, browMat);
         browMesh.position.set(dir * eyeSpacing, eyeHeight + 0.020, eyeDepth + 0.007);
+        this.eyebrowsGroup.add(browMesh);
+      } else if (browShapeId === 'brow_unibrow_continuous') {
+        // Lông mày liền nhau (Unibrow)
+        const browGeo = new THREE.TorusGeometry(0.036, 0.0052 * intensityScale, 8, 20, Math.PI * 0.58);
+        browGeo.rotateZ(dir > 0 ? -0.12 : Math.PI + 0.12);
+        const browMesh = new THREE.Mesh(browGeo, browMat);
+        browMesh.position.set(dir * (eyeSpacing * 0.72), eyeHeight + 0.018, eyeDepth + 0.007);
+        this.eyebrowsGroup.add(browMesh);
+      } else if (browShapeId === 'brow_slit_cyber') {
+        // Chân mày cắt khấc Cyber Slit
+        const browGeo = new THREE.TorusGeometry(0.032, 0.0042 * intensityScale, 8, 20, Math.PI * 0.44);
+        browGeo.rotateZ(dir > 0 ? -0.25 : Math.PI + 0.25);
+        const browMesh = new THREE.Mesh(browGeo, browMat);
+        browMesh.position.set(dir * (eyeSpacing + 0.002), eyeHeight + 0.020, eyeDepth + 0.006);
+        this.eyebrowsGroup.add(browMesh);
+      } else if (browShapeId === 'brow_wave_squiggles') {
+        // Chân mày lượn sóng Squiggle
+        const browGeo = new THREE.TorusGeometry(0.034, 0.0040 * intensityScale, 8, 20, Math.PI * 0.46);
+        browGeo.rotateZ(dir > 0 ? -0.15 : Math.PI + 0.15);
+        const browMesh = new THREE.Mesh(browGeo, browMat);
+        browMesh.position.set(dir * eyeSpacing, eyeHeight + 0.019, eyeDepth + 0.006);
+        this.eyebrowsGroup.add(browMesh);
+      } else if (browShapeId === 'brow_lightning_zigzag') {
+        // Chân mày tia chớp Zig-Zag
+        const browGeo = new THREE.TorusGeometry(0.031, 0.0042 * intensityScale, 8, 20, Math.PI * 0.45);
+        browGeo.rotateZ(dir > 0 ? -0.32 : Math.PI + 0.32);
+        const browMesh = new THREE.Mesh(browGeo, browMat);
+        browMesh.position.set(dir * eyeSpacing, eyeHeight + 0.021, eyeDepth + 0.007);
+        this.eyebrowsGroup.add(browMesh);
+      } else if (browShapeId === 'brow_straight_korean') {
+        // Chân mày ngang Hàn Quốc
+        const browGeo = new THREE.TorusGeometry(0.038, 0.0038 * intensityScale, 8, 20, Math.PI * 0.38);
+        browGeo.rotateZ(dir > 0 ? -0.05 : Math.PI + 0.05);
+        const browMesh = new THREE.Mesh(browGeo, browMat);
+        browMesh.position.set(dir * eyeSpacing, eyeHeight + 0.018, eyeDepth + 0.006);
+        this.eyebrowsGroup.add(browMesh);
+      } else if (browShapeId === 'brow_high_arch_western') {
+        // Chân mày cong cao Diva
+        const browGeo = new THREE.TorusGeometry(0.028, 0.0036 * intensityScale, 8, 20, Math.PI * 0.52);
+        browGeo.rotateZ(dir > 0 ? -0.36 : Math.PI + 0.36);
+        const browMesh = new THREE.Mesh(browGeo, browMat);
+        browMesh.position.set(dir * eyeSpacing, eyeHeight + 0.022, eyeDepth + 0.006);
+        this.eyebrowsGroup.add(browMesh);
+      } else if (browShapeId === 'brow_thick_bushy') {
+        // Chân mày rậm rạp sâu róm
+        const browGeo = new THREE.TorusGeometry(0.030, 0.0065 * intensityScale, 8, 20, Math.PI * 0.48);
+        browGeo.rotateZ(dir > 0 ? -0.18 : Math.PI + 0.18);
+        const browMesh = new THREE.Mesh(browGeo, browMat);
+        browMesh.position.set(dir * eyeSpacing, eyeHeight + 0.018, eyeDepth + 0.007);
+        this.eyebrowsGroup.add(browMesh);
+      } else if (browShapeId === 'brow_sigma_raised') {
+        // Chân mày Sigma (The Rock): 1 bên nhướn cao, 1 bên hạ thấp
+        const isRaised = dir > 0;
+        const browGeo = new THREE.TorusGeometry(isRaised ? 0.026 : 0.036, 0.0042 * intensityScale, 8, 20, Math.PI * (isRaised ? 0.54 : 0.38));
+        browGeo.rotateZ(isRaised ? -0.42 : Math.PI + 0.05);
+        const browMesh = new THREE.Mesh(browGeo, browMat);
+        browMesh.position.set(dir * eyeSpacing, eyeHeight + (isRaised ? 0.026 : 0.016), eyeDepth + 0.006);
         this.eyebrowsGroup.add(browMesh);
       } else {
         // Chân mày cánh cung: mềm mại tự nhiên uốn lượn theo hốc mắt
-        const browGeo = new THREE.TorusGeometry(0.030, 0.0036, 8, 20, Math.PI * 0.48);
+        const browGeo = new THREE.TorusGeometry(0.030, 0.0036 * intensityScale, 8, 20, Math.PI * 0.48);
         browGeo.rotateZ(dir > 0 ? -0.18 : Math.PI + 0.18);
-        const browMesh = new THREE.Mesh(browGeo, this.hairMaterial);
+        const browMesh = new THREE.Mesh(browGeo, browMat);
         browMesh.position.set(dir * eyeSpacing, eyeHeight + 0.018, eyeDepth + 0.006);
         this.eyebrowsGroup.add(browMesh);
       }
@@ -1318,9 +1381,21 @@ export class RealisticHumanRig implements IHumanCharacter {
   }
 
   private updateJawline(jawlineShapeId: string = 'jaw_sharp_v_line') {
-    if (jawlineShapeId === 'jaw_structured_masculine') {
+    if (jawlineShapeId === 'jaw_sigma_chad_mewing') {
+      // Sigma Chad Mewing: khuôn mặt thon gọn sắc nét, góc cạnh, không phồng má
+      this.head.scale.set(1.0, 1.01, 1.01);
+    } else if (jawlineShapeId === 'jaw_structured_masculine') {
       // Góc hàm vuông vững chãi nam tính
-      this.head.scale.set(1.03, 0.99, 1.02);
+      this.head.scale.set(1.01, 1.0, 1.01);
+    } else if (jawlineShapeId === 'jaw_round_soft_baby') {
+      // Khung hàm tròn baby má bầu
+      this.head.scale.set(1.01, 0.98, 1.0);
+    } else if (jawlineShapeId === 'jaw_heart_pointed') {
+      // Khung hàm trái tim cằm nhọn
+      this.head.scale.set(0.97, 1.02, 0.97);
+    } else if (jawlineShapeId === 'jaw_cleft_chin_gentleman') {
+      // Cằm chẻ lãng tử quý tộc
+      this.head.scale.set(0.99, 1.01, 1.0);
     } else {
       // Góc hàm V-line thon gọn thanh tú
       this.head.scale.set(0.98, 1.0, 0.98);

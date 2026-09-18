@@ -15,6 +15,8 @@ import {
   Sparkle,
   Sliders,
   Globe,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import type { CharacterAvatarConfig } from '../../../types/game';
 import {
@@ -23,7 +25,6 @@ import {
   normalizeToRealisticConfig,
   REALISTIC_HAIR_OPTIONS,
   REALISTIC_HAIR_COLORS,
-  REALISTIC_EXPRESSION_OPTIONS,
   REALISTIC_EYE_SHAPE_OPTIONS,
   REALISTIC_EYE_COLORS,
   REALISTIC_NOSE_SHAPE_OPTIONS,
@@ -54,10 +55,28 @@ export type CustomizerTab = 'general' | 'head' | 'torso' | 'legs' | 'feet';
 
 const MAIN_TABS: { id: CustomizerTab; label: string; icon: string; badge: string; desc: string }[] = [
   { id: 'general', label: 'CHUNG', icon: '🌐', badge: 'Màu Da & Body', desc: 'Màu da toàn thân PBR và tỉ lệ vóc dáng cơ thể' },
-  { id: 'head', label: 'ĐẦU', icon: '👤', badge: 'Ngũ Quan', desc: 'Mắt, Mũi, Môi, Chân mày, Khung hàm, Tóc, Biểu cảm' },
+  { id: 'head', label: 'ĐẦU', icon: '👤', badge: 'Ngũ Quan', desc: 'Mắt, Mũi, Môi, Chân mày, Khung hàm, Tóc' },
   { id: 'torso', label: 'THÂN', icon: '👕', badge: 'Áo', desc: 'Bộ sưu tập áo thun, sơ mi oxford và cơ thể nguyên bản' },
   { id: 'legs', label: 'CHÂN', icon: '👖', badge: 'Quần', desc: 'Bộ sưu tập quần jeans, chinos và quần thể thao' },
   { id: 'feet', label: 'BÀN CHÂN', icon: '👟', badge: 'Giày', desc: 'Bộ sưu tập sneaker, giày tây oxford và chân trần' },
+];
+
+// Danh sách sub-sections cho Tab ĐẦU (Swiper navigation)
+export interface HeadSubSectionItem {
+  id: string;
+  label: string;
+  icon: string;
+  targetId: string;
+}
+
+export const HEAD_SUB_SECTIONS: HeadSubSectionItem[] = [
+  { id: 'all', label: 'Tất Cả Ngũ Quan', icon: '🌟', targetId: 'head-sec-top' },
+  { id: 'hair', label: 'Kiểu & Màu Tóc', icon: '💇', targetId: 'head-sec-hair' },
+  { id: 'eyes', label: 'Dáng & Màu Mắt', icon: '👁️', targetId: 'head-sec-eyes' },
+  { id: 'nose', label: 'Dáng Sống Mũi', icon: '👃', targetId: 'head-sec-nose' },
+  { id: 'mouth', label: 'Môi & Màu Son', icon: '👄', targetId: 'head-sec-mouth' },
+  { id: 'brows', label: 'Dáng Chân Mày', icon: '✨', targetId: 'head-sec-brows' },
+  { id: 'jaw', label: 'Khung Hàm & Cằm', icon: '🗿', targetId: 'head-sec-jaw' },
 ];
 
 // Danh sách các tông màu da & chất liệu PBR cao cấp cho khung 3D (Tab Chung)
@@ -100,8 +119,6 @@ const SHOES_COLORS = [
   { id: 'racing_red', name: 'Đỏ Thể Thao', hex: '#991B1B' },
 ];
 
-type HeadSubSection = 'all' | 'eyes_nose' | 'mouth_jaw' | 'hair' | 'expression';
-
 export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> = ({
   initialConfig,
   characterName = 'Nhân Vật',
@@ -110,8 +127,13 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
 }) => {
   const [config, setConfig] = useState<RealisticAvatarConfig>(() => {
     const normalized = normalizeToRealisticConfig(initialConfig);
+    const initialHairId = (!normalized.hairId || !REALISTIC_HAIR_OPTIONS.map((o) => o.id).includes(normalized.hairId))
+      ? 'hair_buzz_cut_fade'
+      : normalized.hairId;
+
     return {
       ...normalized,
+      hairId: initialHairId,
       eyeShapeId: (!normalized.eyeShapeId || !REALISTIC_EYE_SHAPE_OPTIONS.map((o) => o.id).includes(normalized.eyeShapeId)) 
         ? REALISTIC_EYE_SHAPE_OPTIONS[0].id 
         : normalized.eyeShapeId,
@@ -127,6 +149,15 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
       mouthShapeId: (!normalized.mouthShapeId || !REALISTIC_MOUTH_SHAPE_OPTIONS.map((o) => o.id).includes(normalized.mouthShapeId))
         ? REALISTIC_MOUTH_SHAPE_OPTIONS[0].id
         : normalized.mouthShapeId,
+      eyebrowShapeId: (!normalized.eyebrowShapeId || !REALISTIC_BROW_SHAPE_OPTIONS.map((o) => o.id).includes(normalized.eyebrowShapeId))
+        ? REALISTIC_BROW_SHAPE_OPTIONS[0].id
+        : normalized.eyebrowShapeId,
+      eyebrowIntensity: typeof normalized.eyebrowIntensity === 'number'
+        ? normalized.eyebrowIntensity
+        : (DEFAULT_REALISTIC_CONFIG.eyebrowIntensity ?? 85),
+      jawlineShapeId: (!normalized.jawlineShapeId || !REALISTIC_JAW_SHAPE_OPTIONS.map((o) => o.id).includes(normalized.jawlineShapeId))
+        ? REALISTIC_JAW_SHAPE_OPTIONS[0].id
+        : normalized.jawlineShapeId,
       body: {
         ...normalized.body,
         heightCm: (!normalized.body?.heightCm || normalized.body.heightCm < 95 || normalized.body.heightCm > 115) 
@@ -136,16 +167,144 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
     };
   });
 
+  useEffect(() => {
+    if (!config.hairId) {
+      setConfig((prev) => ({ ...prev, hairId: 'hair_buzz_cut_fade' }));
+    }
+  }, []);
+
   const [activeTab, setActiveTab] = useState<CustomizerTab>('general');
-  const [headFilter, setHeadFilter] = useState<HeadSubSection>('all');
+  const [activeHeadSub, setActiveHeadSub] = useState<string>('all');
   const [autoRotate, setAutoRotate] = useState(false);
   const [selectedPose, setSelectedPose] = useState<CharacterPoseId>('relaxed');
+  
   const contentScrollRef = useRef<HTMLDivElement>(null);
+  const swiperTrackRef = useRef<HTMLDivElement>(null);
+  const subTabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const isProgrammaticScrollRef = useRef(false);
+  const programmaticScrollTimerRef = useRef<any>(null);
 
-  // Tự động cuộn lên đầu cột nội dung khi chuyển tab
+  // Cuộn thanh swiper trái / phải bằng nút bấm
+  const handleSwiperScroll = (direction: 'left' | 'right') => {
+    if (swiperTrackRef.current) {
+      const scrollAmount = direction === 'left' ? -170 : 170;
+      swiperTrackRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  // Click vào 1 sub-tab trong swiper bar
+  const handleSubTabClick = (sub: HeadSubSectionItem) => {
+    setActiveHeadSub(sub.id);
+
+    // Tự động căn giữa tab được bấm trên swiper track
+    const btn = subTabRefs.current[sub.id];
+    if (btn) {
+      btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+
+    // Khóa cờ cuộn tự động tạm thời để scroll spy không bị giật khi đang smooth scroll
+    isProgrammaticScrollRef.current = true;
+    if (programmaticScrollTimerRef.current) {
+      clearTimeout(programmaticScrollTimerRef.current);
+    }
+    programmaticScrollTimerRef.current = setTimeout(() => {
+      isProgrammaticScrollRef.current = false;
+    }, 700);
+
+    if (sub.id === 'all') {
+      if (contentScrollRef.current) {
+        contentScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    } else {
+      const el = document.getElementById(sub.targetId);
+      if (el && contentScrollRef.current) {
+        const containerRect = contentScrollRef.current.getBoundingClientRect();
+        const elRect = el.getBoundingClientRect();
+        const targetScrollTop = contentScrollRef.current.scrollTop + (elRect.top - containerRect.top) - 62;
+        contentScrollRef.current.scrollTo({
+          top: Math.max(0, targetScrollTop),
+          behavior: 'smooth',
+        });
+      }
+    }
+  };
+
+  // Scroll spy: Tự động highlight & căn giữa slide trong swiper khi cuộn qua các section-block
+  useEffect(() => {
+    if (activeTab !== 'head') return;
+
+    const container = contentScrollRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      if (isProgrammaticScrollRef.current) return;
+
+      const scrollTop = container.scrollTop;
+      if (scrollTop < 45) {
+        if (activeHeadSub !== 'all') {
+          setActiveHeadSub('all');
+          const allBtn = subTabRefs.current['all'];
+          if (allBtn) {
+            allBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+          }
+        }
+        return;
+      }
+
+      const containerRect = container.getBoundingClientRect();
+      const thresholdY = containerRect.top + 130;
+
+      const subSections = [
+        { id: 'hair', targetId: 'head-sec-hair' },
+        { id: 'eyes', targetId: 'head-sec-eyes' },
+        { id: 'nose', targetId: 'head-sec-nose' },
+        { id: 'mouth', targetId: 'head-sec-mouth' },
+        { id: 'brows', targetId: 'head-sec-brows' },
+        { id: 'jaw', targetId: 'head-sec-jaw' },
+      ];
+
+      let currentActive = 'all';
+
+      for (const sec of subSections) {
+        const el = document.getElementById(sec.targetId);
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          if (rect.top <= thresholdY) {
+            currentActive = sec.id;
+          }
+        }
+      }
+
+      // Nếu cuộn chạm đáy container
+      if (container.scrollHeight - container.scrollTop - container.clientHeight < 40) {
+        currentActive = subSections[subSections.length - 1].id;
+      }
+
+      if (currentActive !== activeHeadSub) {
+        setActiveHeadSub(currentActive);
+        const activeBtn = subTabRefs.current[currentActive];
+        if (activeBtn) {
+          activeBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        }
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      if (programmaticScrollTimerRef.current) {
+        clearTimeout(programmaticScrollTimerRef.current);
+      }
+    };
+  }, [activeTab, activeHeadSub]);
+
+  // Tự động cuộn lên đầu cột nội dung khi chuyển tab chính
   useEffect(() => {
     if (contentScrollRef.current) {
       contentScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    if (activeTab === 'head') {
+      setActiveHeadSub('all');
     }
   }, [activeTab]);
 
@@ -171,6 +330,7 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
   const handleResetDefault = () => {
     setConfig({
       ...DEFAULT_REALISTIC_CONFIG,
+      hairId: 'hair_buzz_cut_fade',
       skinTone: '#B57850',
       lipColor: REALISTIC_LIP_COLORS[0].hex,
       body: {
@@ -281,7 +441,7 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
                     gap: '8px',
                   }}
                 >
-                  TÙY BIẾN NHÂN VẬT 3D STUDIO
+                  TÙY BIẾN NHÂN VẬT 3D
                 </h2>
                 <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: '1px 0 0 0' }}>
                   Thiết kế diện mạo cho <strong style={{ color: '#4F46E5' }}>{characterName}</strong>
@@ -892,52 +1052,273 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -10 }}
                   transition={{ duration: 0.2 }}
-                  style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '22px' }}
+                  style={{ display: 'flex', flexDirection: 'column' }}
                 >
-                  {/* Sub-navigation Pills for Head Tab */}
+                  {/* ========================================================
+                      STICKY SWIPER SUB-TABS BAR (Ghim đỉnh, tự động trượt & active)
+                  ======================================================== */}
                   <div
                     style={{
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 30,
+                      backgroundColor: 'rgba(250, 249, 254, 0.96)',
+                      backdropFilter: 'blur(12px)',
+                      borderBottom: '1px solid rgba(108, 92, 231, 0.14)',
+                      padding: '10px 18px',
                       display: 'flex',
+                      alignItems: 'center',
                       gap: '8px',
-                      overflowX: 'auto',
-                      paddingBottom: '4px',
-                      borderBottom: '1px solid rgba(108, 92, 231, 0.12)',
+                      boxShadow: '0 4px 14px rgba(108, 92, 231, 0.06)',
                     }}
                   >
-                    {[
-                      { id: 'all', label: '🌟 Tất Cả Ngũ Quan' },
-                      { id: 'eyes_nose', label: '👁️ Mắt & Mũi' },
-                      { id: 'mouth_jaw', label: '👄 Màu Môi & Khung Hàm' },
-                      { id: 'hair', label: '💇 Kiểu & Màu Tóc' },
-                      { id: 'expression', label: '😊 Biểu Cảm' },
-                    ].map((sub) => {
-                      const isSubActive = headFilter === sub.id;
-                      return (
-                        <button
-                          key={sub.id}
-                          onClick={() => setHeadFilter(sub.id as HeadSubSection)}
-                          style={{
-                            padding: '6px 14px',
-                            borderRadius: '20px',
-                            fontSize: '12px',
-                            fontWeight: 700,
-                            whiteSpace: 'nowrap',
-                            border: isSubActive ? '1.5px solid #6C5CE7' : '1px solid rgba(108, 92, 231, 0.15)',
-                            backgroundColor: isSubActive ? 'rgba(108, 92, 231, 0.12)' : '#FFFFFF',
-                            color: isSubActive ? '#6C5CE7' : 'var(--color-text-muted)',
-                            cursor: 'pointer',
-                            transition: 'all 0.18s ease',
-                          }}
-                        >
-                          {sub.label}
-                        </button>
-                      );
-                    })}
+                    {/* Nút Cuộn Trái Swiper */}
+                    <button
+                      type="button"
+                      onClick={() => handleSwiperScroll('left')}
+                      title="Cuộn sang trái"
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '50%',
+                        border: '1px solid rgba(108, 92, 231, 0.22)',
+                        backgroundColor: '#FFFFFF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        color: '#6C5CE7',
+                        boxShadow: '0 2px 5px rgba(0,0,0,0.04)',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <ChevronLeft size={16} strokeWidth={2.5} />
+                    </button>
+
+                    {/* Track Chứa Các Sub-Tabs (Swiper Track) */}
+                    <div
+                      ref={swiperTrackRef}
+                      style={{
+                        display: 'flex',
+                        gap: '8px',
+                        overflowX: 'auto',
+                        scrollbarWidth: 'none',
+                        msOverflowStyle: 'none',
+                        padding: '2px 0',
+                        flex: 1,
+                        scrollBehavior: 'smooth',
+                      }}
+                    >
+                      {HEAD_SUB_SECTIONS.map((sub) => {
+                        const isActive = activeHeadSub === sub.id;
+                        return (
+                          <button
+                            key={sub.id}
+                            ref={(el) => {
+                              subTabRefs.current[sub.id] = el;
+                            }}
+                            type="button"
+                            onClick={() => handleSubTabClick(sub)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '7px 14px',
+                              borderRadius: '20px',
+                              fontSize: '12px',
+                              fontWeight: 700,
+                              whiteSpace: 'nowrap',
+                              border: isActive
+                                ? '1.5px solid #6C5CE7'
+                                : '1px solid rgba(108, 92, 231, 0.16)',
+                              backgroundColor: isActive ? '#6C5CE7' : '#FFFFFF',
+                              color: isActive ? '#FFFFFF' : 'var(--color-text-main)',
+                              cursor: 'pointer',
+                              boxShadow: isActive
+                                ? '0 4px 12px rgba(108, 92, 231, 0.35)'
+                                : '0 1px 3px rgba(0,0,0,0.04)',
+                              transition: 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <span style={{ fontSize: '14px' }}>{sub.icon}</span>
+                            <span>{sub.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Nút Cuộn Phải Swiper */}
+                    <button
+                      type="button"
+                      onClick={() => handleSwiperScroll('right')}
+                      title="Cuộn sang phải"
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '50%',
+                        border: '1px solid rgba(108, 92, 231, 0.22)',
+                        backgroundColor: '#FFFFFF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        color: '#6C5CE7',
+                        boxShadow: '0 2px 5px rgba(0,0,0,0.04)',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <ChevronRight size={16} strokeWidth={2.5} />
+                    </button>
                   </div>
 
-                  {/* 1. DÁNG MẮT & MÀU MẮT */}
-                  {(headFilter === 'all' || headFilter === 'eyes_nose') && (
-                    <div className="section-block">
+                  {/* Section Blocks Container */}
+                  <div style={{ padding: '18px 24px 28px 24px', display: 'flex', flexDirection: 'column', gap: '22px' }}>
+                    <div id="head-sec-top" />
+
+                    {/* 1. KIỂU TÓC & MÀU TÓC */}
+                    <div id="head-sec-hair" className="section-block">
+                      <div style={{ marginBottom: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <h4
+                            style={{
+                              fontSize: '14px',
+                              fontWeight: 800,
+                              color: 'var(--color-text-main)',
+                              margin: '0 0 4px 0',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                            }}
+                          >
+                            <Scissors size={16} color="#6C5CE7" /> 1. Kiểu Tóc & Màu Nhuộm ({REALISTIC_HAIR_OPTIONS.find((o) => o.id === (config.hairId || 'hair_buzz_cut_fade'))?.name || 'Tóc Đầu Cua 1 Phân Fade'})
+                          </h4>
+                          <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: 'rgba(108, 92, 231, 0.10)', color: '#6C5CE7' }}>
+                            {REALISTIC_HAIR_OPTIONS.length} Kiểu Tóc Chuẩn 3D
+                          </span>
+                        </div>
+                        <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: 0 }}>
+                          Bộ sưu tập tóc 3D đa dạng từ tóc ngắn nam tính, tóc xoăn bồng bềnh đến tóc dài, đuôi ngựa nữ tính.
+                        </p>
+                      </div>
+
+                      {/* Danh sách kiểu tóc */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px', marginBottom: '14px' }}>
+                        {REALISTIC_HAIR_OPTIONS.map((opt) => {
+                          const isSelected = config.hairId === opt.id;
+                          return (
+                            <div
+                              key={opt.id}
+                              onClick={() => setConfig((prev) => ({ ...prev, hairId: opt.id }))}
+                              style={{
+                                padding: '12px 14px',
+                                borderRadius: '12px',
+                                border: isSelected ? '2px solid #6C5CE7' : '1px solid rgba(108, 92, 231, 0.15)',
+                                backgroundColor: isSelected ? 'rgba(108, 92, 231, 0.08)' : '#FFFFFF',
+                                cursor: 'pointer',
+                                transition: 'all 0.18s ease',
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                <span style={{ fontSize: '11px', fontWeight: 700, color: '#6C5CE7' }}>{opt.badge}</span>
+                                {isSelected && <Check size={14} color="#6C5CE7" strokeWidth={3} />}
+                              </div>
+                              <div style={{ fontSize: '13px', fontWeight: 700, color: isSelected ? '#4F46E5' : 'var(--color-text-main)' }}>
+                                {opt.name}
+                              </div>
+                              <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '4px', lineHeight: 1.4 }}>
+                                {opt.description}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Bảng màu tóc */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', backgroundColor: '#FAF9FE', borderRadius: '12px', border: '1px solid rgba(108, 92, 231, 0.12)' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-main)', whiteSpace: 'nowrap' }}>Màu nhuộm tóc:</span>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', flex: 1 }}>
+                          {REALISTIC_HAIR_COLORS.map((hairCol) => {
+                            const isSelected = config.hairColor?.toLowerCase() === hairCol.hex.toLowerCase();
+                            return (
+                              <button
+                                key={hairCol.id}
+                                onClick={() => setConfig((prev) => ({ ...prev, hairColor: hairCol.hex }))}
+                                title={hairCol.name}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '4px 10px',
+                                  borderRadius: '16px',
+                                  border: isSelected ? '2px solid #6C5CE7' : '1px solid rgba(0,0,0,0.1)',
+                                  backgroundColor: isSelected ? 'rgba(108, 92, 231, 0.1)' : '#FFFFFF',
+                                  cursor: 'pointer',
+                                  fontSize: '11px',
+                                  fontWeight: isSelected ? 700 : 500,
+                                }}
+                              >
+                                <span style={{ width: '14px', height: '14px', borderRadius: '50%', backgroundColor: hairCol.hex, display: 'inline-block' }} />
+                                <span>{hairCol.name}</span>
+                              </button>
+                            );
+                          })}
+
+                          {/* Nút Tự Chọn Màu Tóc Custom */}
+                          {(() => {
+                            const isPreset = REALISTIC_HAIR_COLORS.some((c) => c.hex.toLowerCase() === (config.hairColor || '').toLowerCase());
+                            return (
+                              <label
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  padding: '4px 10px',
+                                  borderRadius: '16px',
+                                  border: !isPreset ? '2px solid #6C5CE7' : '1.5px dashed rgba(108, 92, 231, 0.4)',
+                                  backgroundColor: !isPreset ? 'rgba(108, 92, 231, 0.1)' : '#FFFFFF',
+                                  cursor: 'pointer',
+                                  fontSize: '11px',
+                                  fontWeight: !isPreset ? 700 : 500,
+                                  position: 'relative',
+                                  transition: 'all 0.15s ease',
+                                }}
+                              >
+                                <input
+                                  type="color"
+                                  value={config.hairColor || '#16161a'}
+                                  onChange={(e) => setConfig((prev) => ({ ...prev, hairColor: e.target.value }))}
+                                  style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    width: '100%',
+                                    height: '100%',
+                                    opacity: 0,
+                                    cursor: 'pointer',
+                                  }}
+                                />
+                                <span
+                                  style={{
+                                    width: '14px',
+                                    height: '14px',
+                                    borderRadius: '50%',
+                                    background: 'conic-gradient(from 0deg, red, yellow, lime, aqua, blue, magenta, red)',
+                                    display: 'inline-block',
+                                  }}
+                                />
+                                <span style={{ color: '#6C5CE7' }}>🎨 Tự Chọn ({config.hairColor})</span>
+                              </label>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 2. DÁNG MẮT & MÀU MẮT */}
+                    <div id="head-sec-eyes" className="section-block">
                       <div style={{ marginBottom: '12px' }}>
                         <h4
                           style={{
@@ -950,7 +1331,7 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
                             gap: '6px',
                           }}
                         >
-                          <Eye size={16} color="#6C5CE7" /> 1. Dáng Mắt & Màu Mắt (Eyes & Iris)
+                          <Eye size={16} color="#6C5CE7" /> 2. Dáng Mắt & Màu Mắt (Eyes & Iris)
                         </h4>
                         <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: 0 }}>
                           Khung hốc mắt 3D chuẩn giải phẫu và tròng mắt khúc xạ ánh sáng.
@@ -990,7 +1371,7 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
                       </div>
 
                       {/* Bảng Màu Tròng Mắt PBR Cao Cấp (Full Width Grid) */}
-                      <div style={{ marginTop: '14px', padding: '14px 16px', backgroundColor: '#FFFFFF', borderRadius: '14px', border: '1px solid rgba(108, 92, 231, 0.15)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                      <div style={{ marginTop: '14px', padding: '14px 16px', backgroundColor: '#FAF9FE', borderRadius: '14px', border: '1px solid rgba(108, 92, 231, 0.15)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                           <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <Palette size={15} color="#6C5CE7" /> Bảng Màu Tròng Mắt (Iris Palette)
@@ -1017,7 +1398,7 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
                                   padding: '10px 12px',
                                   borderRadius: '12px',
                                   border: isSelected ? '2px solid #6C5CE7' : '1px solid rgba(108, 92, 231, 0.14)',
-                                  backgroundColor: isSelected ? 'rgba(108, 92, 231, 0.08)' : '#FAF9FE',
+                                  backgroundColor: isSelected ? 'rgba(108, 92, 231, 0.08)' : '#FFFFFF',
                                   cursor: 'pointer',
                                   display: 'flex',
                                   alignItems: 'center',
@@ -1067,7 +1448,7 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
                                   padding: '10px 12px',
                                   borderRadius: '12px',
                                   border: !isPreset ? '2px solid #6C5CE7' : '1.5px dashed rgba(108, 92, 231, 0.4)',
-                                  backgroundColor: !isPreset ? 'rgba(108, 92, 231, 0.08)' : '#FAF9FE',
+                                  backgroundColor: !isPreset ? 'rgba(108, 92, 231, 0.08)' : '#FFFFFF',
                                   cursor: 'pointer',
                                   display: 'flex',
                                   alignItems: 'center',
@@ -1130,11 +1511,9 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
                         </div>
                       </div>
                     </div>
-                  )}
 
-                  {/* 2. DÁNG MŨI */}
-                  {(headFilter === 'all' || headFilter === 'eyes_nose') && (
-                    <div className="section-block">
+                    {/* 3. DÁNG SỐNG MŨI */}
+                    <div id="head-sec-nose" className="section-block">
                       <div style={{ marginBottom: '12px' }}>
                         <h4
                           style={{
@@ -1147,7 +1526,7 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
                             gap: '6px',
                           }}
                         >
-                          <Sparkle size={16} color="#6C5CE7" /> 2. Dáng Sống Mũi (Nose Morphology)
+                          <Sparkle size={16} color="#6C5CE7" /> 3. Dáng Sống Mũi (Nose Morphology)
                         </h4>
                         <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: 0 }}>
                           Góc trán mũi, sống mũi và chóp mũi thanh tú hài hòa.
@@ -1185,11 +1564,9 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
                         })}
                       </div>
                     </div>
-                  )}
 
-                  {/* 3. DÁNG MÔI & MÀU MÔI (LIPS & COLOR) */}
-                  {(headFilter === 'all' || headFilter === 'mouth_jaw') && (
-                    <div className="section-block">
+                    {/* 4. DÁNG MÔI & MÀU MÔI */}
+                    <div id="head-sec-mouth" className="section-block">
                       <div style={{ marginBottom: '12px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <h4
@@ -1203,10 +1580,10 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
                               gap: '6px',
                             }}
                           >
-                            <Smile size={16} color="#6C5CE7" /> 3. Dáng Môi & Màu Môi (Lips Morphology & Color)
+                            <Smile size={16} color="#6C5CE7" /> 4. Dáng Môi & Màu Son (Lips & Lip Color)
                           </h4>
                           <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: 'rgba(108, 92, 231, 0.10)', color: '#6C5CE7' }}>
-                            3 Dáng Môi 3D
+                            {REALISTIC_MOUTH_SHAPE_OPTIONS.length} Dáng Môi 3D
                           </span>
                         </div>
                         <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: 0 }}>
@@ -1247,7 +1624,7 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
                       </div>
 
                       {/* Bảng Màu Môi (Lip Color Palette) Full-Width Grid */}
-                      <div style={{ padding: '14px 16px', backgroundColor: '#FFFFFF', borderRadius: '14px', border: '1px solid rgba(108, 92, 231, 0.15)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                      <div style={{ padding: '14px 16px', backgroundColor: '#FAF9FE', borderRadius: '14px', border: '1px solid rgba(108, 92, 231, 0.15)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                           <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--color-text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <Palette size={15} color="#6C5CE7" /> Bảng Màu Sắc Môi (Lip Color Palette)
@@ -1381,282 +1758,195 @@ export const CharacterCustomizerModal: React.FC<CharacterCustomizerModalProps> =
                         </div>
                       </div>
                     </div>
-                  )}
 
-                  {/* 4. CHÂN MÀY & KHUNG HÀM */}
-                  {(headFilter === 'all' || headFilter === 'mouth_jaw') && (
-                    <div className="section-block">
+                    {/* 5. DÁNG CHÂN MÀY */}
+                    <div id="head-sec-brows" className="section-block">
                       <div style={{ marginBottom: '12px' }}>
-                        <h4
-                          style={{
-                            fontSize: '14px',
-                            fontWeight: 800,
-                            color: 'var(--color-text-main)',
-                            margin: '0 0 4px 0',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                          }}
-                        >
-                          <Layers size={16} color="#6C5CE7" /> 4. Chân Mày & Khung Hàm (Eyebrows & Jawline)
-                        </h4>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <h4
+                            style={{
+                              fontSize: '14px',
+                              fontWeight: 800,
+                              color: 'var(--color-text-main)',
+                              margin: '0 0 4px 0',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                            }}
+                          >
+                            <Layers size={16} color="#6C5CE7" /> 5. Dáng Chân Mày (Eyebrows Morphology)
+                          </h4>
+                          <span style={{ fontSize: '11px', color: '#6C5CE7', fontWeight: 700 }}>
+                            {REALISTIC_BROW_SHAPE_OPTIONS.find((o) => o.id === (config.eyebrowShapeId || DEFAULT_REALISTIC_CONFIG.eyebrowShapeId))?.name || ''}
+                          </span>
+                        </div>
                         <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: 0 }}>
-                          Khung xương mặt và chân mày định hình nét nam tính/nữ tính thanh thoát.
+                          Khung lông mày định hình ánh nhìn sắc sảo, tự nhiên hoặc thanh thoát.
                         </p>
                       </div>
 
-                      {/* Chân mày */}
-                      <div style={{ marginBottom: '12px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-main)', marginBottom: '8px' }}>
-                          Dáng Chân Mày:
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                          {REALISTIC_BROW_SHAPE_OPTIONS.map((opt) => {
-                            const isSelected = (config.eyebrowShapeId || DEFAULT_REALISTIC_CONFIG.eyebrowShapeId) === opt.id;
-                            return (
-                              <div
-                                key={opt.id}
-                                onClick={() => setConfig((prev) => ({ ...prev, eyebrowShapeId: opt.id }))}
-                                style={{
-                                  padding: '10px 12px',
-                                  borderRadius: '10px',
-                                  border: isSelected ? '2px solid #6C5CE7' : '1px solid rgba(108, 92, 231, 0.15)',
-                                  backgroundColor: isSelected ? 'rgba(108, 92, 231, 0.08)' : '#FFFFFF',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                <div style={{ fontSize: '12px', fontWeight: 700, color: isSelected ? '#4F46E5' : 'var(--color-text-main)' }}>
-                                  {opt.name}
-                                </div>
-                                <div style={{ fontSize: '10px', color: 'var(--color-text-muted)', marginTop: '2px' }}>{opt.badge}</div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Khung hàm */}
-                      <div>
-                        <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-main)', marginBottom: '8px' }}>
-                          Khung Hàm & Cằm:
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                          {REALISTIC_JAW_SHAPE_OPTIONS.map((opt) => {
-                            const isSelected = (config.jawlineShapeId || DEFAULT_REALISTIC_CONFIG.jawlineShapeId) === opt.id;
-                            return (
-                              <div
-                                key={opt.id}
-                                onClick={() => setConfig((prev) => ({ ...prev, jawlineShapeId: opt.id }))}
-                                style={{
-                                  padding: '10px 12px',
-                                  borderRadius: '10px',
-                                  border: isSelected ? '2px solid #6C5CE7' : '1px solid rgba(108, 92, 231, 0.15)',
-                                  backgroundColor: isSelected ? 'rgba(108, 92, 231, 0.08)' : '#FFFFFF',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                <div style={{ fontSize: '12px', fontWeight: 700, color: isSelected ? '#4F46E5' : 'var(--color-text-main)' }}>
-                                  {opt.name}
-                                </div>
-                                <div style={{ fontSize: '10px', color: 'var(--color-text-muted)', marginTop: '2px' }}>{opt.badge}</div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 5. KIỂU TÓC & MÀU TÓC */}
-                  {(headFilter === 'all' || headFilter === 'hair') && (
-                    <div className="section-block">
-                      <div style={{ marginBottom: '12px' }}>
-                        <h4
-                          style={{
-                            fontSize: '14px',
-                            fontWeight: 800,
-                            color: 'var(--color-text-main)',
-                            margin: '0 0 4px 0',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                          }}
-                        >
-                          <Scissors size={16} color="#6C5CE7" /> 5. Kiểu Tóc & Màu Tóc (Hairstyles)
-                        </h4>
-                        <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: 0 }}>
-                          Kiểu tóc chuẩn salon và màu nhuộm tự nhiên.
-                        </p>
-                      </div>
-
-                      {/* Danh sách kiểu tóc */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px', marginBottom: '12px' }}>
-                        {REALISTIC_HAIR_OPTIONS.map((opt) => {
-                          const isSelected = config.hairId === opt.id;
+                      {/* Danh sách dáng chân mày */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
+                        {REALISTIC_BROW_SHAPE_OPTIONS.map((opt) => {
+                          const isSelected = (config.eyebrowShapeId || DEFAULT_REALISTIC_CONFIG.eyebrowShapeId) === opt.id;
                           return (
                             <div
                               key={opt.id}
-                              onClick={() => setConfig((prev) => ({ ...prev, hairId: opt.id }))}
+                              onClick={() => setConfig((prev) => ({ ...prev, eyebrowShapeId: opt.id }))}
                               style={{
-                                padding: '12px 14px',
-                                borderRadius: '12px',
+                                padding: '10px 12px',
+                                borderRadius: '10px',
                                 border: isSelected ? '2px solid #6C5CE7' : '1px solid rgba(108, 92, 231, 0.15)',
                                 backgroundColor: isSelected ? 'rgba(108, 92, 231, 0.08)' : '#FFFFFF',
                                 cursor: 'pointer',
-                                transition: 'all 0.18s ease',
+                                transition: 'all 0.15s ease',
                               }}
                             >
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                <span style={{ fontSize: '11px', fontWeight: 700, color: '#6C5CE7' }}>{opt.badge}</span>
-                                {isSelected && <Check size={14} color="#6C5CE7" strokeWidth={3} />}
-                              </div>
-                              <div style={{ fontSize: '13px', fontWeight: 700, color: isSelected ? '#4F46E5' : 'var(--color-text-main)' }}>
+                              <div style={{ fontSize: '12px', fontWeight: 700, color: isSelected ? '#4F46E5' : 'var(--color-text-main)' }}>
                                 {opt.name}
                               </div>
-                              <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '4px', lineHeight: 1.4 }}>
-                                {opt.description}
-                              </div>
+                              <div style={{ fontSize: '10px', color: 'var(--color-text-muted)', marginTop: '2px' }}>{opt.badge}</div>
                             </div>
                           );
                         })}
                       </div>
 
-                      {/* Bảng màu tóc */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid rgba(108, 92, 231, 0.12)' }}>
-                        <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-main)' }}>Màu nhuộm tóc:</span>
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                          {REALISTIC_HAIR_COLORS.map((hairCol) => {
-                            const isSelected = config.hairColor?.toLowerCase() === hairCol.hex.toLowerCase();
+                      {/* Thanh kéo độ đậm nhạt của thanh lông mày */}
+                      <div
+                        style={{
+                          padding: '12px 14px',
+                          borderRadius: '12px',
+                          backgroundColor: '#FAF9FE',
+                          border: '1px solid rgba(108, 92, 231, 0.15)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span>🎚️ Độ Đậm Nhạt Chân Mày:</span>
+                            <span style={{ fontSize: '11px', color: '#6C5CE7', fontWeight: 800 }}>
+                              {config.eyebrowIntensity ?? 85}%
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '10.5px', color: 'var(--color-text-muted)' }}>
+                            {(config.eyebrowIntensity ?? 85) <= 35
+                              ? 'Mờ Nhạt / Faint'
+                              : (config.eyebrowIntensity ?? 85) <= 70
+                              ? 'Tự Nhiên / Soft'
+                              : (config.eyebrowIntensity ?? 85) <= 90
+                              ? 'Đậm Nét / Bold'
+                              : 'Siêu Đậm / Intense'}
+                          </span>
+                        </div>
+
+                        {/* Slider Input */}
+                        <input
+                          type="range"
+                          min={10}
+                          max={100}
+                          step={1}
+                          value={config.eyebrowIntensity ?? 85}
+                          onChange={(e) =>
+                            setConfig((prev) => ({ ...prev, eyebrowIntensity: Number(e.target.value) }))
+                          }
+                          style={{
+                            width: '100%',
+                            height: '6px',
+                            borderRadius: '3px',
+                            outline: 'none',
+                            cursor: 'pointer',
+                            accentColor: '#6C5CE7',
+                            marginBottom: '10px',
+                          }}
+                        />
+
+                        {/* Nút bấm nhanh các mức độ đậm nhạt */}
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                          {[
+                            { label: 'Mờ (30%)', val: 30 },
+                            { label: 'Tự Nhiên (65%)', val: 65 },
+                            { label: 'Đậm Nét (85%)', val: 85 },
+                            { label: 'Siêu Đậm (100%)', val: 100 },
+                          ].map((preset) => {
+                            const isPresetActive = (config.eyebrowIntensity ?? 85) === preset.val;
                             return (
                               <button
-                                key={hairCol.id}
-                                onClick={() => setConfig((prev) => ({ ...prev, hairColor: hairCol.hex }))}
-                                title={hairCol.name}
+                                key={preset.val}
+                                type="button"
+                                onClick={() => setConfig((prev) => ({ ...prev, eyebrowIntensity: preset.val }))}
                                 style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '6px',
                                   padding: '4px 10px',
-                                  borderRadius: '16px',
-                                  border: isSelected ? '2px solid #6C5CE7' : '1px solid rgba(0,0,0,0.1)',
-                                  backgroundColor: isSelected ? 'rgba(108, 92, 231, 0.1)' : '#FAF9FE',
-                                  cursor: 'pointer',
                                   fontSize: '11px',
-                                  fontWeight: isSelected ? 700 : 500,
-                                }}
-                              >
-                                <span style={{ width: '14px', height: '14px', borderRadius: '50%', backgroundColor: hairCol.hex, display: 'inline-block' }} />
-                                <span>{hairCol.name}</span>
-                              </button>
-                            );
-                          })}
-
-                          {/* Nút Tự Chọn Màu Tóc Custom */}
-                          {(() => {
-                            const isPreset = REALISTIC_HAIR_COLORS.some((c) => c.hex.toLowerCase() === (config.hairColor || '').toLowerCase());
-                            return (
-                              <label
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '6px',
-                                  padding: '4px 10px',
-                                  borderRadius: '16px',
-                                  border: !isPreset ? '2px solid #6C5CE7' : '1.5px dashed rgba(108, 92, 231, 0.4)',
-                                  backgroundColor: !isPreset ? 'rgba(108, 92, 231, 0.1)' : '#FFFFFF',
+                                  fontWeight: isPresetActive ? 700 : 500,
+                                  borderRadius: '8px',
+                                  border: isPresetActive
+                                    ? '1.5px solid #6C5CE7'
+                                    : '1px solid rgba(108, 92, 231, 0.2)',
+                                  backgroundColor: isPresetActive ? 'rgba(108, 92, 231, 0.12)' : '#FFFFFF',
+                                  color: isPresetActive ? '#4F46E5' : 'var(--color-text-main)',
                                   cursor: 'pointer',
-                                  fontSize: '11px',
-                                  fontWeight: !isPreset ? 700 : 500,
-                                  position: 'relative',
                                   transition: 'all 0.15s ease',
                                 }}
                               >
-                                <input
-                                  type="color"
-                                  value={config.hairColor || '#16161a'}
-                                  onChange={(e) => setConfig((prev) => ({ ...prev, hairColor: e.target.value }))}
-                                  style={{
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: 0,
-                                    width: '100%',
-                                    height: '100%',
-                                    opacity: 0,
-                                    cursor: 'pointer',
-                                  }}
-                                />
-                                <span
-                                  style={{
-                                    width: '14px',
-                                    height: '14px',
-                                    borderRadius: '50%',
-                                    background: 'conic-gradient(from 0deg, red, yellow, lime, aqua, blue, magenta, red)',
-                                    display: 'inline-block',
-                                  }}
-                                />
-                                <span style={{ color: '#6C5CE7' }}>🎨 Tự Chọn ({config.hairColor})</span>
-                              </label>
+                                {preset.label}
+                              </button>
                             );
-                          })()}
+                          })}
                         </div>
                       </div>
                     </div>
-                  )}
 
-                  {/* 6. BIỂU CẢM & THẦN THÁI */}
-                  {(headFilter === 'all' || headFilter === 'expression') && (
-                    <div className="section-block">
+                    {/* 6. KHUNG HÀM & CẰM */}
+                    <div id="head-sec-jaw" className="section-block">
                       <div style={{ marginBottom: '12px' }}>
-                        <h4
-                          style={{
-                            fontSize: '14px',
-                            fontWeight: 800,
-                            color: 'var(--color-text-main)',
-                            margin: '0 0 4px 0',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                          }}
-                        >
-                          <Smile size={16} color="#6C5CE7" /> 6. Biểu Cảm & Thần Thái (Facial Expressions)
-                        </h4>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <h4
+                            style={{
+                              fontSize: '14px',
+                              fontWeight: 800,
+                              color: 'var(--color-text-main)',
+                              margin: '0 0 4px 0',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                            }}
+                          >
+                            <Layers size={16} color="#6C5CE7" /> 6. Khung Hàm & Dáng Cằm (Jawline & Chin)
+                          </h4>
+                          <span style={{ fontSize: '11px', color: '#6C5CE7', fontWeight: 700 }}>
+                            {REALISTIC_JAW_SHAPE_OPTIONS.find((o) => o.id === (config.jawlineShapeId || DEFAULT_REALISTIC_CONFIG.jawlineShapeId))?.name || ''}
+                          </span>
+                        </div>
                         <p style={{ fontSize: '12px', color: 'var(--color-text-muted)', margin: 0 }}>
-                          Cơ mặt chuyển động sống động và thần thái tự nhiên.
+                          Đường nét góc cạnh quai hàm từ V-Line thanh tú, tròn bầu đáng yêu đến Sigma Mewing góc cạnh.
                         </p>
                       </div>
 
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                        {REALISTIC_EXPRESSION_OPTIONS.map((opt) => {
-                          const isSelected = config.faceId === opt.id;
+                        {REALISTIC_JAW_SHAPE_OPTIONS.map((opt) => {
+                          const isSelected = (config.jawlineShapeId || DEFAULT_REALISTIC_CONFIG.jawlineShapeId) === opt.id;
                           return (
                             <div
                               key={opt.id}
-                              onClick={() => setConfig((prev) => ({ ...prev, faceId: opt.id }))}
+                              onClick={() => setConfig((prev) => ({ ...prev, jawlineShapeId: opt.id }))}
                               style={{
-                                padding: '12px 14px',
-                                borderRadius: '12px',
+                                padding: '10px 12px',
+                                borderRadius: '10px',
                                 border: isSelected ? '2px solid #6C5CE7' : '1px solid rgba(108, 92, 231, 0.15)',
                                 backgroundColor: isSelected ? 'rgba(108, 92, 231, 0.08)' : '#FFFFFF',
                                 cursor: 'pointer',
-                                transition: 'all 0.18s ease',
+                                transition: 'all 0.15s ease',
                               }}
                             >
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                <span style={{ fontSize: '11px', fontWeight: 700, color: '#6C5CE7' }}>{opt.badge}</span>
-                                {isSelected && <Check size={14} color="#6C5CE7" strokeWidth={3} />}
-                              </div>
-                              <div style={{ fontSize: '13px', fontWeight: 700, color: isSelected ? '#4F46E5' : 'var(--color-text-main)' }}>
+                              <div style={{ fontSize: '12px', fontWeight: 700, color: isSelected ? '#4F46E5' : 'var(--color-text-main)' }}>
                                 {opt.name}
                               </div>
-                              <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '4px', lineHeight: 1.4 }}>
-                                {opt.description}
-                              </div>
+                              <div style={{ fontSize: '10px', color: 'var(--color-text-muted)', marginTop: '2px' }}>{opt.badge}</div>
                             </div>
                           );
                         })}
                       </div>
                     </div>
-                  )}
+                  </div>
                 </motion.div>
               )}
 

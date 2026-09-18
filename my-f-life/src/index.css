@@ -245,6 +245,16 @@ h1, h2, h3, h4, h5, h6 {
   border: 1px solid #B4F0CB;
 }
 
+/* Customizer Section Block */
+.section-block {
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 18px 20px;
+  border: 1px solid rgba(108, 92, 231, 0.15);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  scroll-margin-top: 65px;
+}
+
 /* Modal Animations */
 @keyframes fadeIn {
   from { opacity: 0; }
